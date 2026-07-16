@@ -1,7 +1,6 @@
 from collections.abc import Mapping, Sequence
-from typing import cast
 
-from symai.runtime.config import ImplementationId, RuntimeConfig
+from symai.runtime.config import RuntimeConfig
 from symai.runtime.engines import EmbeddingEngine, LanguageModelEngine
 from symai.runtime.loading import (
     EmbeddingLoaderEntry,
@@ -43,18 +42,18 @@ def _load_deepseek_chat_completions(
 
 
 BUILTIN_LANGUAGE_MODEL_LOADERS: tuple[LanguageModelLoaderEntry, ...] = (
-    (cast("ImplementationId", "openai:responses"), _load_openai_responses),
+    ("openai:responses", _load_openai_responses),
     (
-        cast("ImplementationId", "cerebras:chat-completions"),
+        "cerebras:chat-completions",
         _load_cerebras_chat_completions,
     ),
     (
-        cast("ImplementationId", "deepseek:chat-completions"),
+        "deepseek:chat-completions",
         _load_deepseek_chat_completions,
     ),
 )
 BUILTIN_EMBEDDING_LOADERS: tuple[EmbeddingLoaderEntry, ...] = (
-    (cast("ImplementationId", "openai:embeddings"), _load_openai_embedding),
+    ("openai:embeddings", _load_openai_embedding),
 )
 
 

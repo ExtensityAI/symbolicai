@@ -8,7 +8,6 @@ from symai.decoding import (
     ConstructorDecoder,
     DecodeError,
     Missing,
-    PydanticDecoder,
     TextDecoder,
     TypeAdapterDecoder,
     decode_output,
@@ -44,12 +43,21 @@ def response(*outputs: tuple[int, str]) -> LanguageModelResponse:
     )
 
 
-def test_text_and_constructor_decoders_normalize_scalar_text() -> None:
+def test_text_decoder_strips_whitespace_without_rewriting_quotes() -> None:
     normalized = response((0, "  'answer'  "))
 
-    assert decode_output(normalized, TextDecoder()) == "answer"
-    assert decode_output(response((0, " 42 ")), ConstructorDecoder(int)) == 42
+    assert decode_output(normalized, TextDecoder()) == "'answer'"
     assert normalized.metadata is METADATA
+
+
+def test_text_decoder_preserves_leading_apostrophe() -> None:
+    assert decode_output(response((0, "  'Twas the night'  ")), TextDecoder()) == (
+        "'Twas the night'"
+    )
+
+
+def test_constructor_decoder_normalizes_scalar_text() -> None:
+    assert decode_output(response((0, "  '42'  ")), ConstructorDecoder(int)) == 42
 
 
 @pytest.mark.parametrize(
@@ -60,7 +68,7 @@ def test_text_and_constructor_decoders_normalize_scalar_text() -> None:
         ("1", True),
         ("false", False),
         ("No", False),
-        ("0", False),
+        ("'0'", False),
     ],
 )
 def test_constructor_decoder_accepts_explicit_boolean_forms(
@@ -75,8 +83,13 @@ def test_constructor_decoder_rejects_unknown_boolean_text() -> None:
         decode_output(response((0, "possibly")), ConstructorDecoder(bool))
 
 
+def test_constructor_decoder_rejects_container_types() -> None:
+    with pytest.raises(TypeError, match="TypeAdapterDecoder"):
+        ConstructorDecoder(list)
+
+
 def test_type_adapter_decoder_preserves_nested_parameterized_types() -> None:
-    decoder = TypeAdapterDecoder(TypeAdapter(list[dict[str, tuple[int, ...]]]))
+    decoder = TypeAdapterDecoder(list[dict[str, tuple[int, ...]]])
 
     result = decode_output(
         response((0, '[{"scores": [1, 2]}, {"scores": [3]}]')),
@@ -86,7 +99,7 @@ def test_type_adapter_decoder_preserves_nested_parameterized_types() -> None:
     assert result == [{"scores": (1, 2)}, {"scores": (3,)}]
 
 
-def test_pydantic_decoder_validates_a_model() -> None:
+def test_type_adapter_decoder_validates_a_pydantic_model_from_bare_type() -> None:
     class Answer(BaseModel):
         model_config = ConfigDict(strict=True, extra="forbid")
 
@@ -94,10 +107,17 @@ def test_pydantic_decoder_validates_a_model() -> None:
 
     result = decode_output(
         response((0, '{"value": 7}')),
-        PydanticDecoder(Answer),
+        TypeAdapterDecoder(Answer),
     )
 
     assert result == Answer(value=7)
+
+
+def test_type_adapter_decoder_does_not_strip_single_quotes_from_json() -> None:
+    decoder = TypeAdapterDecoder(dict[str, int])
+
+    with pytest.raises(DecodeError):
+        decode_output(response((0, """'{"value": 7}'""")), decoder)
 
 
 def test_output_selection_uses_normalized_index_not_tuple_position() -> None:
@@ -116,8 +136,8 @@ def test_output_selection_uses_normalized_index_not_tuple_position() -> None:
 def test_explicit_default_catches_only_decoder_failure_and_is_limited() -> None:
     assert isinstance(MISSING, Missing)
     assert decode_output(
-        response((0, "not-a-list")),
-        ConstructorDecoder(list),
+        response((0, "not-json")),
+        TypeAdapterDecoder(list[str]),
         default=["fallback", "extra", "ignored"],
         limit=2,
     ) == ["fallback", "extra"]

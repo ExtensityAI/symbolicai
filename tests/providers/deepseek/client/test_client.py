@@ -1,9 +1,11 @@
+import json
+
 import httpx
 import pytest
-from pydantic import BaseModel, SecretStr
+from pydantic import BaseModel, Field, SecretStr
 
-from symai.providers.deepseek.client.chat import CreateChatCompletionRequest, UserMessage
 from symai.providers.deepseek.client import Client
+from symai.providers.deepseek.client.chat import CreateChatCompletionRequest, UserMessage
 from symai.providers.deepseek.client.errors import (
     APIError,
     AuthError,
@@ -66,6 +68,35 @@ def test_chat_posts_authenticated_request_and_returns_metadata():
     assert response.metadata.request_id == "request-id"
     assert isinstance(response, BaseModel)
     assert isinstance(response.metadata, BaseModel)
+
+
+def test_chat_serializes_request_fields_by_alias() -> None:
+    class RequestWithAlias(CreateChatCompletionRequest):
+        future_option: str = Field(serialization_alias="futureOption")
+
+    captured_body: dict[str, object] = {}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        captured_body.update(json.loads(request.read()))
+        return httpx.Response(500, text="stop after serialization")
+
+    client = Client(
+        api_key=SecretStr("test-key"),
+        transport=httpx.MockTransport(handler),
+    )
+    request = RequestWithAlias(
+        messages=(UserMessage(role="user", content="hello"),),
+        model="deepseek-v4-flash",
+        future_option="enabled",
+    )
+    try:
+        with pytest.raises(APIError):
+            client.create_chat_completion(request)
+    finally:
+        client.close()
+
+    assert captured_body["futureOption"] == "enabled"
+    assert "future_option" not in captured_body
 
 
 @pytest.mark.parametrize(

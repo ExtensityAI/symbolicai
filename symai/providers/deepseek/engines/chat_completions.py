@@ -371,52 +371,45 @@ class ChatCompletionsEngine:
             response_id=raw.id,
             created_at=raw.created,
             system_fingerprint=raw.system_fingerprint,
-            usage=self._usage(raw.usage, response.metadata),
+            usage=self._usage(raw.usage),
         )
 
-    def _usage(
-        self,
-        usage: chat_api.Usage,
-        metadata: DeepSeekResponseMetadata,
-    ) -> TokenUsage:
-        error_metadata = self._error_metadata(metadata)
+    @staticmethod
+    def _usage(usage: chat_api.Usage) -> TokenUsage | None:
         if min(usage.prompt_tokens, usage.completion_tokens, usage.total_tokens) < 0:
-            msg = "DeepSeek token usage was negative"
-            raise InvalidResponseError(msg, metadata=error_metadata)
+            return None
         if usage.total_tokens != usage.prompt_tokens + usage.completion_tokens:
-            msg = "DeepSeek token usage was inconsistent"
-            raise InvalidResponseError(msg, metadata=error_metadata)
+            return None
 
         cache_hit = usage.prompt_cache_hit_tokens
         cache_miss = usage.prompt_cache_miss_tokens
         if cache_hit is not None and (cache_hit < 0 or cache_hit > usage.prompt_tokens):
-            msg = "DeepSeek cache token usage was inconsistent"
-            raise InvalidResponseError(msg, metadata=error_metadata)
+            return None
         if cache_miss is not None and (cache_miss < 0 or cache_miss > usage.prompt_tokens):
-            msg = "DeepSeek cache token usage was inconsistent"
-            raise InvalidResponseError(msg, metadata=error_metadata)
+            return None
         if (
             cache_hit is not None
             and cache_miss is not None
             and cache_hit + cache_miss != usage.prompt_tokens
         ):
-            msg = "DeepSeek cache token usage was inconsistent"
-            raise InvalidResponseError(msg, metadata=error_metadata)
+            return None
 
         completion_details = usage.completion_tokens_details
         reasoning = completion_details.reasoning_tokens if completion_details is not None else None
         if reasoning is not None and (reasoning < 0 or reasoning > usage.completion_tokens):
-            msg = "DeepSeek reasoning token usage was inconsistent"
-            raise InvalidResponseError(msg, metadata=error_metadata)
+            return None
 
-        return TokenUsage(
-            prompt_tokens=usage.prompt_tokens,
-            completion_tokens=usage.completion_tokens,
-            total_tokens=usage.total_tokens,
-            cached_prompt_tokens=cache_hit or 0,
-            cache_miss_prompt_tokens=cache_miss or 0,
-            reasoning_tokens=reasoning or 0,
-        )
+        try:
+            return TokenUsage(
+                prompt_tokens=usage.prompt_tokens,
+                completion_tokens=usage.completion_tokens,
+                total_tokens=usage.total_tokens,
+                cached_prompt_tokens=cache_hit or 0,
+                cache_miss_prompt_tokens=cache_miss or 0,
+                reasoning_tokens=reasoning or 0,
+            )
+        except ValidationError:
+            return None
 
     def _error_metadata(self, metadata: DeepSeekResponseMetadata) -> ErrorMetadata:
         return ErrorMetadata(

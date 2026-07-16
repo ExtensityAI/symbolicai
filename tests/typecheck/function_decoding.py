@@ -1,10 +1,9 @@
 from typing import assert_type
 
-from pydantic import BaseModel, TypeAdapter
+from pydantic import BaseModel
 
 from symai.decoding import (
     ConstructorDecoder,
-    PydanticDecoder,
     TextDecoder,
     TypeAdapterDecoder,
     decode_output,
@@ -23,11 +22,11 @@ def prove_decoder_result_inference(response: LanguageModelResponse) -> None:
     assert_type(
         decode_output(
             response,
-            TypeAdapterDecoder(TypeAdapter(list[dict[str, int]])),
+            TypeAdapterDecoder(list[dict[str, int]]),
         ),
         list[dict[str, int]],
     )
-    assert_type(decode_output(response, PydanticDecoder(Answer)), Answer)
+    assert_type(decode_output(response, TypeAdapterDecoder(Answer)), Answer)
 
 
 function = Function("Answer.")

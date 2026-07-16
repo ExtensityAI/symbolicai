@@ -345,7 +345,7 @@ class ChatCompletionsEngine:
         response: APIResponse[chat_api.ChatCompletion],
     ) -> ResponseMetadata:
         raw = response.data
-        usage = self._usage(raw.usage, response.metadata)
+        usage = self._usage(raw.usage)
         rate_limit = self._rate_limit(response.metadata)
         return ResponseMetadata(
             provider=self.provider,
@@ -385,22 +385,17 @@ class ChatCompletionsEngine:
             reset_tokens_minute=rate_limit.reset_tokens_minute,
         )
 
-    def _usage(
-        self,
-        usage: chat_api.Usage | None,
-        metadata: CerebrasResponseMetadata,
-    ) -> TokenUsage | None:
+    @staticmethod
+    def _usage(usage: chat_api.Usage | None) -> TokenUsage | None:
         if usage is None:
             return None
-        error_metadata = self._error_metadata(metadata)
         if (
             usage.prompt_tokens is not None
             and usage.completion_tokens is not None
             and usage.total_tokens is not None
             and usage.total_tokens != usage.prompt_tokens + usage.completion_tokens
         ):
-            msg = "Cerebras token usage was inconsistent"
-            raise InvalidResponseError(msg, metadata=error_metadata)
+            return None
 
         prompt_details = usage.prompt_tokens_details
         completion_details = usage.completion_tokens_details
@@ -417,30 +412,30 @@ class ChatCompletionsEngine:
             else None
         )
         if usage.prompt_tokens is not None and cached is not None and cached > usage.prompt_tokens:
-            msg = "Cerebras cached token usage was inconsistent"
-            raise InvalidResponseError(msg, metadata=error_metadata)
+            return None
         if usage.completion_tokens is not None:
             if reasoning is not None and reasoning > usage.completion_tokens:
-                msg = "Cerebras reasoning token usage was inconsistent"
-                raise InvalidResponseError(msg, metadata=error_metadata)
+                return None
             if (
                 accepted is not None
                 and rejected is not None
                 and accepted + rejected > usage.completion_tokens
             ):
-                msg = "Cerebras prediction token usage was inconsistent"
-                raise InvalidResponseError(msg, metadata=error_metadata)
+                return None
 
-        return TokenUsage(
-            prompt_tokens=usage.prompt_tokens or 0,
-            completion_tokens=usage.completion_tokens or 0,
-            total_tokens=usage.total_tokens or 0,
-            cached_prompt_tokens=cached or 0,
-            reasoning_tokens=reasoning or 0,
-            image_tokens=usage.image_tokens or 0,
-            accepted_prediction_tokens=accepted or 0,
-            rejected_prediction_tokens=rejected or 0,
-        )
+        try:
+            return TokenUsage(
+                prompt_tokens=usage.prompt_tokens or 0,
+                completion_tokens=usage.completion_tokens or 0,
+                total_tokens=usage.total_tokens or 0,
+                cached_prompt_tokens=cached or 0,
+                reasoning_tokens=reasoning or 0,
+                image_tokens=usage.image_tokens or 0,
+                accepted_prediction_tokens=accepted or 0,
+                rejected_prediction_tokens=rejected or 0,
+            )
+        except ValidationError:
+            return None
 
     def _error_metadata(self, metadata: CerebrasResponseMetadata) -> ErrorMetadata:
         return ErrorMetadata(

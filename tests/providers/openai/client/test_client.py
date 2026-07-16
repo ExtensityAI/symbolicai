@@ -9,14 +9,12 @@ from symai.providers.openai.client.responses import (
     CreateResponseRequest,
     InputMessage,
     InputText,
-    ListInputItemsParams,
     OutputMessage,
     OutputText,
     ReasoningConfig,
     ReasoningEffort,
     ReasoningSummary,
     Response,
-    RetrieveResponseParams,
     URLCitation,
 )
 
@@ -263,62 +261,11 @@ def test_response_models_accept_future_model_ids():
     assert EmbeddingList.model_validate(embedding_payload).model == "future-embedding-model"
 
 
-def test_response_lifecycle_operations_are_typed():
-    expected = [
-        ("GET", "https://api.openai.com/v1/responses/resp_123"),
-        ("DELETE", "https://api.openai.com/v1/responses/resp_123"),
-        ("POST", "https://api.openai.com/v1/responses/resp_123/cancel"),
-        ("GET", "https://api.openai.com/v1/responses/resp_123/input_items"),
-    ]
-    payloads = [
-        _minimal_response_json(),
-        {"id": "resp_123", "object": "response.deleted", "deleted": True},
-        _minimal_response_json("cancelled"),
-        {
-            "object": "list",
-            "data": [
-                {
-                    "role": "user",
-                    "content": "hello",
-                    "type": "message",
-                }
-            ],
-            "first_id": "item_1",
-            "last_id": "item_1",
-            "has_more": False,
-        },
-    ]
-
-    def handler(request: httpx.Request):
-        method, url = expected.pop(0)
-        assert request.method == method
-        assert str(request.url).startswith(url)
-        return httpx.Response(200, json=payloads.pop(0))
-
-    client = Client(
-        api_key=SecretStr("test-key"),
-        transport=httpx.MockTransport(handler),
-    )
-    try:
-        retrieved = client.retrieve_response(
-            "resp_123",
-            params=RetrieveResponseParams(include=("reasoning.encrypted_content",)),
-        )
-        deleted = client.delete_response("resp_123")
-        cancelled = client.cancel_response("resp_123")
-        items = client.list_input_items(
-            "resp_123",
-            params=ListInputItemsParams(limit=10, order="asc"),
-        )
-    finally:
-        client.close()
-
-    assert retrieved.data.status == "completed"
-    assert deleted.data.deleted is True
-    assert cancelled.data.status == "cancelled"
-    item = items.data.data[0]
-    assert isinstance(item, InputMessage)
-    assert item.role == "user"
+def test_response_client_exposes_only_used_endpoints():
+    assert not hasattr(Client, "retrieve_response")
+    assert not hasattr(Client, "delete_response")
+    assert not hasattr(Client, "cancel_response")
+    assert not hasattr(Client, "list_input_items")
 
 
 def test_embeddings_posts_batch_and_parses_vectors():

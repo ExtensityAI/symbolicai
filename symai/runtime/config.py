@@ -32,6 +32,22 @@ def _normalize_implementation_id(value: object) -> str:
 ImplementationId = Annotated[str, BeforeValidator(_normalize_implementation_id)]
 
 
+def _validate_engine_aliases[AliasT, EngineT](
+    operation: str,
+    engines: Mapping[AliasT, EngineT],
+) -> None:
+    for alias in engines:
+        if not isinstance(alias, str):
+            msg = f"{operation.capitalize()} engine alias must be a string"
+            raise TypeError(msg)
+        if not alias:
+            msg = f"{operation.capitalize()} engine alias must not be empty"
+            raise ValueError(msg)
+        if alias != alias.strip():
+            msg = f"{operation.capitalize()} engine alias must not contain outer whitespace"
+            raise ValueError(msg)
+
+
 class EngineConfig(FrozenModel):
     implementation: ImplementationId
     settings: Mapping[str, object]
@@ -60,16 +76,6 @@ class RuntimeConfig(FrozenModel):
             msg = "Runtime configuration requires at least one engine"
             raise ValueError(msg)
 
-        self._validate_aliases("language model", self.language_models)
-        self._validate_aliases("embedding", self.embeddings)
+        _validate_engine_aliases("language model", self.language_models)
+        _validate_engine_aliases("embedding", self.embeddings)
         return self
-
-    @staticmethod
-    def _validate_aliases(operation: str, engines: Mapping[str, EngineConfig]) -> None:
-        for alias in engines:
-            if not alias:
-                msg = f"{operation.capitalize()} engine alias must not be empty"
-                raise ValueError(msg)
-            if alias != alias.strip():
-                msg = f"{operation.capitalize()} engine alias must not contain outer whitespace"
-                raise ValueError(msg)

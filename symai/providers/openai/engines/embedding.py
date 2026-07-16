@@ -163,10 +163,7 @@ class EmbeddingEngine:
             msg = "OpenAI embedding response indices did not match the request"
             raise InvalidResponseError(msg, metadata=error_metadata)
 
-        usage = raw.usage
-        if usage.total_tokens != usage.prompt_tokens:
-            msg = "OpenAI embedding token usage was inconsistent"
-            raise InvalidResponseError(msg, metadata=error_metadata)
+        normalized_usage = self._usage(raw.usage)
 
         try:
             vectors = tuple(
@@ -180,15 +177,25 @@ class EmbeddingEngine:
                 status_code=response.metadata.status_code,
                 request_id=response.metadata.request_id,
                 retry_after=self._retry_after(response.metadata.retry_after),
-                usage=TokenUsage(
-                    prompt_tokens=usage.prompt_tokens,
-                    total_tokens=usage.total_tokens,
-                ),
+                usage=normalized_usage,
             )
             return EmbeddingResponse(vectors=vectors, metadata=metadata)
         except (TypeError, ValidationError) as error:
             msg = "OpenAI response could not become a normalized embedding response"
             raise InvalidResponseError(msg, metadata=error_metadata) from error
+
+    @staticmethod
+    def _usage(usage: embeddings_api.Usage) -> TokenUsage | None:
+        if usage.total_tokens != usage.prompt_tokens:
+            return None
+
+        try:
+            return TokenUsage(
+                prompt_tokens=usage.prompt_tokens,
+                total_tokens=usage.total_tokens,
+            )
+        except ValidationError:
+            return None
 
     def _error_metadata(
         self,

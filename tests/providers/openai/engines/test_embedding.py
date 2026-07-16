@@ -7,8 +7,8 @@ import pytest
 from pydantic import SecretStr, ValidationError
 
 from symai.providers.openai import EmbeddingEngine
-from symai.providers.openai.client import errors as openai_errors
 from symai.providers.openai.client import Client
+from symai.providers.openai.client import errors as openai_errors
 from symai.providers.openai.client.embeddings import CreateEmbeddingRequest
 from symai.providers.openai.client.transport import ResponseMetadata as OpenAIResponseMetadata
 from symai.runtime.errors import (
@@ -234,17 +234,29 @@ def test_malformed_embedding_data_is_rejected(
         engine.close()
 
 
-def test_inconsistent_usage_is_rejected() -> None:
+@pytest.mark.parametrize(
+    ("prompt_tokens", "total_tokens"),
+    [(2, 3), (-1, -1)],
+)
+def test_inconsistent_usage_is_omitted(prompt_tokens: int, total_tokens: int) -> None:
     def handler(_request: httpx.Request) -> httpx.Response:
-        return httpx.Response(200, json=_embedding_json(prompt_tokens=2, total_tokens=3))
+        return httpx.Response(
+            200,
+            json=_embedding_json(
+                prompt_tokens=prompt_tokens,
+                total_tokens=total_tokens,
+            ),
+        )
 
     client = _client(handler)
     engine = EmbeddingEngine(client=client, model="text-embedding-3-small")
     try:
-        with pytest.raises(InvalidResponseError, match="token usage"):
-            engine.execute(EmbeddingRequest(inputs=("one", "two"), dimensions=2))
+        response = engine.execute(EmbeddingRequest(inputs=("one", "two"), dimensions=2))
     finally:
         engine.close()
+
+    assert tuple(vector.index for vector in response.vectors) == (0, 1)
+    assert response.metadata.usage is None
 
 
 @pytest.mark.parametrize(

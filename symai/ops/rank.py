@@ -4,11 +4,11 @@ from typing import TYPE_CHECKING, Literal
 
 from symai.decoding import TextDecoder
 from symai.function import Function
-from symai.ops.primitives import _execute_language
-from symai.symbol import Symbol
+from symai.ops.primitives import _execute_language, _require_text, _symbol_value
 
 if TYPE_CHECKING:
     from symai.runtime.runtime import LanguageModel
+    from symai.symbol import Symbol
 
 __all__ = ("rank",)
 
@@ -49,12 +49,8 @@ def rank[T](
     measure: str,
     order: Literal["asc", "desc"] = "desc",
 ) -> Symbol[str]:
-    if not isinstance(source, Symbol):
-        msg = "source must be a Symbol"
-        raise TypeError(msg)
-    if not isinstance(measure, str):
-        msg = "measure must be text"
-        raise TypeError(msg)
+    value = _symbol_value(source, "source")
+    _require_text(measure, "measure")
     if order not in ("asc", "desc"):
         msg = f"Unsupported rank order: {order!r}"
         raise ValueError(msg)
@@ -66,6 +62,6 @@ def rank[T](
     return _execute_language(
         model,
         function,
-        (f"order: '{order}' measure: '{measure}' list: {source.value!s} =>",),
+        (f"order: '{order}' measure: '{measure}' list: {value!s} =>",),
         TextDecoder(),
     )

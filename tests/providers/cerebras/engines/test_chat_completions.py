@@ -7,9 +7,9 @@ import pytest
 from pydantic import JsonValue, SecretStr, ValidationError
 
 from symai.providers.cerebras import ChatCompletionsEngine
+from symai.providers.cerebras.client import Client
 from symai.providers.cerebras.client import errors as cerebras_errors
 from symai.providers.cerebras.client.chat import CreateChatCompletionRequest
-from symai.providers.cerebras.client import Client
 from symai.providers.cerebras.client.transport import RateLimitState
 from symai.providers.cerebras.client.transport import ResponseMetadata as CerebrasResponseMetadata
 from symai.runtime.errors import (
@@ -274,9 +274,11 @@ def test_response_model_identity_is_preserved_without_prefix_matching() -> None:
     client = _client(handler)
     engine = ChatCompletionsEngine(client=client, model="gpt-oss-120b")
     try:
-        response = engine.execute(LanguageModelRequest(
-            messages=(UserMessage(content=(TextContent(text="hello"),)),),
-        ))
+        response = engine.execute(
+            LanguageModelRequest(
+                messages=(UserMessage(content=(TextContent(text="hello"),)),),
+            )
+        )
     finally:
         engine.close()
 
@@ -297,10 +299,12 @@ def test_non_thinking_effort_sentinel_is_model_specific() -> None:
     client = _client(handler)
     engine = ChatCompletionsEngine(client=client, model="zai-glm-4.7")
     try:
-        response = engine.execute(LanguageModelRequest(
-            messages=(UserMessage(content=(TextContent(text="hello"),)),),
-            reasoning=ReasoningConfig(effort=ReasoningEffort.NONE),
-        ))
+        response = engine.execute(
+            LanguageModelRequest(
+                messages=(UserMessage(content=(TextContent(text="hello"),)),),
+                reasoning=ReasoningConfig(effort=ReasoningEffort.NONE),
+            )
+        )
     finally:
         engine.close()
 
@@ -409,9 +413,11 @@ def test_optional_usage_counters_normalize_without_invented_relations() -> None:
     client = _client(handler)
     engine = ChatCompletionsEngine(client=client, model="gpt-oss-120b")
     try:
-        response = engine.execute(LanguageModelRequest(
-            messages=(UserMessage(content=(TextContent(text="hello"),)),),
-        ))
+        response = engine.execute(
+            LanguageModelRequest(
+                messages=(UserMessage(content=(TextContent(text="hello"),)),),
+            )
+        )
     finally:
         engine.close()
 
@@ -470,26 +476,51 @@ def test_duplicate_choice_indices_are_rejected() -> None:
         engine.close()
 
 
-def test_inconsistent_reported_usage_is_rejected() -> None:
+@pytest.mark.parametrize(
+    "usage",
+    [
+        {"prompt_tokens": 10, "completion_tokens": 5, "total_tokens": 99},
+        {
+            "prompt_tokens": 10,
+            "completion_tokens": 5,
+            "total_tokens": 15,
+            "prompt_tokens_details": {"cached_tokens": 11},
+        },
+        {
+            "prompt_tokens": 10,
+            "completion_tokens": 5,
+            "total_tokens": 15,
+            "completion_tokens_details": {"reasoning_tokens": 6},
+        },
+        {
+            "prompt_tokens": 10,
+            "completion_tokens": 5,
+            "total_tokens": 15,
+            "completion_tokens_details": {
+                "accepted_prediction_tokens": 3,
+                "rejected_prediction_tokens": 3,
+            },
+        },
+        {"prompt_tokens": -1, "completion_tokens": 5, "total_tokens": 4},
+    ],
+)
+def test_inconsistent_reported_usage_is_omitted(usage: dict[str, JsonValue]) -> None:
     def handler(_request: httpx.Request) -> httpx.Response:
-        return httpx.Response(
-            200,
-            json=_chat_json(
-                usage={"prompt_tokens": 10, "completion_tokens": 5, "total_tokens": 99}
-            ),
-        )
+        return httpx.Response(200, json=_chat_json(usage=usage))
 
     client = _client(handler)
     engine = ChatCompletionsEngine(client=client, model="gpt-oss-120b")
     try:
-        with pytest.raises(InvalidResponseError, match="token usage"):
-            engine.execute(
-                LanguageModelRequest(
-                    messages=(UserMessage(content=(TextContent(text="hello"),)),),
-                )
+        response = engine.execute(
+            LanguageModelRequest(
+                messages=(UserMessage(content=(TextContent(text="hello"),)),),
             )
+        )
     finally:
         engine.close()
+
+    assert response.outputs[0].text == "answer"
+    assert response.metadata.usage is None
 
 
 @pytest.mark.parametrize(

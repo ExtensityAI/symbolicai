@@ -4,11 +4,11 @@ from typing import TYPE_CHECKING
 
 from symai.decoding import ConstructorDecoder
 from symai.function import Function
-from symai.ops.primitives import _execute_language
-from symai.symbol import Symbol
+from symai.ops.primitives import _execute_language, _require_text, _symbol_value
 
 if TYPE_CHECKING:
     from symai.runtime.runtime import LanguageModel
+    from symai.symbol import Symbol
 
 __all__ = ("equals", "contains", "is_instance_of")
 
@@ -151,9 +151,7 @@ def is_instance_of[T](
     type_description: str,
 ) -> Symbol[bool]:
     value = _symbol_value(source, "source")
-    if not isinstance(type_description, str):
-        msg = "type_description must be text"
-        raise TypeError(msg)
+    _require_text(type_description, "type_description")
 
     function = Function(
         "Is 'A' semantically an instance of the described type 'B'?\n",
@@ -162,11 +160,3 @@ def is_instance_of[T](
     return _execute_language(
         model, function, (f"{value!s} isinstanceof {type_description} =>",), _BOOLEAN_DECODER
     )
-
-
-def _symbol_value[T](symbol: Symbol[T], field: str) -> T:
-    if not isinstance(symbol, Symbol):
-        msg = f"{field} must be a Symbol"
-        raise TypeError(msg)
-
-    return symbol.value

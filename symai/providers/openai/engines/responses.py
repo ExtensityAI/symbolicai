@@ -416,15 +416,18 @@ class ResponsesEngine:
             or usage.input_tokens_details.cached_tokens > usage.input_tokens
             or usage.output_tokens_details.reasoning_tokens > usage.output_tokens
         ):
-            msg = "OpenAI token usage was inconsistent"
-            raise InvalidResponseError(msg, metadata=self._execution_metadata(response))
-        return TokenUsage(
-            prompt_tokens=usage.input_tokens,
-            completion_tokens=usage.output_tokens,
-            total_tokens=usage.total_tokens,
-            cached_prompt_tokens=usage.input_tokens_details.cached_tokens,
-            reasoning_tokens=usage.output_tokens_details.reasoning_tokens,
-        )
+            return None
+
+        try:
+            return TokenUsage(
+                prompt_tokens=usage.input_tokens,
+                completion_tokens=usage.output_tokens,
+                total_tokens=usage.total_tokens,
+                cached_prompt_tokens=usage.input_tokens_details.cached_tokens,
+                reasoning_tokens=usage.output_tokens_details.reasoning_tokens,
+            )
+        except ValidationError:
+            return None
 
     def _execution_metadata(
         self,

@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 import inspect
-from collections.abc import Callable
 from dataclasses import dataclass
+from typing import TYPE_CHECKING
 
 import numpy as np
 import pytest
@@ -25,8 +25,11 @@ from symai.runtime.models import (
     ResponseMetadata,
     TextContent,
 )
-from symai.runtime.runtime import EmbeddingModel, LanguageModel, Runtime
+from symai.runtime.runtime import LanguageModel, Runtime
 from symai.symbol import Symbol
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 METADATA = ResponseMetadata(
     provider="test-provider",
@@ -338,13 +341,20 @@ def test_language_operation_contract(
         decoders.append(decoder)
         return original_decode(response, decoder)
 
-    def record_wrap(value: object) -> Symbol[object]:
-        wraps.append(value)
-        return original_symbol(value)
+    class RecordingSymbolMeta(type):
+        def __instancecheck__(cls, instance: object) -> bool:
+            return isinstance(instance, original_symbol)
+
+        def __call__(cls, value: object) -> Symbol[object]:
+            wraps.append(value)
+            return original_symbol(value)
+
+    class RecordingSymbol(metaclass=RecordingSymbolMeta):
+        pass
 
     monkeypatch.setattr(Function, "__call__", record_function_call)
     monkeypatch.setattr(primitives, "decode_output", record_decode)
-    monkeypatch.setattr(primitives, "Symbol", record_wrap)
+    monkeypatch.setattr(primitives, "Symbol", RecordingSymbol)
 
     with explicit, independent:
         result = case.invoke(explicit.language_model("selected"), source, other_symbol)
@@ -674,19 +684,66 @@ def test_remote_signatures_take_bound_handles_without_string_selection() -> None
         assert "engine" not in signature.parameters
 
 
-def test_raw_primary_operands_are_rejected() -> None:
+def test_operation_guards_preserve_exact_errors() -> None:
     language = RecordingLanguageEngine(language_response("unused"))
     runtime = Runtime(language_models={"language": language})
 
     with runtime:
         model = runtime.language_model()
-        with pytest.raises(TypeError, match="Symbol"):
-            text.summarize(model, "raw")  # type: ignore[arg-type]
-        with pytest.raises(TypeError, match="Symbol"):
-            compare.equals(model, Symbol("one"), "raw")  # type: ignore[arg-type]
+        guard_cases: tuple[tuple[Callable[[], object], str], ...] = (
+            (
+                lambda: text.summarize(model, "raw"),  # pyright: ignore[reportArgumentType]
+                "source must be a Symbol",
+            ),
+            (
+                lambda: reason.interpret(model, "raw"),  # pyright: ignore[reportArgumentType]
+                "source must be a Symbol",
+            ),
+            (
+                lambda: compare.equals(  # pyright: ignore[reportArgumentType]
+                    model, "raw", Symbol("right")
+                ),
+                "left must be a Symbol",
+            ),
+            (
+                lambda: rank.rank(  # pyright: ignore[reportArgumentType]
+                    model, "raw", "quality"
+                ),
+                "source must be a Symbol",
+            ),
+            (
+                lambda: text.translate(  # pyright: ignore[reportArgumentType]
+                    model, Symbol("source"), 1
+                ),
+                "language must be text",
+            ),
+            (
+                lambda: reason.query(  # pyright: ignore[reportArgumentType]
+                    model, Symbol("source"), 1
+                ),
+                "question must be text",
+            ),
+            (
+                lambda: compare.is_instance_of(  # pyright: ignore[reportArgumentType]
+                    model, Symbol("source"), 1
+                ),
+                "type_description must be text",
+            ),
+            (
+                lambda: rank.rank(  # pyright: ignore[reportArgumentType]
+                    model, Symbol("source"), 1
+                ),
+                "measure must be text",
+            ),
+        )
 
-    with pytest.raises(TypeError, match="Symbol"):
-        embed.similarity(Symbol([1.0]), [1.0])  # type: ignore[arg-type]
+        for invoke, expected in guard_cases:
+            with pytest.raises(TypeError) as exc_info:
+                invoke()
+
+            assert str(exc_info.value) == expected
+
+    assert language.requests == []
 
 
 def test_old_mixin_context_and_symbol_surfaces_are_absent() -> None:

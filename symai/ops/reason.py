@@ -4,11 +4,11 @@ from typing import TYPE_CHECKING
 
 from symai.decoding import TextDecoder
 from symai.function import Function
-from symai.ops.primitives import _execute_language
-from symai.symbol import Symbol
+from symai.ops.primitives import _execute_language, _require_text, _symbol_value
 
 if TYPE_CHECKING:
     from symai.runtime.runtime import LanguageModel
+    from symai.symbol import Symbol
 
 __all__ = ("query", "interpret", "logic")
 
@@ -137,17 +137,3 @@ def logic[LeftT, RightT](
     return _execute_language(
         model, function, (f"expr {left_value!s} {operator} {right_value!s} =>",), TextDecoder()
     )
-
-
-def _symbol_value[T](symbol: Symbol[T], field: str) -> T:
-    if not isinstance(symbol, Symbol):
-        msg = f"{field} must be a Symbol"
-        raise TypeError(msg)
-
-    return symbol.value
-
-
-def _require_text(value: object, field: str) -> None:
-    if not isinstance(value, str):
-        msg = f"{field} must be text"
-        raise TypeError(msg)

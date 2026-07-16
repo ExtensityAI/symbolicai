@@ -139,7 +139,7 @@ def test_empty_runtime_is_rejected() -> None:
 
 
 @pytest.mark.parametrize("operation", ["language_model", "embedding"])
-@pytest.mark.parametrize("alias", ["", 1])
+@pytest.mark.parametrize("alias", ["", " chat ", "\tvector", 1])
 def test_invalid_alias_is_rejected_before_ownership_transfer(
     operation: str,
     alias: object,

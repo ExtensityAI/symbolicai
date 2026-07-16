@@ -1,5 +1,4 @@
 from collections.abc import Callable, Mapping, Sequence
-from typing import cast
 
 from pydantic import TypeAdapter
 
@@ -102,7 +101,7 @@ def _validate_references[LoaderT](
     loaders: Mapping[str, LoaderT],
 ) -> None:
     for alias, spec in configured.items():
-        implementation = cast("str", spec.implementation)
+        implementation = spec.implementation
         if implementation in loaders:
             continue
 

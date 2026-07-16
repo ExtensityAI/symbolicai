@@ -1,14 +1,12 @@
-import ast
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Protocol, cast, override
 
-from pydantic import BaseModel, TypeAdapter, ValidationError
+from pydantic import TypeAdapter, ValidationError
 
 from symai.runtime.models import LanguageModelResponse
 
 if TYPE_CHECKING:
     from collections.abc import Callable
-
 
 _TRUE_VALUES = frozenset({"true", "yes", "1"})
 _FALSE_VALUES = frozenset({"false", "no", "0"})
@@ -40,26 +38,23 @@ class Decoder[T_co](Protocol):
 @dataclass(frozen=True, slots=True)
 class TextDecoder:
     def decode(self, text: str, /) -> str:
-        return _normalize_text(text)
+        return text.strip()
 
 
 @dataclass(frozen=True, slots=True)
 class ConstructorDecoder[T]:
     constructor: type[T]
 
+    def __post_init__(self) -> None:
+        if self.constructor in (list, tuple, set, dict):
+            msg = "Container outputs require TypeAdapterDecoder"
+            raise TypeError(msg)
+
     def decode(self, text: str, /) -> T:
-        normalized = _normalize_text(text)
+        normalized = _normalize_scalar_text(text)
         try:
-            if self.constructor is str:
-                return cast("T", normalized)
             if self.constructor is bool:
                 return cast("T", _decode_boolean(normalized))
-            if self.constructor in (list, tuple, set, dict):
-                value = ast.literal_eval(normalized)
-                if type(value) is not self.constructor:
-                    msg = f"Expected {self.constructor.__name__}, received {type(value).__name__}"
-                    raise ValueError(msg)
-                return cast("T", value)
 
             converter = cast("Callable[[str], T]", self.constructor)
             return converter(normalized)
@@ -69,24 +64,17 @@ class ConstructorDecoder[T]:
             raise _decode_error(self, error) from error
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(frozen=True, slots=True, init=False)
 class TypeAdapterDecoder[T]:
     adapter: TypeAdapter[T]
 
+    def __init__(self, target: type[T] | TypeAdapter[T]) -> None:
+        adapter = target if isinstance(target, TypeAdapter) else TypeAdapter(target)
+        object.__setattr__(self, "adapter", adapter)
+
     def decode(self, text: str, /) -> T:
         try:
-            return self.adapter.validate_json(_normalize_text(text))
-        except ValidationError as error:
-            raise _decode_error(self, error) from error
-
-
-@dataclass(frozen=True, slots=True)
-class PydanticDecoder[ModelT: BaseModel]:
-    model: type[ModelT]
-
-    def decode(self, text: str, /) -> ModelT:
-        try:
-            return self.model.model_validate_json(_normalize_text(text))
+            return self.adapter.validate_json(text)
         except ValidationError as error:
             raise _decode_error(self, error) from error
 
@@ -128,7 +116,7 @@ def _decode_boolean(text: str) -> bool:
     raise ValueError(msg)
 
 
-def _normalize_text(text: str) -> str:
+def _normalize_scalar_text(text: str) -> str:
     normalized = text.strip()
     if len(normalized) >= 2 and normalized.startswith("'") and normalized.endswith("'"):
         normalized = normalized[1:-1].strip()

@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING
 
 from symai.decoding import TextDecoder
 from symai.function import Function
-from symai.ops.primitives import _execute_language
+from symai.ops.primitives import _execute_language, _require_text, _symbol_value
 from symai.symbol import Symbol
 
 if TYPE_CHECKING:
@@ -411,17 +411,3 @@ def extract[T](
     return _execute_language(
         model, function, (f"from '{value!s}' extract '{pattern}' =>",), TextDecoder()
     )
-
-
-def _symbol_value[T](symbol: Symbol[T], field: str) -> T:
-    if not isinstance(symbol, Symbol):
-        msg = f"{field} must be a Symbol"
-        raise TypeError(msg)
-
-    return symbol.value
-
-
-def _require_text(value: object, field: str) -> None:
-    if not isinstance(value, str):
-        msg = f"{field} must be text"
-        raise TypeError(msg)

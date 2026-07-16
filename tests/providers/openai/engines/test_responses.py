@@ -7,8 +7,8 @@ import pytest
 from pydantic import SecretStr, ValidationError
 
 from symai.providers.openai import ResponsesEngine
-from symai.providers.openai.client import errors as openai_errors
 from symai.providers.openai.client import Client
+from symai.providers.openai.client import errors as openai_errors
 from symai.providers.openai.client.responses import CreateResponseRequest
 from symai.providers.openai.client.transport import ResponseMetadata as OpenAIResponseMetadata
 from symai.runtime.errors import (
@@ -158,7 +158,7 @@ def test_execute_translates_normalized_request_and_response() -> None:
             user="customer-42",
             metadata=(MetadataLabel(key="trace", value="abc"),),
         )
-    
+
         response = engine.execute(request)
     finally:
         engine.close()
@@ -272,9 +272,11 @@ def test_reasoning_model_uses_explicit_default_effort() -> None:
     client = _client(handler)
     engine = ResponsesEngine(client=client, model="gpt-5.4-pro")
     try:
-        engine.execute(LanguageModelRequest(
-            messages=(UserMessage(content=(TextContent(text="hello"),)),),
-        ))
+        engine.execute(
+            LanguageModelRequest(
+                messages=(UserMessage(content=(TextContent(text="hello"),)),),
+            )
+        )
     finally:
         engine.close()
 
@@ -430,9 +432,11 @@ def test_dated_response_model_preserves_requested_and_returned_identity() -> Non
     client = _client(handler)
     engine = ResponsesEngine(client=client, model="gpt-5.4")
     try:
-        response = engine.execute(LanguageModelRequest(
-            messages=(UserMessage(content=(TextContent(text="hello"),)),),
-        ))
+        response = engine.execute(
+            LanguageModelRequest(
+                messages=(UserMessage(content=(TextContent(text="hello"),)),),
+            )
+        )
     finally:
         engine.close()
 
@@ -461,9 +465,11 @@ def test_refusal_only_output_is_normalized_without_invented_text() -> None:
     client = _client(handler)
     engine = ResponsesEngine(client=client, model="gpt-5.4")
     try:
-        response = engine.execute(LanguageModelRequest(
-            messages=(UserMessage(content=(TextContent(text="hello"),)),),
-        ))
+        response = engine.execute(
+            LanguageModelRequest(
+                messages=(UserMessage(content=(TextContent(text="hello"),)),),
+            )
+        )
     finally:
         engine.close()
 
@@ -504,9 +510,11 @@ def test_noncompleted_response_does_not_expose_provider_error_text() -> None:
     engine = ResponsesEngine(client=client, model="gpt-5.4")
     try:
         with pytest.raises(InvalidResponseError) as caught:
-            engine.execute(LanguageModelRequest(
-                messages=(UserMessage(content=(TextContent(text="hello"),)),),
-            ))
+            engine.execute(
+                LanguageModelRequest(
+                    messages=(UserMessage(content=(TextContent(text="hello"),)),),
+                )
+            )
     finally:
         engine.close()
 
@@ -524,9 +532,11 @@ def test_failed_response_with_usable_output_maps_error_finish_reason() -> None:
     client = _client(handler)
     engine = ResponsesEngine(client=client, model="gpt-5.4")
     try:
-        response = engine.execute(LanguageModelRequest(
-            messages=(UserMessage(content=(TextContent(text="hello"),)),),
-        ))
+        response = engine.execute(
+            LanguageModelRequest(
+                messages=(UserMessage(content=(TextContent(text="hello"),)),),
+            )
+        )
     finally:
         engine.close()
 
@@ -534,25 +544,38 @@ def test_failed_response_with_usable_output_maps_error_finish_reason() -> None:
     assert response.outputs[0].finish_reason is FinishReason.ERROR
 
 
-def test_inconsistent_reported_usage_is_invalid() -> None:
+@pytest.mark.parametrize(
+    "usage_override",
+    [
+        {"total_tokens": 99},
+        {"input_tokens_details": {"cached_tokens": 12}},
+        {"output_tokens_details": {"reasoning_tokens": 8}},
+        {"input_tokens": -1, "total_tokens": 6},
+    ],
+)
+def test_inconsistent_reported_usage_is_omitted(
+    usage_override: dict[str, object],
+) -> None:
     def handler(_request: httpx.Request) -> httpx.Response:
         payload = _response_json()
         usage = payload["usage"]
         assert isinstance(usage, dict)
-        usage["total_tokens"] = 99
+        usage.update(usage_override)
         return httpx.Response(200, json=payload)
 
     client = _client(handler)
     engine = ResponsesEngine(client=client, model="gpt-5.4")
     try:
-        with pytest.raises(InvalidResponseError, match="token usage"):
-            engine.execute(
-                LanguageModelRequest(
-                    messages=(UserMessage(content=(TextContent(text="hello"),)),),
-                )
+        response = engine.execute(
+            LanguageModelRequest(
+                messages=(UserMessage(content=(TextContent(text="hello"),)),),
             )
+        )
     finally:
         engine.close()
+
+    assert response.outputs[0].text == "answer"
+    assert response.metadata.usage is None
 
 
 @pytest.mark.parametrize(
@@ -592,9 +615,11 @@ def test_incomplete_terminal_response_preserves_partial_output(
     client = _client(handler)
     engine = ResponsesEngine(client=client, model="gpt-5.4")
     try:
-        response = engine.execute(LanguageModelRequest(
-            messages=(UserMessage(content=(TextContent(text="hello"),)),),
-        ))
+        response = engine.execute(
+            LanguageModelRequest(
+                messages=(UserMessage(content=(TextContent(text="hello"),)),),
+            )
+        )
     finally:
         engine.close()
 

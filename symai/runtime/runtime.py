@@ -7,6 +7,7 @@ from time import monotonic
 from types import MappingProxyType, TracebackType
 from typing import TYPE_CHECKING, Literal, cast, overload
 
+from symai.runtime.config import _validate_engine_aliases
 from symai.runtime.engines import EmbeddingEngine, LanguageModelEngine
 from symai.runtime.errors import (
     AmbiguousEngineError,
@@ -86,8 +87,8 @@ class Runtime:
         embedding_snapshot = dict(embeddings) if embeddings is not None else {}
         observer_snapshot = tuple(observers)
 
-        self._validate_aliases("language-model", language_snapshot)
-        self._validate_aliases("embedding", embedding_snapshot)
+        _validate_engine_aliases("language model", language_snapshot)
+        _validate_engine_aliases("embedding", embedding_snapshot)
         self._validate_engine_identities(language_snapshot, embedding_snapshot)
         if not all(callable(observer) for observer in observer_snapshot):
             msg = "Each execution observer must be callable"
@@ -107,19 +108,6 @@ class Runtime:
         self._observers = observer_snapshot
         self._owner_thread_id: int | None = None
         self._state = _RuntimeState.CREATED
-
-    @staticmethod
-    def _validate_aliases(
-        operation: str,
-        engines: Mapping[str, object],
-    ) -> None:
-        for alias in engines:
-            if not isinstance(alias, str):
-                msg = f"{operation.capitalize()} engine alias must be a string"
-                raise TypeError(msg)
-            if not alias:
-                msg = f"{operation.capitalize()} engine alias must not be empty"
-                raise ValueError(msg)
 
     @staticmethod
     def _validate_engine_identities(

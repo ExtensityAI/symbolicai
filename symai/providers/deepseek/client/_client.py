@@ -12,8 +12,6 @@ from symai.providers.deepseek.client.transport import APIResponse, ResponseMetad
 BASE_URL = "https://api.deepseek.com"
 
 
-
-
 def _raise_for_status(response: httpx.Response, metadata: ResponseMetadata):
     if response.status_code == httpx.codes.UNAUTHORIZED:
         raise errors.AuthError(
@@ -101,7 +99,7 @@ class Client:
         try:
             response = self._http_client.post(
                 f"{BASE_URL}{chat.PATH}",
-                json=request.model_dump(mode="json", exclude_none=True),
+                json=request.model_dump(mode="json", by_alias=True, exclude_none=True),
                 headers=self._headers,
             )
         except httpx.RequestError as exc:
