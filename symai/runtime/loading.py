@@ -7,8 +7,13 @@ from symai.runtime.engines import EmbeddingEngine, LanguageModelEngine
 from symai.runtime.observability import Observer
 from symai.runtime.runtime import Runtime
 
-LanguageModelLoader = Callable[[Mapping[str, object]], LanguageModelEngine]
-EmbeddingLoader = Callable[[Mapping[str, object]], EmbeddingEngine]
+# Loading is two-phase: a loader resolves settings and returns a factory, and only the
+# factory allocates a transport. This is what lets every configuration be validated
+# before any HTTP client exists.
+LanguageModelFactory = Callable[[], LanguageModelEngine]
+EmbeddingFactory = Callable[[], EmbeddingEngine]
+LanguageModelLoader = Callable[[Mapping[str, object]], LanguageModelFactory]
+EmbeddingLoader = Callable[[Mapping[str, object]], EmbeddingFactory]
 LanguageModelLoaderEntry = tuple[ImplementationId, LanguageModelLoader]
 EmbeddingLoaderEntry = tuple[ImplementationId, EmbeddingLoader]
 
@@ -29,19 +34,24 @@ def load_runtime(
         language_model_loaders,
         embedding_loaders,
     )
+    # Resolve every configuration first. A settings error in the last engine must not
+    # leave the first engine's HTTP client allocated.
+    language_factories = _resolve("language model", config.language_models, language_index)
+    embedding_factories = _resolve("embedding", config.embeddings, embedding_index)
+
     loaded: list[_ProviderEngine] = []
     language_models: dict[str, LanguageModelEngine] = {}
     embeddings: dict[str, EmbeddingEngine] = {}
 
     try:
-        for alias, spec in config.language_models.items():
-            engine = language_index[spec.implementation](spec.settings)
+        for alias, language_factory in language_factories.items():
+            engine = language_factory()
             loaded.append(engine)
             language_models[alias] = engine
-        for alias, spec in config.embeddings.items():
-            engine = embedding_index[spec.implementation](spec.settings)
-            loaded.append(engine)
-            embeddings[alias] = engine
+        for alias, embedding_factory in embedding_factories.items():
+            embedding = embedding_factory()
+            loaded.append(embedding)
+            embeddings[alias] = embedding
 
         return Runtime(
             language_models=language_models,
@@ -75,6 +85,27 @@ def _preflight(
     _validate_references("language model", config.language_models, language_index)
     _validate_references("embedding", config.embeddings, embedding_index)
     return language_index, embedding_index
+
+
+def _resolve[FactoryT](
+    operation: str,
+    configured: Mapping[str, EngineConfig],
+    loaders: Mapping[str, Callable[[Mapping[str, object]], FactoryT]],
+) -> dict[str, FactoryT]:
+    """Resolve each configuration to an engine factory without allocating transport."""
+    factories: dict[str, FactoryT] = {}
+    for alias, spec in configured.items():
+        factory = loaders[spec.implementation](spec.settings)
+        if not callable(factory):
+            msg = (
+                f"{operation.capitalize()} loader for {spec.implementation!r} must return "
+                f"an engine factory (engine {alias!r})"
+            )
+            raise TypeError(msg)
+
+        factories[alias] = factory
+
+    return factories
 
 
 def _index_entries[LoaderT](

@@ -1,4 +1,4 @@
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 
 import pytest
 from pydantic import BaseModel, ConfigDict
@@ -87,10 +87,10 @@ def test_credential_free_external_loader_constructs_and_executes() -> None:
     events: list[str] = []
     records: list[ExecutionRecord] = []
 
-    def load_local(settings: Mapping[str, object]) -> LocalEngine:
+    def load_local(settings: Mapping[str, object]) -> Callable[[], LocalEngine]:
         parsed = LocalSettings.model_validate(dict(settings))
         events.append("load")
-        return LocalEngine(parsed, events)
+        return lambda: LocalEngine(parsed, events)
 
     config = RuntimeConfig(
         language_models={
@@ -119,10 +119,10 @@ def test_builtin_loader_forwards_execution_observers() -> None:
     events: list[str] = []
     records: list[ExecutionRecord] = []
 
-    def load_local(settings: Mapping[str, object]) -> LocalEngine:
+    def load_local(settings: Mapping[str, object]) -> Callable[[], LocalEngine]:
         parsed = LocalSettings.model_validate(dict(settings))
         events.append("load")
-        return LocalEngine(parsed, events)
+        return lambda: LocalEngine(parsed, events)
 
     config = RuntimeConfig(
         language_models={
@@ -227,13 +227,14 @@ def test_same_implementation_id_can_load_once_per_operation() -> None:
         def close(self) -> None:
             events.append("close-embedding")
 
-    def load_language(settings: Mapping[str, object]) -> LanguageEngine:
+    def load_language(settings: Mapping[str, object]) -> Callable[[], LanguageEngine]:
         events.append("load-language")
-        return LanguageEngine(LocalSettings.model_validate(dict(settings)), events)
+        parsed = LocalSettings.model_validate(dict(settings))
+        return lambda: LanguageEngine(parsed, events)
 
-    def load_embedding(_settings: Mapping[str, object]) -> VectorEngine:
+    def load_embedding(_settings: Mapping[str, object]) -> Callable[[], VectorEngine]:
         events.append("load-embedding")
-        return VectorEngine()
+        return VectorEngine
 
     config = RuntimeConfig(
         language_models={
@@ -303,16 +304,24 @@ def test_loading_rolls_back_exhaustively_and_preserves_primary_failure() -> None
     close_b = RuntimeError("close-b failed")
     primary = RuntimeError("load-c failed")
 
+    # The failure is in the construct phase: a resolution failure allocates nothing, so
+    # rollback is only reachable once engines exist.
     def loader(name: str, close_error: BaseException | None = None):
-        def load(_settings: Mapping[str, object]) -> RecordingEngine:
-            events.append(f"load-{name}")
-            return RecordingEngine(name, events, close_error)
+        def load(_settings: Mapping[str, object]) -> Callable[[], RecordingEngine]:
+            def construct() -> RecordingEngine:
+                events.append(f"load-{name}")
+                return RecordingEngine(name, events, close_error)
+
+            return construct
 
         return load
 
-    def fail(_settings: Mapping[str, object]) -> RecordingEngine:
-        events.append("load-c")
-        raise primary
+    def fail(_settings: Mapping[str, object]) -> Callable[[], RecordingEngine]:
+        def construct() -> RecordingEngine:
+            events.append("load-c")
+            raise primary
+
+        return construct
 
     config = RuntimeConfig(
         language_models={
@@ -338,3 +347,61 @@ def test_loading_rolls_back_exhaustively_and_preserves_primary_failure() -> None
     cleanup_group = raised.value.__cause__
     assert isinstance(cleanup_group, BaseExceptionGroup)
     assert cleanup_group.exceptions == (close_b, close_a)
+
+
+def test_a_resolution_failure_constructs_no_engine_at_all() -> None:
+    """FIXPLAN §2: construction resolves all configurations before allocating transport."""
+    events: list[str] = []
+    primary = RuntimeError("settings for c are invalid")
+
+    def loader(name: str):
+        def load(_settings: Mapping[str, object]) -> Callable[[], RecordingEngine]:
+            events.append(f"resolve-{name}")
+
+            def construct() -> RecordingEngine:
+                events.append(f"load-{name}")
+                return RecordingEngine(name, events, None)
+
+            return construct
+
+        return load
+
+    def fail_resolution(_settings: Mapping[str, object]) -> Callable[[], RecordingEngine]:
+        events.append("resolve-c")
+        raise primary
+
+    config = RuntimeConfig(
+        language_models={
+            "a": EngineConfig(implementation="test:a", settings={}),
+            "b": EngineConfig(implementation="test:b", settings={}),
+            "c": EngineConfig(implementation="test:c", settings={}),
+        }
+    )
+
+    with pytest.raises(RuntimeError) as raised:
+        load_runtime(
+            config,
+            language_model_loaders=(
+                ("test:a", loader("a")),
+                ("test:b", loader("b")),
+                ("test:c", fail_resolution),
+            ),
+            embedding_loaders=(),
+        )
+
+    assert raised.value is primary
+    # No engine was constructed, so nothing had to be closed.
+    assert events == ["resolve-a", "resolve-b", "resolve-c"]
+
+
+def test_a_loader_returning_a_non_factory_is_rejected_before_construction() -> None:
+    config = RuntimeConfig(
+        language_models={"a": EngineConfig(implementation="test:a", settings={})}
+    )
+
+    with pytest.raises(TypeError, match="engine factory"):
+        load_runtime(
+            config,
+            language_model_loaders=(("test:a", lambda _settings: "not-a-factory"),),  # pyright: ignore[reportArgumentType]
+            embedding_loaders=(),
+        )

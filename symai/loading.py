@@ -1,4 +1,4 @@
-from collections.abc import Mapping, Sequence
+from collections.abc import Callable, Mapping, Sequence
 
 from symai.runtime.config import RuntimeConfig
 from symai.runtime.engines import EmbeddingEngine, LanguageModelEngine
@@ -13,13 +13,13 @@ from symai.runtime.observability import Observer
 from symai.runtime.runtime import Runtime
 
 
-def _load_openai_responses(settings: Mapping[str, object]) -> LanguageModelEngine:
+def _load_openai_responses(settings: Mapping[str, object]) -> Callable[[], LanguageModelEngine]:
     from symai.providers.openai.loading import load_responses
 
     return load_responses(settings)
 
 
-def _load_openai_embedding(settings: Mapping[str, object]) -> EmbeddingEngine:
+def _load_openai_embedding(settings: Mapping[str, object]) -> Callable[[], EmbeddingEngine]:
     from symai.providers.openai.loading import load_embedding
 
     return load_embedding(settings)
@@ -27,7 +27,7 @@ def _load_openai_embedding(settings: Mapping[str, object]) -> EmbeddingEngine:
 
 def _load_cerebras_chat_completions(
     settings: Mapping[str, object],
-) -> LanguageModelEngine:
+) -> Callable[[], LanguageModelEngine]:
     from symai.providers.cerebras.loading import load_chat_completions
 
     return load_chat_completions(settings)
@@ -35,7 +35,7 @@ def _load_cerebras_chat_completions(
 
 def _load_deepseek_chat_completions(
     settings: Mapping[str, object],
-) -> LanguageModelEngine:
+) -> Callable[[], LanguageModelEngine]:
     from symai.providers.deepseek.loading import load_chat_completions
 
     return load_chat_completions(settings)
