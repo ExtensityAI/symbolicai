@@ -1,3 +1,4 @@
+import json
 from collections.abc import Callable
 from inspect import signature
 
@@ -6,6 +7,10 @@ import pytest
 from pydantic import SecretStr
 
 from symai.providers import cerebras, deepseek, openai
+from symai.providers._client import errors as _client_errors
+from symai.providers._client import transport as _client_transport
+from symai.providers._engine import mapping
+from symai.runtime import errors as runtime_errors
 from symai.runtime.runtime import Runtime
 
 
@@ -187,3 +192,73 @@ def test_runtime_reaches_provider_client_only_through_engine_close(
     runtime.close()
 
     assert transport.close_count == 1
+
+
+@pytest.mark.parametrize(
+    ("status_code", "expected"),
+    [
+        (400, runtime_errors.InvalidRequestError),
+        (403, runtime_errors.PermissionDeniedError),
+        (404, runtime_errors.InvalidRequestError),
+        (500, runtime_errors.ProviderError),
+        (503, runtime_errors.ProviderError),
+    ],
+)
+def test_non_success_statuses_map_to_distinct_runtime_errors(
+    status_code: int,
+    expected: type[Exception],
+) -> None:
+    metadata = _client_transport.ResponseMetadata(
+        status_code=status_code, request_id="req-1", retry_after=None
+    )
+    error = _client_errors.APIError(metadata, json.dumps({"error": {"code": "c", "param": "p"}}))
+
+    with pytest.raises(expected) as raised:
+        mapping.raise_mapped_client_error(
+            error,
+            provider="openai",
+            model="gpt-5.4",
+            messages=mapping.ClientErrorMessages(
+                authentication="auth",
+                rate_limit="rate",
+                response="response",
+                transport="transport",
+                api="api error {status_code}",
+            ),
+        )
+
+    assert raised.value.metadata is not None
+    assert raised.value.metadata.status_code == status_code
+    assert raised.value.metadata.error_code == "c"
+    assert raised.value.metadata.param == "p"
+
+
+@pytest.mark.parametrize(
+    ("status_code", "retryable"),
+    [(400, False), (403, False), (408, True), (429, True), (500, True), (503, True)],
+)
+def test_retryability_marks_capacity_and_provider_health_only(
+    status_code: int,
+    retryable: bool,
+) -> None:
+    metadata = _client_transport.ResponseMetadata(
+        status_code=status_code, request_id=None, retry_after=None
+    )
+    error = _client_errors.APIError(metadata, "{}")
+
+    with pytest.raises(runtime_errors.ExecutionError) as raised:
+        mapping.raise_mapped_client_error(
+            error,
+            provider="openai",
+            model="gpt-5.4",
+            messages=mapping.ClientErrorMessages(
+                authentication="auth",
+                rate_limit="rate",
+                response="response",
+                transport="transport",
+                api="api error {status_code}",
+            ),
+        )
+
+    assert raised.value.metadata is not None
+    assert raised.value.metadata.retryable is retryable

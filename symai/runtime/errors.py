@@ -9,10 +9,23 @@ type EngineCapability = Literal["language_model", "embedding"]
 
 
 class ErrorMetadata(FrozenModel):
+    """Safe, bounded facts about a failed provider call.
+
+    Every field is either application-owned or a short provider identifier. Prompts,
+    credentials, and raw provider payloads never appear here; `retryable` reports whether
+    the failure class is worth retrying, but the library never retries on its own.
+    """
+
     provider: ProviderId
     model: str = Field(min_length=1)
     request_id: str | None = None
     retry_after: NonNegativeFiniteFloat | None = None
+    status_code: int | None = None
+    error_code: str | None = None
+    error_type: str | None = None
+    param: str | None = None
+    provider_message: str | None = None
+    retryable: bool = False
 
 
 class SymbolicAIRuntimeError(Exception):
@@ -94,7 +107,19 @@ class ExecutionError(SymbolicAIRuntimeError):
 
 
 class AuthenticationError(ExecutionError):
-    """Raised when a provider rejects authentication."""
+    """Raised when a provider rejects the credentials themselves."""
+
+
+class PermissionDeniedError(ExecutionError):
+    """Raised when credentials are valid but not entitled to the request."""
+
+
+class InvalidRequestError(ExecutionError):
+    """Raised when a provider rejects the request as malformed or unacceptable."""
+
+
+class ProviderError(ExecutionError):
+    """Raised when a provider fails on its own side."""
 
 
 class RateLimitError(ExecutionError):

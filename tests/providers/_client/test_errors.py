@@ -1,3 +1,5 @@
+import json
+
 import pytest
 
 from symai.providers._client import errors as client_errors
@@ -128,3 +130,50 @@ def test_response_error_retains_metadata_and_body():
 def test_transport_error_defaults_to_no_metadata():
     error = cerebras_errors.TransportError("network failure")
     assert error.metadata is None
+
+
+def test_error_body_is_bounded_but_details_survive_a_huge_payload():
+    body = json.dumps({"error": {"message": "x" * 500_000, "code": "context_length_exceeded"}})
+    error = cerebras_errors.APIError(_metadata(status_code=400), body)
+
+    assert len(body) > 500_000
+    assert len(error.body) < 2_200
+    assert error.body.endswith(f"({len(body)} chars total)")
+    assert error.details.code == "context_length_exceeded"
+    assert error.details.message is not None
+    assert len(error.details.message) < 600
+
+
+def test_error_details_parse_the_openai_compatible_envelope():
+    body = json.dumps(
+        {
+            "error": {
+                "message": "Unsupported value: 'temperature'",
+                "type": "invalid_request_error",
+                "param": "temperature",
+                "code": "unsupported_value",
+            }
+        }
+    )
+    error = cerebras_errors.APIError(_metadata(status_code=400), body)
+
+    assert error.details.message == "Unsupported value: 'temperature'"
+    assert error.details.type == "invalid_request_error"
+    assert error.details.param == "temperature"
+    assert error.details.code == "unsupported_value"
+
+
+@pytest.mark.parametrize("body", ["", "not json", "[]", '{"error": "flat"}', "null"])
+def test_error_details_never_raise_on_an_unparseable_body(body: str):
+    error = cerebras_errors.APIError(_metadata(status_code=500), body)
+
+    assert error.details.code is None
+    assert error.details.message is None
+
+
+def test_provider_body_never_reaches_the_exception_message():
+    body = json.dumps({"error": {"message": "SECRET PROMPT ECHO", "code": "bad"}})
+    error = cerebras_errors.APIError(_metadata(status_code=400), body)
+
+    assert "SECRET PROMPT ECHO" not in str(error)
+    assert error.details.message == "SECRET PROMPT ECHO"
