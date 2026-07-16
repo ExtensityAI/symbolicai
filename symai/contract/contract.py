@@ -143,7 +143,7 @@ class Contract[InputT: LLMDataModel, OutputT: LLMDataModel]:
         input_value: InputT,
         *,
         remedy: LanguageModel | None,
-    ) -> tuple[ContractResult[OutputT], InputT, ContractStage | None]:
+    ) -> tuple[ContractResult[OutputT], LLMDataModel, ContractStage | None]:
         if not isinstance(input_value, self.input_type):
             msg = f"Contract input must be {self.input_type.__name__}"
             raise TypeError(msg)
@@ -223,7 +223,7 @@ class Contract[InputT: LLMDataModel, OutputT: LLMDataModel]:
                     attempts=pre_attempts + outcome.attempts,
                     errors=errors,
                 ),
-                processed_input,
+                acted_input,
                 last_stage,
             )
         return (
@@ -233,7 +233,7 @@ class Contract[InputT: LLMDataModel, OutputT: LLMDataModel]:
                 attempts=pre_attempts + outcome.attempts,
                 errors=errors,
             ),
-            processed_input,
+            acted_input,
             None,
         )
 
@@ -294,9 +294,9 @@ def _exception_errors(error: Exception) -> tuple[str, ...]:
 
 
 def _format_stage_failure(error: Exception) -> str:
-    if isinstance(error, _StageFailure):
-        return "\n".join(error.errors)
-    return _exception_errors(error)[0]
+    if not isinstance(error, _StageFailure):
+        raise error
+    return "\n".join(error.errors)
 
 
 def _generate[OutputT: LLMDataModel](

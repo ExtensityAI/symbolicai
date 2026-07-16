@@ -1,7 +1,7 @@
 from collections.abc import Callable, Mapping
 from importlib import import_module
 from threading import Thread
-from typing import cast
+from typing import cast, override
 
 import pytest
 
@@ -558,6 +558,7 @@ def test_execution_observers_receive_runtime_errors_before_reraise() -> None:
     records: list[ExecutionRecord] = []
 
     class FailingEngine(LanguageEngine):
+        @override
         def execute(self, request: LanguageModelRequest, /) -> LanguageModelResponse:
             self.requests.append(request)
             raise failure
@@ -599,6 +600,20 @@ def test_observer_failures_are_logged_without_breaking_execution(
 
     assert len(records) == 1
     assert "Execution observer failed" in caplog.text
+
+
+def test_scoped_execution_observer_is_removed_after_an_exception() -> None:
+    records: list[ExecutionRecord] = []
+    runtime = Runtime(language_models={"chat": LanguageEngine()})
+
+    with runtime:
+        with pytest.raises(RuntimeError, match="stop"), runtime._observe(records.append):
+            runtime.execute(LANGUAGE_REQUEST)
+            msg = "stop"
+            raise RuntimeError(msg)
+        runtime.execute(LANGUAGE_REQUEST)
+
+    assert len(records) == 1
 
 
 def test_runtime_rejects_noncallable_observers_before_ownership_transfer() -> None:

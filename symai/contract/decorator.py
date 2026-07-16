@@ -1,9 +1,10 @@
 import inspect
-from collections.abc import Callable, Mapping
+from collections.abc import Callable, Iterator, Mapping
+from contextlib import ExitStack, contextmanager
 from dataclasses import dataclass
 from statistics import mean, pstdev
 from time import monotonic
-from typing import Any, Protocol, cast
+from typing import Any, Protocol, cast, get_type_hints
 
 from pydantic import TypeAdapter, ValidationError
 
@@ -16,6 +17,7 @@ from symai.contract.contract import (
     RetryParams,
 )
 from symai.contract.models import LLMDataModel, build_dynamic_llm_datamodel
+from symai.runtime.observability import ExecutionRecord
 from symai.runtime.runtime import LanguageModel
 
 
@@ -26,6 +28,17 @@ class _LegacyState(Protocol):
 
 
 _MISSING = object()
+_USAGE_FIELDS = (
+    "prompt_tokens",
+    "completion_tokens",
+    "total_tokens",
+    "cached_prompt_tokens",
+    "cache_miss_prompt_tokens",
+    "reasoning_tokens",
+    "image_tokens",
+    "accepted_prediction_tokens",
+    "rejected_prediction_tokens",
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -43,6 +56,7 @@ class _Timing:
     contract_s: float
     forward_s: float
     attempts: int
+    records: tuple[ExecutionRecord, ...]
 
 
 def contract(
@@ -71,11 +85,16 @@ def contract(
             raise TypeError(msg)
         signature = inspect.signature(original_forward)
         input_parameter = _input_parameter(signature)
-        input_model, input_is_dynamic = _model_for_annotation(
+        annotations = _resolved_type_hints(original_forward, legacy_type)
+        input_annotation = annotations.get(
+            input_parameter.name,
             input_parameter.annotation,
+        )
+        input_model, input_is_dynamic = _model_for_annotation(
+            input_annotation,
             "forward input",
         )
-        output_annotation = signature.return_annotation
+        output_annotation = annotations.get("return", signature.return_annotation)
         output_model, output_is_dynamic = _model_for_annotation(
             output_annotation,
             "forward return",
@@ -108,8 +127,9 @@ def contract(
                     input_type=input_model,
                     output_type=output_model,
                     pre=_condition(inner, "pre", unwrap=input_is_dynamic),
-                    act=_act(inner, input_is_dynamic),
+                    act=_act(inner, input_is_dynamic, legacy_type),
                     post=_condition(inner, "post", unwrap=output_is_dynamic),
+                    semantic_conditions=tuple(getattr(inner, "semantic_conditions", ())),
                     options=ContractOptions(
                         pre_remedy=options.pre_remedy,
                         post_remedy=options.post_remedy,
@@ -142,78 +162,80 @@ def contract(
                     if input_is_dynamic
                     else _require_model(input_value, input_model)
                 )
+                self.contract_successful = False
+                self.contract_result = None
+                self.contract_exception = None
+                _set_legacy_state(self._inner, False, None, None)
+
                 contract_start = monotonic()
+                forward_duration = 0.0
+                attempts = 0
+                records: list[ExecutionRecord] = []
                 try:
-                    result, processed_input, stage = self._contract._execute(
-                        self._engine,
-                        native_input,
-                        remedy=self._remedy,
-                    )
-                except Exception as error:
-                    result = ContractResult[object](
-                        value=None,
-                        succeeded=False,
-                        attempts=0,
-                        errors=(str(error) or type(error).__name__,),
-                    )
-                    processed_input = native_input
-                    exception: Exception | None = error
-                else:
+                    with _record_executions(self._engine, self._remedy) as records:
+                        result, processed_input, stage = self._contract._execute(
+                            self._engine,
+                            native_input,
+                            remedy=self._remedy,
+                        )
+                    attempts = result.attempts
                     exception = _violation(stage, result)
+                    contract_result = _unwrap(result.value) if result.value is not None else None
+                    self.contract_successful = result.succeeded
+                    self.contract_result = contract_result
+                    self.contract_exception = exception
+                    _set_legacy_state(
+                        self._inner,
+                        result.succeeded,
+                        contract_result,
+                        exception,
+                    )
 
-                contract_result = _unwrap(result.value) if result.value is not None else None
-                self.contract_successful = result.succeeded
-                self.contract_result = contract_result
-                self.contract_exception = exception
-                _set_legacy_state(
-                    self._inner,
-                    result.succeeded,
-                    contract_result,
-                    exception,
-                )
+                    raw_forward_input = (
+                        _unwrap(processed_input) if input_is_dynamic else processed_input
+                    )
+                    forward_kwargs = dict(kwargs)
+                    forward_kwargs.pop("validation_context", None)
+                    forward_start = monotonic()
+                    try:
+                        if input_parameter.kind is inspect.Parameter.KEYWORD_ONLY:
+                            forward_kwargs[input_parameter.name] = raw_forward_input
+                            forward_result = original_forward(
+                                self._inner,
+                                *args,
+                                **forward_kwargs,
+                            )
+                        else:
+                            forward_result = original_forward(
+                                self._inner,
+                                raw_forward_input,
+                                *args,
+                                **forward_kwargs,
+                            )
+                    finally:
+                        forward_duration = monotonic() - forward_start
 
-                forward_input = processed_input if result.succeeded else native_input
-                raw_forward_input = _unwrap(forward_input) if input_is_dynamic else forward_input
-                forward_kwargs = dict(kwargs)
-                forward_kwargs.pop("validation_context", None)
-                forward_start = monotonic()
-                try:
-                    if input_parameter.kind is inspect.Parameter.KEYWORD_ONLY:
-                        forward_kwargs[input_parameter.name] = raw_forward_input
-                        forward_result = original_forward(
-                            self._inner,
-                            *args,
-                            **forward_kwargs,
+                    if options.graceful:
+                        return forward_result
+                    try:
+                        return output_adapter.validate_python(forward_result, strict=True)
+                    except ValidationError as error:
+                        msg = (
+                            "Legacy contract forward returned a value incompatible with "
+                            f"{output_annotation!r}"
                         )
-                    else:
-                        forward_result = original_forward(
-                            self._inner,
-                            raw_forward_input,
-                            *args,
-                            **forward_kwargs,
-                        )
+                        raise TypeError(msg) from error
                 finally:
-                    forward_duration = monotonic() - forward_start
                     self._timings.append(
                         _Timing(
                             contract_s=monotonic() - contract_start,
                             forward_s=forward_duration,
-                            attempts=result.attempts,
+                            attempts=attempts,
+                            records=tuple(records),
                         )
                     )
 
-                if options.graceful:
-                    return forward_result
-                try:
-                    return output_adapter.validate_python(forward_result, strict=True)
-                except ValidationError as error:
-                    msg = (
-                        "Legacy contract forward returned a value incompatible with "
-                        f"{output_annotation!r}"
-                    )
-                    raise TypeError(msg) from error
-
-            def contract_perf_stats(self) -> dict[str, dict[str, float | int]]:
+            def contract_perf_stats(self) -> dict[str, object]:
                 """Return legacy-compatible aggregate execution timings."""
                 return _performance_stats(self._timings)
 
@@ -291,6 +313,23 @@ def _input_parameter(signature: inspect.Signature) -> inspect.Parameter:
     raise TypeError(msg)
 
 
+def _resolved_type_hints(
+    method: Callable[..., object],
+    owner: type[object],
+) -> dict[str, object]:
+    target = getattr(method, "__func__", method)
+    namespace = {owner.__name__: owner, **vars(owner)}
+    try:
+        return get_type_hints(
+            target,
+            globalns=getattr(target, "__globals__", None),
+            localns=namespace,
+        )
+    except (NameError, TypeError) as error:
+        msg = f"Contract annotations on {owner.__name__}.{target.__name__} could not be resolved"
+        raise TypeError(msg) from error
+
+
 def _model_for_annotation(
     annotation: object,
     context: str,
@@ -326,13 +365,19 @@ def _condition(
     return validate
 
 
-def _act(inner: object, unwrap_input: bool) -> Callable[[LLMDataModel], LLMDataModel]:
+def _act(
+    inner: object,
+    unwrap_input: bool,
+    owner: type[object],
+) -> Callable[[LLMDataModel], LLMDataModel]:
     method = getattr(inner, "act", None)
     if not callable(method):
         return _identity
     signature = inspect.signature(method)
+    annotations = _resolved_type_hints(method, owner)
+    output_annotation = annotations.get("return", signature.return_annotation)
     output_model, output_is_dynamic = _model_for_annotation(
-        signature.return_annotation,
+        output_annotation,
         "act return",
     )
 
@@ -384,16 +429,89 @@ def _violation(
     return ContractViolation(stage, result.errors)
 
 
-def _performance_stats(timings: list[_Timing]) -> dict[str, dict[str, float | int]]:
-    contract_times = [timing.contract_s for timing in timings]
-    forward_times = [timing.forward_s for timing in timings]
+@contextmanager
+def _record_executions(
+    engine: LanguageModel,
+    remedy: LanguageModel | None,
+) -> Iterator[list[ExecutionRecord]]:
+    records: list[ExecutionRecord] = []
+    handles = (engine,) if remedy is None else (engine, remedy)
+    seen_runtimes: set[int] = set()
+    with ExitStack() as stack:
+        for handle in handles:
+            runtime = handle._runtime
+            identity = id(runtime)
+            if identity in seen_runtimes:
+                continue
+            seen_runtimes.add(identity)
+            stack.enter_context(runtime._observe(records.append))
+        yield records
+
+
+def _performance_stats(timings: list[_Timing]) -> dict[str, object]:
+    records = [record for timing in timings for record in timing.records]
+    model_times = [record.duration_s for record in records]
+    model_execution = _summarize(model_times)
     return {
-        "contract_execution": _summarize(contract_times),
-        "forward_execution": _summarize(forward_times),
+        "contract_execution": dict(model_execution),
+        "model_execution": model_execution,
+        "wrapper_execution": _summarize([timing.contract_s for timing in timings]),
+        "forward_execution": _summarize([timing.forward_s for timing in timings]),
         "attempts": {
             "count": len(timings),
             "total": sum(timing.attempts for timing in timings),
         },
+        "usage": _usage_totals(records),
+        "providers": _provider_totals(records),
+        "executions": tuple(_execution_stats(record) for record in records),
+    }
+
+
+def _usage_totals(records: list[ExecutionRecord]) -> dict[str, int]:
+    return {
+        field: sum(getattr(record.usage, field) for record in records if record.usage is not None)
+        for field in _USAGE_FIELDS
+    }
+
+
+def _provider_totals(
+    records: list[ExecutionRecord],
+) -> dict[str, dict[str, float | int]]:
+    providers: dict[str, dict[str, float | int]] = {}
+    for record in records:
+        provider = record.provider or "unknown"
+        totals = providers.setdefault(
+            provider,
+            {
+                "count": 0,
+                "duration_s": 0.0,
+                **dict.fromkeys(_USAGE_FIELDS, 0),
+            },
+        )
+        totals["count"] = int(totals["count"]) + 1
+        totals["duration_s"] = float(totals["duration_s"]) + record.duration_s
+        if record.usage is None:
+            continue
+        for field in _USAGE_FIELDS:
+            totals[field] = int(totals[field]) + getattr(record.usage, field)
+    return providers
+
+
+def _execution_stats(record: ExecutionRecord) -> dict[str, object]:
+    usage = (
+        {field: getattr(record.usage, field) for field in _USAGE_FIELDS}
+        if record.usage is not None
+        else None
+    )
+    return {
+        "engine": record.engine,
+        "capability": record.capability,
+        "provider": record.provider,
+        "requested_model": record.requested_model,
+        "response_model": record.response_model,
+        "duration_s": record.duration_s,
+        "usage": usage,
+        "error": type(record.error).__name__ if record.error is not None else None,
     }
 
 

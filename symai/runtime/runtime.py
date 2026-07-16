@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from contextlib import contextmanager
 from dataclasses import dataclass
 from enum import StrEnum
 from threading import Lock, get_ident
@@ -34,7 +35,7 @@ from symai.runtime.observability import (
 )
 
 if TYPE_CHECKING:
-    from collections.abc import Mapping, Sequence
+    from collections.abc import Iterator, Mapping, Sequence
 
 type _OwnedEngine = LanguageModelEngine | EmbeddingEngine
 
@@ -73,6 +74,7 @@ class Runtime:
         "_lifecycle_lock",
         "_observers",
         "_owner_thread_id",
+        "_scoped_observers",
         "_state",
     )
 
@@ -106,6 +108,7 @@ class Runtime:
         self._embeddings = MappingProxyType(embedding_snapshot)
         self._lifecycle_lock = Lock()
         self._observers = observer_snapshot
+        self._scoped_observers: tuple[Observer, ...] = ()
         self._owner_thread_id: int | None = None
         self._state = _RuntimeState.CREATED
 
@@ -248,8 +251,30 @@ class Runtime:
         self._emit(record)
         return response
 
+    @contextmanager
+    def _observe(self, observer: Observer) -> Iterator[None]:
+        """Register one owner-thread observer for the lifetime of a private scope."""
+        if not callable(observer):
+            msg = "A scoped execution observer must be callable"
+            raise TypeError(msg)
+
+        with self._lifecycle_lock:
+            self._require_owner_thread("execute")
+            if self._state is not _RuntimeState.ACTIVE:
+                msg = "Runtime only accepts observers while its context is active"
+                raise RuntimeClosedError(msg)
+            previous = self._scoped_observers
+            self._scoped_observers = (*previous, observer)
+
+        try:
+            yield
+        finally:
+            with self._lifecycle_lock:
+                self._require_owner_thread("execute")
+                self._scoped_observers = previous
+
     def _emit(self, record: ExecutionRecord) -> None:
-        for observer in self._observers:
+        for observer in (*self._observers, *self._scoped_observers):
             try:
                 observer(record)
             except Exception:

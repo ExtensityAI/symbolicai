@@ -11,7 +11,7 @@ class Address(LLMDataModel):
 
 class Review(LLMDataModel):
     text: str = Field(description="Review text")
-    address: Address
+    address: Address = Field(description="Postal address")
     tags: list[str]
     score: int | None = None
 
@@ -31,6 +31,10 @@ def test_data_model_renders_nested_prompt_input() -> None:
     assert "street: Main" in rendered
     assert "- clear" in rendered
     assert "score: None" in rendered
+    assert "Review text" in rendered
+    assert "Postal address" in rendered
+    assert "Street name" in rendered
+    assert "City name" in rendered
     assert str(review) == rendered
 
 

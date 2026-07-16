@@ -63,7 +63,7 @@ class LLMDataModel(BaseModel):
         for name, field in type(self).model_fields.items():
             if name == "section_header" or field.exclude:
                 continue
-            lines.extend(_render_field(name, getattr(self, name), 0))
+            lines.extend(_render_field(name, getattr(self, name), 0, description=field.description))
         return "\n".join(lines)
 
     @override
@@ -121,17 +121,31 @@ def _const_value(field: FieldInfo) -> object:
     return PydanticUndefined
 
 
-def _render_field(name: str, value: object, indent: int) -> list[str]:
+def _render_field(
+    name: str,
+    value: object,
+    indent: int,
+    *,
+    description: str | None = None,
+) -> list[str]:
     prefix = " " * indent
+    description_lines = [f"{' ' * (indent + 2)}Description: {description}"] if description else []
     if isinstance(value, LLMDataModel):
-        lines = [f"{prefix}{name}:"]
+        lines = [f"{prefix}{name}:", *description_lines]
         for child_name, child_field in type(value).model_fields.items():
             if child_name == "section_header" or child_field.exclude:
                 continue
-            lines.extend(_render_field(child_name, getattr(value, child_name), indent + 2))
+            lines.extend(
+                _render_field(
+                    child_name,
+                    getattr(value, child_name),
+                    indent + 2,
+                    description=child_field.description,
+                )
+            )
         return lines
     if isinstance(value, list):
-        lines = [f"{prefix}{name}:"]
+        lines = [f"{prefix}{name}:", *description_lines]
         for item in value:
             if isinstance(item, LLMDataModel):
                 rendered = item.render().splitlines()
@@ -141,13 +155,13 @@ def _render_field(name: str, value: object, indent: int) -> list[str]:
                 lines.append(f"{' ' * (indent + 2)}- {item}")
         return lines
     if isinstance(value, dict):
-        lines = [f"{prefix}{name}:"]
+        lines = [f"{prefix}{name}:", *description_lines]
         for key, item in value.items():
             lines.extend(_render_field(str(key), item, indent + 2))
         return lines
     if isinstance(value, Enum):
         value = value.value
-    return [f"{prefix}{name}: {value}"]
+    return [f"{prefix}{name}: {value}", *description_lines]
 
 
 def _example_for_model(model: type[BaseModel], seen: set[type[BaseModel]]) -> dict[str, object]:
