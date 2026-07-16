@@ -2,7 +2,6 @@ from collections.abc import Mapping
 from math import isfinite
 from typing import Never, Protocol, cast
 
-from symai.providers._client.transport import ResponseMetadata
 from symai.runtime.errors import (
     ErrorMetadata,
     UnsupportedFeatureError,
@@ -13,6 +12,23 @@ from symai.runtime.models import ProviderId
 
 class _Closeable(Protocol):
     def close(self) -> None: ...
+
+
+class _ResponseMetadata(Protocol):
+    """The response facts any integration can report, whatever it talks to.
+
+    Deliberately not the client's `ResponseMetadata`: that type carries `status_code`,
+    which only exists because the provider is reached over HTTP. An engine abstracts
+    over its client, so a binding that drives a local binary has to satisfy this
+    without inventing a status code it never had. Structural, so the client's concrete
+    type — and a provider that extends it — still passes without declaring anything.
+    """
+
+    @property
+    def request_id(self) -> str | None: ...
+
+    @property
+    def retry_after(self) -> float | None: ...
 
 
 def retry_after_seconds(value: float | None) -> float | None:
@@ -66,11 +82,11 @@ class ProviderEngine[ClientT: _Closeable, ModelT: str, ModelSpecT]:
     def model_spec(self) -> ModelSpecT:
         return self._model_spec
 
-    def _error_metadata(self, metadata: ResponseMetadata) -> ErrorMetadata:
+    def _error_metadata(self, metadata: _ResponseMetadata) -> ErrorMetadata:
         """Identify the failing engine without disclosing anything the provider sent.
 
         Every provider derives this the same way, and a provider that specializes its
-        response metadata (Cerebras adds rate-limit state) subclasses the shared type, so
+        response metadata (Cerebras adds rate-limit state) still satisfies the shape, so
         it is accepted here too.
         """
         return ErrorMetadata(
