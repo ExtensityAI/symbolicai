@@ -54,6 +54,16 @@ class LanguageModel:
     def execute(self, request: LanguageModelRequest, /) -> LanguageModelResponse:
         return self._runtime.execute(request, engine=self._name)
 
+    @contextmanager
+    def observe(self, observer: Observer) -> Iterator[None]:
+        """Record this engine's executions for the duration of the scope.
+
+        Only executions through this handle are reported, so observing one engine never
+        picks up traffic from another sharing the same Runtime.
+        """
+        with self._runtime.observe(_scoped_observer(observer, self._name, "language_model")):
+            yield
+
 
 @dataclass(frozen=True, slots=True)
 class EmbeddingModel:
@@ -62,6 +72,26 @@ class EmbeddingModel:
 
     def execute(self, request: EmbeddingRequest, /) -> EmbeddingResponse:
         return self._runtime.execute(request, engine=self._name)
+
+    @contextmanager
+    def observe(self, observer: Observer) -> Iterator[None]:
+        """Record this engine's executions for the duration of the scope."""
+        with self._runtime.observe(_scoped_observer(observer, self._name, "embedding")):
+            yield
+
+
+def _scoped_observer(
+    observer: Observer,
+    engine_name: str,
+    capability: EngineCapability,
+) -> Observer:
+    # Filter on capability as well as name: the same name may identify a language model
+    # and an embedding engine in one Runtime.
+    def scoped(record: ExecutionRecord) -> None:
+        if record.engine == engine_name and record.capability == capability:
+            observer(record)
+
+    return scoped
 
 
 class Runtime:
@@ -252,8 +282,12 @@ class Runtime:
         return response
 
     @contextmanager
-    def _observe(self, observer: Observer) -> Iterator[None]:
-        """Register one owner-thread observer for the lifetime of a private scope."""
+    def observe(self, observer: Observer) -> Iterator[None]:
+        """Register one owner-thread observer for the duration of the scope.
+
+        Reports every execution on this Runtime. Use the equivalent method on a bound
+        engine handle to observe only that engine.
+        """
         if not callable(observer):
             msg = "A scoped execution observer must be callable"
             raise TypeError(msg)

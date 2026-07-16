@@ -97,19 +97,50 @@ def test_client_construction_preserves_primary_failure_when_transport_close_fail
         def close(self) -> None:
             raise cleanup_failure
 
-    transport = FailingCloseTransport(lambda _request: httpx.Response(200))
+    def owned_transport(**_kwargs: object) -> httpx.BaseTransport:
+        return FailingCloseTransport(lambda _request: httpx.Response(200))
 
     def fail_client(**_kwargs: object) -> httpx.Client:
         raise construction_failure
 
+    monkeypatch.setattr(httpx, "HTTPTransport", owned_transport)
     monkeypatch.setattr(httpx, "Client", fail_client)
 
+    # No injected transport: the client owns the one it built, so it must close it.
     with pytest.raises(RuntimeError, match="client construction failed") as caught:
-        client_type(api_key=SecretStr("test-key"), transport=transport)
+        client_type(api_key=SecretStr("test-key"))
 
     assert caught.value is construction_failure
     assert len(caught.value.__notes__) == 1
     assert "transport close failed" in caught.value.__notes__[0]
+
+
+@pytest.mark.parametrize("client_type", [openai.Client, cerebras.Client, deepseek.Client])
+def test_failed_construction_does_not_close_a_caller_owned_transport(
+    client_type: type[ProviderClient],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    class TrackingTransport(httpx.MockTransport):
+        def __init__(self) -> None:
+            super().__init__(lambda _request: httpx.Response(200))
+            self.closed = False
+
+        def close(self) -> None:
+            self.closed = True
+
+    transport = TrackingTransport()
+
+    def fail_client(**_kwargs: object) -> httpx.Client:
+        msg = "client construction failed"
+        raise RuntimeError(msg)
+
+    monkeypatch.setattr(httpx, "Client", fail_client)
+
+    # An injected transport belongs to the caller and may outlive this client.
+    with pytest.raises(RuntimeError, match="client construction failed"):
+        client_type(api_key=SecretStr("test-key"), transport=transport)
+
+    assert transport.closed is False
 
 
 @pytest.mark.parametrize(("client_factory", "engine_factory", "model"), ENGINE_CASES)

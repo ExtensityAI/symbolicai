@@ -27,7 +27,11 @@ def language_request(
     max_tokens: int | None = None,
     stop: Sequence[str] = (),
 ) -> LanguageModelRequest:
-    """Build a normalized text request from explicit prompt parts."""
+    """Build a normalized text request from explicit prompt parts.
+
+    An empty part is omitted rather than sent as an empty turn. A request with no content
+    at all fails validation instead of reaching a provider.
+    """
     messages: list[SystemMessage | UserMessage] = []
     system_parts = ((system_prompt,) if system_prompt else ()) + _string_tuple(
         examples,
@@ -35,7 +39,9 @@ def language_request(
     )
     if system_parts:
         messages.append(SystemMessage(content=(TextContent(text="\n".join(system_parts)),)))
-    messages.append(UserMessage(content=(TextContent(text=user_prompt),)))
+    if user_prompt:
+        messages.append(UserMessage(content=(TextContent(text=user_prompt),)))
+
     return LanguageModelRequest(
         messages=tuple(messages),
         sampling=SamplingConfig(max_tokens=max_tokens, stop=_string_tuple(stop, "stop")),

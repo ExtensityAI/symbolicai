@@ -5,6 +5,7 @@ import httpx
 import pytest
 from pydantic import SecretStr, ValidationError
 
+from symai.providers._client.headers import _UNSAFE_API_KEY_MESSAGE
 from symai.providers.cerebras.client import Client
 from symai.providers.cerebras.client.chat import (
     ChatCompletion,
@@ -115,8 +116,9 @@ def test_client_rejects_unsafe_api_key_before_request_without_disclosure(
         )
 
     assert attempts == 0
-    assert exc_info.value.args == ()
-    assert str(exc_info.value) == ""
+    # A constant message cannot be derived from the credential, and every invalid
+    # credential must fail identically: which rule a key trips is a property of the secret.
+    assert exc_info.value.args == (_UNSAFE_API_KEY_MESSAGE,)
 
 
 def test_client_rejects_plaintext_api_key():
@@ -126,8 +128,7 @@ def test_client_rejects_plaintext_api_key():
             transport=httpx.MockTransport(lambda _request: httpx.Response(200)),
         )
 
-    assert exc_info.value.args == ()
-    assert str(exc_info.value) == ""
+    assert exc_info.value.args == ("api_key must be a SecretStr",)
 
 
 def test_chat_posts_exact_body_and_returns_complete_metadata():

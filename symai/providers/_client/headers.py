@@ -3,10 +3,26 @@ from pydantic import SecretStr
 
 from symai.providers._client.transport import ResponseMetadata
 
+_UNSAFE_API_KEY_MESSAGE = (
+    "api_key must be nonempty and free of surrounding whitespace and control characters"
+)
+_PLAINTEXT_API_KEY_MESSAGE = "api_key must be a SecretStr"
+
 
 def authorization_header(api_key: SecretStr) -> str:
+    """Build the Authorization header, rejecting a credential unsafe to put on the wire.
+
+    Every rejection raises the same static message. It is deliberately constant rather
+    than naming the rule that failed: which check a key trips is itself a property of the
+    secret, and the message must never be derived from the credential.
+
+    Raises:
+        TypeError: if `api_key` is not a SecretStr.
+        ValueError: if the credential is empty, surrounded by whitespace, or contains
+            control characters.
+    """
     if not isinstance(api_key, SecretStr):
-        raise TypeError
+        raise TypeError(_PLAINTEXT_API_KEY_MESSAGE)
 
     value = api_key.get_secret_value()
     invalid = not value or value[0].isspace() or value[-1].isspace()
@@ -18,7 +34,7 @@ def authorization_header(api_key: SecretStr) -> str:
                 break
 
     if invalid:
-        raise ValueError
+        raise ValueError(_UNSAFE_API_KEY_MESSAGE)
 
     return f"Bearer {value}"
 

@@ -305,7 +305,10 @@ def test_contract_perf_stats_account_for_every_observed_model_execution() -> Non
 
     stats = checked.contract_perf_stats()
     assert result == Verdict(label="approved")
-    assert stats["contract_execution"]["count"] == 4
+    # Four model calls across two runtimes, within one contract call.
+    assert stats["model_execution"]["count"] == 4
+    assert stats["contract_execution"]["count"] == 1
+    assert stats["contract_execution"]["total"] >= stats["model_execution"]["total"]
     assert stats["usage"]["prompt_tokens"] == 4
     assert stats["usage"]["completion_tokens"] == 8
     assert stats["providers"]["primary"]["count"] == 1

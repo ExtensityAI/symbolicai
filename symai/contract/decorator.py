@@ -173,13 +173,14 @@ def contract(
                 records: list[ExecutionRecord] = []
                 try:
                     with _record_executions(self._engine, self._remedy) as records:
-                        result, processed_input, stage = self._contract._execute(
+                        result = self._contract.run(
                             self._engine,
                             native_input,
                             remedy=self._remedy,
                         )
+                    processed_input = result.processed_input or native_input
                     attempts = result.attempts
-                    exception = _violation(stage, result)
+                    exception = _violation(result.stage, result)
                     contract_result = (
                         _unwrap(result.value)
                         if output_is_dynamic and result.value is not None
@@ -439,28 +440,24 @@ def _record_executions(
     engine: LanguageModel,
     remedy: LanguageModel | None,
 ) -> Iterator[list[ExecutionRecord]]:
+    """Collect the execution records of every engine this contract may call."""
     records: list[ExecutionRecord] = []
     handles = (engine,) if remedy is None else (engine, remedy)
-    seen_runtimes: set[int] = set()
     with ExitStack() as stack:
-        for handle in handles:
-            runtime = handle._runtime
-            identity = id(runtime)
-            if identity in seen_runtimes:
-                continue
-            seen_runtimes.add(identity)
-            stack.enter_context(runtime._observe(records.append))
+        # Handles are frozen values, so equal handles dedupe and are observed once.
+        for handle in dict.fromkeys(handles):
+            stack.enter_context(handle.observe(records.append))
         yield records
 
 
 def _performance_stats(timings: list[_Timing]) -> dict[str, object]:
     records = [record for timing in timings for record in timing.records]
-    model_times = [record.duration_s for record in records]
-    model_execution = _summarize(model_times)
+    # `contract_execution` is the total wall time of the whole call, which is what the
+    # canonical stats report and what callers divide the other timings by. `forward_execution`
+    # and `model_execution` are components of it, not alternatives to it.
     return {
-        "contract_execution": dict(model_execution),
-        "model_execution": model_execution,
-        "wrapper_execution": _summarize([timing.contract_s for timing in timings]),
+        "contract_execution": _summarize([timing.contract_s for timing in timings]),
+        "model_execution": _summarize([record.duration_s for record in records]),
         "forward_execution": _summarize([timing.forward_s for timing in timings]),
         "attempts": {
             "count": len(timings),

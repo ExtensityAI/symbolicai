@@ -607,7 +607,7 @@ def test_scoped_execution_observer_is_removed_after_an_exception() -> None:
     runtime = Runtime(language_models={"chat": LanguageEngine()})
 
     with runtime:
-        with pytest.raises(RuntimeError, match="stop"), runtime._observe(records.append):
+        with pytest.raises(RuntimeError, match="stop"), runtime.observe(records.append):
             runtime.execute(LANGUAGE_REQUEST)
             msg = "stop"
             raise RuntimeError(msg)
@@ -626,3 +626,59 @@ def test_runtime_rejects_noncallable_observers_before_ownership_transfer() -> No
         )
 
     assert engine.close_count == 0
+
+
+def test_handle_observer_records_only_its_own_engine() -> None:
+    first = LanguageEngine("first")
+    second = LanguageEngine("second")
+    runtime = Runtime(language_models={"first": first, "second": second})
+
+    records: list[ExecutionRecord] = []
+    with runtime:
+        first_handle = runtime.language_model("first")
+        second_handle = runtime.language_model("second")
+        with first_handle.observe(records.append):
+            first_handle.execute(LANGUAGE_REQUEST)
+            second_handle.execute(LANGUAGE_REQUEST)
+        first_handle.execute(LANGUAGE_REQUEST)
+
+    assert [record.engine for record in records] == ["first"]
+
+
+def test_handle_observer_ignores_a_same_named_engine_of_another_capability() -> None:
+    language = LanguageEngine("shared-name")
+    embedding = EmbeddingEngine("shared-name")
+    runtime = Runtime(language_models={"shared": language}, embeddings={"shared": embedding})
+
+    records: list[ExecutionRecord] = []
+    with runtime:
+        language_handle = runtime.language_model("shared")
+        with language_handle.observe(records.append):
+            language_handle.execute(LANGUAGE_REQUEST)
+            runtime.embedding("shared").execute(EMBEDDING_REQUEST)
+
+    assert [record.capability for record in records] == ["language_model"]
+
+
+def test_runtime_observer_records_every_engine() -> None:
+    runtime = Runtime(
+        language_models={"first": LanguageEngine("first"), "second": LanguageEngine("second")}
+    )
+
+    records: list[ExecutionRecord] = []
+    with runtime, runtime.observe(records.append):
+        runtime.language_model("first").execute(LANGUAGE_REQUEST)
+        runtime.language_model("second").execute(LANGUAGE_REQUEST)
+
+    assert [record.engine for record in records] == ["first", "second"]
+
+
+def test_equal_bound_handles_compare_equal_so_observers_can_dedupe() -> None:
+    runtime = Runtime(language_models={"only": LanguageEngine("only")})
+
+    with runtime:
+        first = runtime.language_model("only")
+        second = runtime.language_model("only")
+
+        assert first == second
+        assert len(dict.fromkeys((first, second))) == 1

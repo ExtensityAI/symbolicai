@@ -10,6 +10,7 @@ from symai.contract.validation import (
     build_remedy_prompt,
     check_semantic_conditions,
     parse_output,
+    remedy_request,
     structured_request,
     validation_errors,
 )
@@ -50,10 +51,19 @@ class ContractOptions:
 
 @dataclass(frozen=True, slots=True)
 class ContractResult[OutputT]:
+    """The full outcome of one contract execution, including a failed one.
+
+    `processed_input` is the value `act` produced, which a caller needs to run its own
+    fallback on the same input the contract used. `stage` names the validation stage that
+    failed and is always present on failure.
+    """
+
     value: OutputT | None
     succeeded: bool
     attempts: int
     errors: tuple[str, ...]
+    stage: ContractStage | None = None
+    processed_input: LLMDataModel | None = None
 
     def __post_init__(self) -> None:
         if self.attempts < 0:
@@ -64,6 +74,9 @@ class ContractResult[OutputT]:
             raise ValueError(msg)
         if not self.succeeded and not self.errors:
             msg = "A failed contract result must contain at least one error"
+            raise ValueError(msg)
+        if not self.succeeded and self.stage is None:
+            msg = "A failed contract result must identify its validation stage"
             raise ValueError(msg)
 
 
@@ -118,8 +131,9 @@ class Contract[InputT: LLMDataModel, OutputT: LLMDataModel]:
         *,
         remedy: LanguageModel | None = None,
     ) -> OutputT:
-        result, _processed_input, stage = self._execute(engine, input_value, remedy=remedy)
+        result = self.run(engine, input_value, remedy=remedy)
         if result.value is None:
+            stage = result.stage
             if stage is None:
                 msg = "A failed contract execution must identify its validation stage"
                 raise RuntimeError(msg)
@@ -133,9 +147,8 @@ class Contract[InputT: LLMDataModel, OutputT: LLMDataModel]:
         *,
         remedy: LanguageModel | None = None,
     ) -> ContractResult[OutputT]:
-        """Execute without raising validation failures."""
-        result, _processed_input, _stage = self._execute(engine, input_value, remedy=remedy)
-        return result
+        """Execute the contract, reporting validation failure instead of raising it."""
+        return self._execute(engine, input_value, remedy=remedy)
 
     def _execute(
         self,
@@ -143,7 +156,7 @@ class Contract[InputT: LLMDataModel, OutputT: LLMDataModel]:
         input_value: InputT,
         *,
         remedy: LanguageModel | None,
-    ) -> tuple[ContractResult[OutputT], LLMDataModel, ContractStage | None]:
+    ) -> ContractResult[OutputT]:
         if not isinstance(input_value, self.input_type):
             msg = f"Contract input must be {self.input_type.__name__}"
             raise TypeError(msg)
@@ -154,15 +167,13 @@ class Contract[InputT: LLMDataModel, OutputT: LLMDataModel]:
             input_value,
         )
         if processed_input is None:
-            return (
-                ContractResult(
-                    value=None,
-                    succeeded=False,
-                    attempts=pre_attempts,
-                    errors=pre_errors,
-                ),
-                input_value,
-                "pre",
+            return ContractResult(
+                value=None,
+                succeeded=False,
+                attempts=pre_attempts,
+                errors=pre_errors,
+                stage=_PRE_STAGE,
+                processed_input=input_value,
             )
 
         acted_input = self.act(processed_input)
@@ -216,25 +227,21 @@ class Contract[InputT: LLMDataModel, OutputT: LLMDataModel]:
         )
         errors = (*pre_errors, *outcome.errors)
         if outcome.value is None:
-            return (
-                ContractResult(
-                    value=None,
-                    succeeded=False,
-                    attempts=pre_attempts + outcome.attempts,
-                    errors=errors,
-                ),
-                acted_input,
-                last_stage,
-            )
-        return (
-            ContractResult(
-                value=outcome.value,
-                succeeded=True,
+            return ContractResult(
+                value=None,
+                succeeded=False,
                 attempts=pre_attempts + outcome.attempts,
                 errors=errors,
-            ),
-            acted_input,
-            None,
+                stage=last_stage,
+                processed_input=acted_input,
+            )
+
+        return ContractResult(
+            value=outcome.value,
+            succeeded=True,
+            attempts=pre_attempts + outcome.attempts,
+            errors=errors,
+            processed_input=acted_input,
         )
 
     def _prepare_input(
@@ -304,5 +311,4 @@ def _generate[OutputT: LLMDataModel](
     prompt: str,
     output_type: type[OutputT],
 ) -> str:
-    response = engine.execute(structured_request(prompt, "", output_type))
-    return response.outputs[0].text
+    return engine.execute(remedy_request(prompt, output_type)).text

@@ -5,6 +5,7 @@ import pytest
 from pydantic import SecretStr
 
 from symai.providers._client.headers import (
+    _UNSAFE_API_KEY_MESSAGE,
     authorization_header,
     extract_response_metadata,
     parse_optional_float,
@@ -12,12 +13,6 @@ from symai.providers._client.headers import (
 )
 from symai.providers.cerebras.client.headers import (
     extract_response_metadata as extract_cerebras_metadata,
-)
-from symai.providers.deepseek.client.headers import (
-    extract_response_metadata as extract_deepseek_metadata,
-)
-from symai.providers.openai.client.headers import (
-    extract_response_metadata as extract_openai_metadata,
 )
 
 
@@ -76,7 +71,11 @@ def _serialize_authorization_failure(api_key: str):
 def test_authorization_header_rejects_unsafe_api_key_without_disclosure(api_key: str):
     failure = _serialize_authorization_failure(api_key)
 
-    assert failure[:3] == ((), "", "ValueError\n")
+    # The message is a constant, so it cannot be derived from the credential, and every
+    # invalid credential must fail identically: which rule a key trips is itself a
+    # property of the secret.
+    assert failure[0] == (_UNSAFE_API_KEY_MESSAGE,)
+    assert failure[1] == _UNSAFE_API_KEY_MESSAGE
     assert failure == _serialize_authorization_failure("\r")
 
 
@@ -84,8 +83,7 @@ def test_authorization_header_rejects_plaintext_api_key():
     with pytest.raises(TypeError) as exc_info:
         authorization_header("test-key")  # pyright: ignore[reportArgumentType]
 
-    assert exc_info.value.args == ()
-    assert str(exc_info.value) == ""
+    assert exc_info.value.args == ("api_key must be a SecretStr",)
 
 
 @pytest.mark.parametrize(
@@ -116,9 +114,25 @@ def test_parse_optional_int(value, expected):
     assert parse_optional_int(value) == expected
 
 
-def test_openai_and_deepseek_reexport_shared_metadata_extractor():
-    assert extract_openai_metadata is extract_response_metadata
-    assert extract_deepseek_metadata is extract_response_metadata
+def test_shared_metadata_extractor_reads_status_request_id_and_retry_after():
+    response = httpx.Response(
+        429,
+        headers={"x-request-id": "req-1", "retry-after": "1.5"},
+    )
+
+    metadata = extract_response_metadata(response)
+
+    assert metadata.status_code == 429
+    assert metadata.request_id == "req-1"
+    assert metadata.retry_after == 1.5
+
+
+def test_shared_metadata_extractor_tolerates_absent_and_unparseable_headers():
+    metadata = extract_response_metadata(httpx.Response(200, headers={"retry-after": "soon"}))
+
+    assert metadata.status_code == 200
+    assert metadata.request_id is None
+    assert metadata.retry_after is None
 
 
 def test_cerebras_metadata_extractor_adds_rate_limit_headers():

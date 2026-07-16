@@ -41,20 +41,23 @@ class BaseClient[MetadataT: ResponseMetadata]:
         connect_retries: int = 0,
     ) -> None:
         authorization = authorization_header(api_key)
-        owned_transport = transport
-        if owned_transport is None:
+        owned_transport = None
+        if transport is None:
             owned_transport = httpx.HTTPTransport(retries=connect_retries)
         elif connect_retries:
             msg = "connect_retries cannot be combined with an injected transport"
             raise ValueError(msg)
 
         try:
-            http_client = httpx.Client(timeout=timeout, transport=owned_transport)
+            http_client = httpx.Client(timeout=timeout, transport=transport or owned_transport)
         except BaseException as error:
-            try:
-                owned_transport.close()
-            except BaseException as cleanup_error:
-                error.add_note(f"Client construction cleanup failed: {cleanup_error!r}")
+            # Only a transport this client created may be closed here; an injected one
+            # belongs to the caller and may outlive a failed construction.
+            if owned_transport is not None:
+                try:
+                    owned_transport.close()
+                except BaseException as cleanup_error:
+                    error.add_note(f"Client construction cleanup failed: {cleanup_error!r}")
             raise
 
         self._http_client = http_client

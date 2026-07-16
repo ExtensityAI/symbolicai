@@ -75,7 +75,21 @@ def structured_request(
         json_schema=output_type.model_json_schema(),
         strict=True,
     )
-    return request.model_copy(update={"response_format": response_format})
+    # Rebuilt rather than model_copy(update=...), which skips validation entirely.
+    return LanguageModelRequest(
+        messages=request.messages,
+        response_format=response_format,
+        sampling=request.sampling,
+    )
+
+
+def remedy_request(prompt: str, output_type: type[LLMDataModel]) -> LanguageModelRequest:
+    """Build one correction request.
+
+    The remedy prompt already restates the instruction, input, and errors, so it is the
+    whole user turn rather than an instruction with nothing to act on.
+    """
+    return structured_request("", prompt, output_type)
 
 
 def check_semantic_conditions(
