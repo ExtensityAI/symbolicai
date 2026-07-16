@@ -41,7 +41,7 @@ Symbol[T]                         shallow-immutable ergonomic value
     LanguageModelResponse        normalized provider-neutral result
              │
              ▼
-         Decoder[T]              explicit typed conversion
+         decode_output          explicit typed conversion
              │
              ▼
           Symbol[T]              ergonomic operation result
@@ -64,21 +64,22 @@ Symbol ← ops.* → Function → Runtime → engines → clients
 ```text
 symai/symbol.py       Symbol
 symai/function.py     Function
-symai/decoding.py     Decoder, decode_output, standard decoders
+symai/decoding.py     decode_output and callable decoders
 symai/ops/*.py        ergonomic semantic operations
 symai/runtime/*.py    Runtime lifecycle, configuration, normalized contracts
+symai/contract/*.py   Design-by-Contract: Contract[In, Out], @contract, LLMDataModel
 ```
 
 Canonical imports come from the owning modules:
 
 ```python
-from symai.decoding import TextDecoder, decode_output
+from symai.decoding import decode_output
 from symai.function import Function
 from symai.ops import text
 from symai.symbol import Symbol
 ```
 
-The package root is not a compatibility facade for removed names. The major-version migration guide documents these canonical paths and the Runtime model/configuration imports used by applications.
+The package root is empty rather than a compatibility facade. Canonical imports come from owning modules, and the major-version migration guide documents them together with the Runtime model/configuration imports used by applications.
 
 ---
 
@@ -139,26 +140,29 @@ Symbol does not implement a broad `__getattr__` that delegates arbitrary attribu
 
 ## 5. Semantic operations are explicit free functions
 
-Named semantic operations live in focused namespaces and require a Runtime explicitly:
+Named semantic operations live in focused namespaces. Operations that perform I/O take a bound engine handle; deterministic local operations accept neither a handle nor a Runtime:
 
 ```python
 from symai.ops import reason, text
 from symai.symbol import Symbol
 
 source = Symbol("A long passage")
-summary = text.summarize(runtime, source, engine="tenant-a")
-answer = reason.query(runtime, source, "What is the thesis?", engine="tenant-b")
+summary = text.summarize(runtime.language_model("tenant-a"), source)
+answer = reason.query(runtime.language_model("tenant-b"), source, "What is the thesis?")
 ```
 
 Rules:
 
 - public ergonomic operations accept Symbols, not an ambiguous `Symbol | object` union;
+- auxiliary instructions and configuration remain ordinary typed values rather than meaningless wrapped Symbols; for example `is_instance_of` takes a `type_description: str`, while equality and containment take their compared value as a Symbol;
 - operations never mutate their input;
 - operations return a new `Symbol[T]` with the documented result type;
-- engine selection is an explicit keyword forwarded to Runtime;
-- each operation uses Function plus an appropriate decoder internally;
+- operations that perform I/O take a bound engine handle (`runtime.language_model(name)` / `runtime.embedding(name)`) and never receive provider or model details;
+- language operations use Function plus an appropriate decoder internally;
+- `ops.embed.embed` executes a normalized embedding request directly because Function is language-only;
+- deterministic `ops.text.template` and `ops.embed` similarity, distance, MMD, and kernel functions are local, accept no Runtime or engine, and perform no I/O;
 - provider/model selection never appears in operation-specific options;
-- operations with no semantic behavior stay ordinary Python operations rather than being mirrored in `ops.*`.
+- operations with no semantic or focused deterministic behavior stay ordinary Python operations rather than being mirrored in `ops.*`.
 
 Initial namespaces:
 
@@ -166,9 +170,11 @@ Initial namespaces:
 ops.text       summarize, translate, modify, filter, map, convert, style,
                template, replace, include, combine, extract
 ops.reason     query, interpret, logic
-ops.compare    semantic comparisons that have no native meaning
+ops.compare    equals, contains, is_instance_of
 ops.rank       rank
-ops.embed      embed, similarity, distance, MMD and kernels
+ops.embed      embed; similarity (cosine, dot); distance (euclidean,
+               manhattan, minkowski); MMD (RBF); kernel (linear, RBF,
+               polynomial)
 ```
 
 Persistence is not an operation namespace. Built-in Symbol persistence is removed.
@@ -189,17 +195,14 @@ class Function:
 
     def __call__(
         self,
-        runtime: Runtime,
+        engine: LanguageModel,
         *values: object,
-        engine: str | None = None,
     ) -> LanguageModelResponse: ...
 
     def execute_many(
         self,
-        runtime: Runtime,
+        engine: LanguageModel,
         inputs: Sequence[object],
-        *,
-        engine: str | None = None,
     ) -> tuple[LanguageModelResponse, ...]: ...
 ```
 
@@ -208,7 +211,7 @@ Usage:
 ```python
 sentiment = Function("Classify the sentiment.")
 request = sentiment.request("The preview path performs no I/O.")
-response = sentiment(runtime, "The result was excellent.", engine="tenant-a")
+response = sentiment(runtime.language_model("tenant-a"), "The result was excellent.")
 request_id = response.metadata.request_id
 ```
 
@@ -224,20 +227,17 @@ Request response format remains explicit normalized request configuration. Askin
 
 ## 7. Typed decoding is a separate stage
 
-Typing belongs to a decoder that carries real parsing behavior:
+Typing belongs to a decoder that carries real parsing behavior. A decoder is any
+`Callable[[str], T]`; there is no decoder class hierarchy, and a plain string result needs no
+decoder at all (`response.text`):
 
 ```python
 T = TypeVar("T")
-T_co = TypeVar("T_co", covariant=True)
-
-
-class Decoder(Protocol[T_co]):
-    def decode(self, text: str, /) -> T_co: ...
 
 
 def decode_output(
     response: LanguageModelResponse,
-    decoder: Decoder[T],
+    decoder: Callable[[str], T],
     *,
     output_index: int = 0,
     default: T | Missing = MISSING,
@@ -248,12 +248,9 @@ def decode_output(
 Examples:
 
 ```python
-answer: str = decode_output(response, TextDecoder())
-score: int = decode_output(response, ConstructorDecoder(int))
-users: list[User] = decode_output(
-    response,
-    TypeAdapterDecoder(TypeAdapter(list[User])),
-)
+answer: str = response.text
+score: int = decode_output(response, int)
+users: list[User] = decode_output(response, TypeAdapter(list[User]).validate_json)
 ```
 
 Decoder rules:
@@ -287,6 +284,7 @@ A typed `DecodedFunction[T]` convenience wrapper is not part of the initial surf
 | `save()` / `load()` | Persistence is not intrinsic to Symbol; current pickle loading is executable and current save collision handling can overwrite data. |
 | broad `__getattr__` forwarding | Makes the wrapper API depend on arbitrary held types. |
 | operation mixin inheritance | The value type should not inherit unrelated execution, embedding, and persistence surfaces. |
+| `Prompt` / `PromptRegistry` hierarchy | Function accepts immutable string examples directly; focused operations own private immutable example tuples, so a mutable public prompt registry and class-per-example hierarchy add no domain capability. |
 
 If durable Symbol artifacts are required later, they need a separate versioned, validated, non-executable codec design. Generic pickle loading is not retained as compatibility API.
 
@@ -294,9 +292,9 @@ If durable Symbol artifacts are required later, they need a separate versioned, 
 
 ## 9. Runtime boundary
 
-All Function and semantic operation execution receives Runtime explicitly. `current_runtime()` and ambient `ContextVar` discovery are removed.
+Function and semantic operations receive a bound engine handle obtained from the Runtime. `current_runtime()` and ambient `ContextVar` discovery are removed.
 
-Runtime owns named configured engine instances. Two instances may use the same provider/model with different credentials and transports. Operations pass `engine=<name>` through without knowing provider details.
+Runtime owns named configured engine instances. Two instances may use the same provider/model with different credentials and transports. `runtime.language_model(name)` and `runtime.embedding(name)` return a bound handle (`LanguageModel` / `EmbeddingModel`) that callers pass to operations and Function without knowing provider details. The low-level `runtime.execute(request, engine=<name>)` path remains as an escape hatch.
 
 The synchronous Runtime has one owner thread. Async execution, if needed, will use a separately designed `AsyncRuntime` rather than weakening the synchronous lifecycle contract.
 
@@ -334,14 +332,15 @@ A forwarding shim would conflict with explicit wrapped-value access, hide raw-ve
 - request preview is `request()` and performs no I/O;
 - response metadata needs no mode flag;
 - scalar, boolean, Pydantic model, nested container, default, limit, and output-index decoding are independently covered;
-- static checking proves `Decoder[T]` flows to `decode_output(...) -> T`;
+- static checking proves the `Callable[[str], T]` decoder flows to `decode_output(...) -> T`;
 - sequential multi-execution has stable ordering and honest naming.
 
 ### Operations
 
-- each public operation takes a Runtime and Symbol explicitly;
-- each returns a new Symbol with no input mutation;
-- engine names are forwarded unchanged;
+- each operation that performs I/O takes a bound engine handle and Symbol explicitly;
+- deterministic local operations take Symbols without a handle or Runtime;
+- each operation returns a new Symbol with no input mutation;
+- operations forward the bound engine handle without knowing provider or model;
 - there is no provider/model option at the operation layer;
 - no tool-calling request or output type exists.
 

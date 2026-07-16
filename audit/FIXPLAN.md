@@ -10,9 +10,9 @@ This document is the single source of truth for implementation order, dependenci
 2. **Configured engine instances have names.** Provider/model is not identity; the same provider/model may be configured multiple times with different credentials and transports.
 3. **Every configured engine owns a separate `httpx.Client`.** Clients are not pooled or deduplicated across engine instances.
 4. **Synchronous Runtime has one owner thread.** A future async API is a separately designed `AsyncRuntime`.
-5. **Function returns `LanguageModelResponse`.** Typed output conversion is a separate `Decoder[T]` stage; `return_type` does not define Function.
+5. **Function returns `LanguageModelResponse`.** Typed output conversion is a separate `Callable[[str], T]` decoder stage; `return_type` does not define Function.
 6. **Symbol remains as a shallow-immutable ergonomic value DSL.** It has no Runtime dependency, mutable context, graph, persistence, embedding cache, or semantic mode.
-7. **Semantic operations are explicit free functions.** They take Runtime and Symbol and return new Symbols.
+7. **Semantic operations are explicit free functions.** They take a bound engine handle and Symbol and return new Symbols.
 8. **Expression and Result are removed.** Ordinary callables compose operations.
 9. **Static/dynamic context concepts are removed.** Function instructions and call values/messages are sufficient.
 10. **Built-in persistence is removed.** There is no pickle compatibility API.
@@ -36,11 +36,11 @@ This document is the single source of truth for implementation order, dependenci
 
 ### Execution
 
-- Runtime is passed explicitly to Function and semantic operations.
-- Engine selection is explicit when ambiguous.
+- A bound engine handle is passed explicitly to Function and semantic operations.
+- Engine selection is a bound handle obtained from the Runtime; a sole configured engine of a capability resolves without a name.
 - A synchronous Runtime may execute only on the thread that entered it.
 - Native Symbol operations never execute a provider request.
-- Semantic operation names never accept provider/model selection; they forward only a configured engine name.
+- Semantic operation names never accept provider/model selection; they forward only a bound engine handle.
 
 ### Contracts
 
@@ -150,8 +150,6 @@ RuntimeConfig(
         ),
     ),
     embeddings=(...),
-    default_language_model="tenant-a",
-    default_embedding=None,
 )
 ```
 
@@ -160,7 +158,7 @@ Validate before allocation:
 - at least one configured instance;
 - nonempty globally unique names;
 - provider/capability/model support;
-- defaults exist and match their capability;
+- a sole configured instance of a capability resolves without a name;
 - no silent normalization or overwrite of duplicate names.
 
 Keep names opaque, case-sensitive application identifiers unless a real interoperability requirement justifies a stricter syntax.
@@ -177,10 +175,9 @@ runtime.execute(embedding_request, engine="embed-primary")
 Resolution rules:
 
 1. An explicit name must exist and match the request capability.
-2. Otherwise use the configured capability default.
-3. Otherwise use the sole matching engine.
-4. Otherwise raise an ambiguity error listing safe engine names.
-5. If no engine provides the request capability, preserve `UnsupportedCapabilityError`.
+2. Otherwise use the sole matching engine.
+3. Otherwise raise an ambiguity error listing safe engine names.
+4. If no engine provides the request capability, preserve `UnsupportedCapabilityError`.
 
 Use distinct structured errors for unknown name, wrong capability, and ambiguity. Never expose credentials.
 
@@ -225,7 +222,7 @@ Function holds immutable instructions and normalized request options. It has no 
 
 ### Decoding
 
-Add a separate generic `Decoder[T]` protocol and `decode_output(...) -> T`.
+A decoder is any `Callable[[str], T]`, applied by `decode_output(...) -> T`; there is no decoder protocol hierarchy.
 
 Standard decoding must cover:
 
@@ -392,7 +389,7 @@ This section is the only release-gate source across the audit documents.
 - dated/resolved model identity and metadata;
 - null filtered/refused terminal responses;
 - credential redaction through direct and Runtime-created clients;
-- named engine duplicate/default/unknown/wrong-capability/ambiguity paths;
+- named engine duplicate/unknown/wrong-capability/ambiguity paths;
 - two same-model instances with different keys and distinct clients;
 - owner-thread enforcement and independent-runtime parallelism;
 - reverse cleanup and grouped cleanup failure;

@@ -305,9 +305,11 @@ No `stream` field on any request model; Cerebras' `extra="allow"` would let `str
 **Severity: Medium** · `symai/runtime/models.py:428` · status: `repro-read`
 `_create_handle` mandatorily requires an `api_key` (SecretStr, `min_length=1`) and an HTTP transport, so a local in-process engine cannot be expressed even by a user — a mechanism barrier, not "fewer providers".
 
-### FP-08 — Structured-output validation with self-healing retry removed
-**Severity: Medium** · `symai/operations.py:466` · status: `repro-read`
-Basic JSON-schema passthrough survives (`JsonSchemaResponseFormat` → `openai.py:239-248`; `parse_typed_value` does `model_validate_json`), but `main`'s `strategy.py`/`LLMDataModel` validate-then-remedy loop is gone; a malformed model output now raises rather than self-correcting.
+### FP-08 — Structured-output validation with self-healing retry is a required capability that must be rebuilt
+**Severity: High (required capability, not an acceptable reduction)** · `symai/operations.py:466` (cleanup baseline) · status: `repro-read`
+Basic JSON-schema passthrough survives (`JsonSchemaResponseFormat` → structured-output request; `parse_typed_value` does `model_validate_json`), but `main`'s `strategy.py`/`LLMDataModel` validate-then-remedy loop is gone; a malformed model output now raises rather than self-correcting.
+
+Design-by-Contract — `@contract` / `Contract[In, Out]`: typed `LLMDataModel` I/O, `pre`/`act`/`post`, LLM **semantic validation**, and the **self-healing remediation loop** — is the most-used SymbolicAI capability and an explicit product requirement. The engine-redesign is not a SymbolicAI successor until it is rebuilt on the explicit-runtime architecture: the engine is passed as a bound handle, remediation cost is captured via the observer seam, and structured-output requests are kept. Port design and plan: [`../docs/fullreport/r7-contracts.md`](../docs/fullreport/r7-contracts.md), [`../docs/fullreport/r8-contracts-plan.md`](../docs/fullreport/r8-contracts-plan.md); canonical impl on `dev`: `symai/strategy.py`, `docs/source/FEATURES/contracts.md`, `tests/contract/`.
 
 ### FP-09 — Conversation / chat / memory composition removed; only stateless `Function`/`Symbol` remain
 **Severity: Medium** · `symai/components.py:15` · status: `repro-read`
