@@ -7,8 +7,8 @@ from symai.providers._client import errors as client_errors
 from symai.providers._engine.base import ProviderEngine, retry_after_seconds
 from symai.providers._engine.gate import validate_language_model_capabilities
 from symai.providers._engine.mapping import ClientErrorMessages, raise_mapped_client_error
-from symai.providers.cerebras.client import Client
 from symai.providers.cerebras.client import chat as chat_api
+from symai.providers.cerebras.client.client import Client
 from symai.providers.cerebras.client.transport import APIResponse
 from symai.providers.cerebras.client.transport import ResponseMetadata as CerebrasResponseMetadata
 from symai.runtime.errors import ErrorMetadata, InvalidResponseError

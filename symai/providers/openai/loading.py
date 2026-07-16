@@ -11,7 +11,7 @@ def load_responses(settings: Mapping[str, object]) -> Callable[[], LanguageModel
     Resolution is separated from allocation so the runtime can validate every configured
     engine before any transport exists (FIXPLAN §2).
     """
-    from symai.providers.openai.client import Client
+    from symai.providers.openai.client.client import Client
     from symai.providers.openai.engines.responses import (
         MODEL_SPECS,
         UNSUPPORTED_MODEL_MESSAGE,
@@ -35,7 +35,7 @@ def load_embedding(settings: Mapping[str, object]) -> Callable[[], EmbeddingEngi
     Resolution is separated from allocation so the runtime can validate every configured
     engine before any transport exists (FIXPLAN §2).
     """
-    from symai.providers.openai.client import Client
+    from symai.providers.openai.client.client import Client
     from symai.providers.openai.engines.embedding import MODEL_SPECS, UNSUPPORTED_MODEL_MESSAGE
     from symai.providers.openai.engines.embedding import EmbeddingEngine as OpenAIEmbeddingEngine
 

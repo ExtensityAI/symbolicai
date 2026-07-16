@@ -11,7 +11,7 @@ def load_chat_completions(settings: Mapping[str, object]) -> Callable[[], Langua
     Resolution is separated from allocation so the runtime can validate every configured
     engine before any transport exists (FIXPLAN §2).
     """
-    from symai.providers.cerebras.client import Client
+    from symai.providers.cerebras.client.client import Client
     from symai.providers.cerebras.engines.chat_completions import (
         MODEL_SPECS,
         UNSUPPORTED_MODEL_MESSAGE,

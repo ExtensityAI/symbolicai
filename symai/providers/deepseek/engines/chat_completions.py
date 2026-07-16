@@ -10,8 +10,8 @@ from symai.providers._client.transport import ResponseMetadata as DeepSeekRespon
 from symai.providers._engine.base import ProviderEngine, retry_after_seconds
 from symai.providers._engine.gate import validate_language_model_capabilities
 from symai.providers._engine.mapping import ClientErrorMessages, raise_mapped_client_error
-from symai.providers.deepseek.client import Client
 from symai.providers.deepseek.client import chat as chat_api
+from symai.providers.deepseek.client.client import Client
 from symai.runtime.errors import ErrorMetadata, InvalidResponseError
 from symai.runtime.models import (
     AssistantOutputMessage,

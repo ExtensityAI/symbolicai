@@ -6,12 +6,12 @@ import httpx
 import pytest
 from pydantic import JsonValue, SecretStr, ValidationError
 
-from symai.providers.cerebras import ChatCompletionsEngine
-from symai.providers.cerebras.client import Client
 from symai.providers.cerebras.client import errors as cerebras_errors
 from symai.providers.cerebras.client.chat import CreateChatCompletionRequest
+from symai.providers.cerebras.client.client import Client
 from symai.providers.cerebras.client.transport import RateLimitState
 from symai.providers.cerebras.client.transport import ResponseMetadata as CerebrasResponseMetadata
+from symai.providers.cerebras.engines.chat_completions import ChatCompletionsEngine
 from symai.runtime.errors import (
     AuthenticationError,
     ExecutionError,

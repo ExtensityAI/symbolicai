@@ -5,9 +5,9 @@ import pytest
 from pydantic import SecretStr
 
 from symai.providers._client.client import BaseClient
-from symai.providers.cerebras.client import Client as CerebrasClient
-from symai.providers.deepseek.client import Client as DeepSeekClient
-from symai.providers.openai.client import Client as OpenAIClient
+from symai.providers.cerebras.client.client import Client as CerebrasClient
+from symai.providers.deepseek.client.client import Client as DeepSeekClient
+from symai.providers.openai.client.client import Client as OpenAIClient
 
 
 class CountingTransport(httpx.BaseTransport):
@@ -26,7 +26,7 @@ class CountingTransport(httpx.BaseTransport):
 def test_provider_clients_are_endpoint_subclasses_of_shared_base(client_type):
     assert issubclass(client_type, BaseClient)
     assert client_type.__module__.startswith("symai.providers.")
-    assert client_type.__module__.endswith(".client._client")
+    assert client_type.__module__.endswith(".client.client")
 
 
 @pytest.mark.parametrize("client_type", [OpenAIClient, DeepSeekClient, CerebrasClient])

@@ -6,13 +6,13 @@ import pytest
 from pydantic import SecretStr, ValidationError
 
 from symai.providers._client.headers import _UNSAFE_API_KEY_MESSAGE
-from symai.providers.cerebras.client import Client
 from symai.providers.cerebras.client.chat import (
     ChatCompletion,
     CreateChatCompletionRequest,
     ReasoningFormat,
     UserMessage,
 )
+from symai.providers.cerebras.client.client import Client
 from symai.providers.cerebras.client.errors import (
     APIError,
     AuthError,

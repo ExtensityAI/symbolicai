@@ -7,10 +7,10 @@ import pytest
 from pydantic import SecretStr, ValidationError
 
 from symai.providers._client.transport import ResponseMetadata as OpenAIResponseMetadata
-from symai.providers.openai import ResponsesEngine
-from symai.providers.openai.client import Client
 from symai.providers.openai.client import errors as openai_errors
+from symai.providers.openai.client.client import Client
 from symai.providers.openai.client.responses import CreateResponseRequest
+from symai.providers.openai.engines.responses import ResponsesEngine
 from symai.runtime.errors import (
     AuthenticationError,
     ExecutionError,

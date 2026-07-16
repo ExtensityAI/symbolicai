@@ -3,7 +3,7 @@ import pytest
 from pydantic import BaseModel, SecretStr, ValidationError
 
 from symai.providers._client.headers import _UNSAFE_API_KEY_MESSAGE
-from symai.providers.openai.client import Client
+from symai.providers.openai.client.client import Client
 from symai.providers.openai.client.embeddings import CreateEmbeddingRequest, EmbeddingList
 from symai.providers.openai.client.errors import AuthError, ResponseError
 from symai.providers.openai.client.responses import (

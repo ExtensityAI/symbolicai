@@ -6,10 +6,20 @@ import httpx
 import pytest
 from pydantic import SecretStr
 
-from symai.providers import cerebras, deepseek, openai
 from symai.providers._client import errors as _client_errors
 from symai.providers._client import transport as _client_transport
 from symai.providers._engine import mapping
+from symai.providers.cerebras.client.client import Client as CerebrasClient
+from symai.providers.cerebras.engines.chat_completions import (
+    ChatCompletionsEngine as CerebrasChatCompletionsEngine,
+)
+from symai.providers.deepseek.client.client import Client as DeepSeekClient
+from symai.providers.deepseek.engines.chat_completions import (
+    ChatCompletionsEngine as DeepSeekChatCompletionsEngine,
+)
+from symai.providers.openai.client.client import Client as OpenAIClient
+from symai.providers.openai.engines.embedding import EmbeddingEngine as OpenAIEmbeddingEngine
+from symai.providers.openai.engines.responses import ResponsesEngine as OpenAIResponsesEngine
 from symai.runtime import errors as runtime_errors
 from symai.runtime.runtime import Runtime
 
@@ -28,43 +38,43 @@ class CountingTransport(httpx.MockTransport):
         super().close()
 
 
-ProviderClient = openai.Client | cerebras.Client | deepseek.Client
+ProviderClient = OpenAIClient | CerebrasClient | DeepSeekClient
 ProviderEngine = (
-    openai.ResponsesEngine
-    | openai.EmbeddingEngine
-    | cerebras.ChatCompletionsEngine
-    | deepseek.ChatCompletionsEngine
+    OpenAIResponsesEngine
+    | OpenAIEmbeddingEngine
+    | CerebrasChatCompletionsEngine
+    | DeepSeekChatCompletionsEngine
 )
 ClientFactory = Callable[[CountingTransport], ProviderClient]
 EngineFactory = Callable[[ProviderClient, str], ProviderEngine]
 
 
-def _openai_client(transport: CountingTransport) -> openai.Client:
-    return openai.Client(api_key=SecretStr("test-key"), transport=transport)
+def _openai_client(transport: CountingTransport) -> OpenAIClient:
+    return OpenAIClient(api_key=SecretStr("test-key"), transport=transport)
 
 
-def _cerebras_client(transport: CountingTransport) -> cerebras.Client:
-    return cerebras.Client(api_key=SecretStr("test-key"), transport=transport)
+def _cerebras_client(transport: CountingTransport) -> CerebrasClient:
+    return CerebrasClient(api_key=SecretStr("test-key"), transport=transport)
 
 
-def _deepseek_client(transport: CountingTransport) -> deepseek.Client:
-    return deepseek.Client(api_key=SecretStr("test-key"), transport=transport)
+def _deepseek_client(transport: CountingTransport) -> DeepSeekClient:
+    return DeepSeekClient(api_key=SecretStr("test-key"), transport=transport)
 
 
-def _openai_language(client: ProviderClient, model: str) -> openai.ResponsesEngine:
-    return openai.ResponsesEngine(client=client, model=model)  # pyright: ignore[reportArgumentType]
+def _openai_language(client: ProviderClient, model: str) -> OpenAIResponsesEngine:
+    return OpenAIResponsesEngine(client=client, model=model)  # pyright: ignore[reportArgumentType]
 
 
-def _openai_embedding(client: ProviderClient, model: str) -> openai.EmbeddingEngine:
-    return openai.EmbeddingEngine(client=client, model=model)  # pyright: ignore[reportArgumentType]
+def _openai_embedding(client: ProviderClient, model: str) -> OpenAIEmbeddingEngine:
+    return OpenAIEmbeddingEngine(client=client, model=model)  # pyright: ignore[reportArgumentType]
 
 
-def _cerebras_language(client: ProviderClient, model: str) -> cerebras.ChatCompletionsEngine:
-    return cerebras.ChatCompletionsEngine(client=client, model=model)  # pyright: ignore[reportArgumentType]
+def _cerebras_language(client: ProviderClient, model: str) -> CerebrasChatCompletionsEngine:
+    return CerebrasChatCompletionsEngine(client=client, model=model)  # pyright: ignore[reportArgumentType]
 
 
-def _deepseek_language(client: ProviderClient, model: str) -> deepseek.ChatCompletionsEngine:
-    return deepseek.ChatCompletionsEngine(client=client, model=model)  # pyright: ignore[reportArgumentType]
+def _deepseek_language(client: ProviderClient, model: str) -> DeepSeekChatCompletionsEngine:
+    return DeepSeekChatCompletionsEngine(client=client, model=model)  # pyright: ignore[reportArgumentType]
 
 
 ENGINE_CASES: tuple[tuple[ClientFactory, EngineFactory, str], ...] = (
@@ -75,7 +85,7 @@ ENGINE_CASES: tuple[tuple[ClientFactory, EngineFactory, str], ...] = (
 )
 
 
-@pytest.mark.parametrize("client_type", [openai.Client, cerebras.Client, deepseek.Client])
+@pytest.mark.parametrize("client_type", [OpenAIClient, CerebrasClient, DeepSeekClient])
 def test_provider_clients_construct_their_owned_http_client(
     client_type: type[ProviderClient],
 ) -> None:
@@ -85,7 +95,7 @@ def test_provider_clients_construct_their_owned_http_client(
     assert "http_client" not in parameters
 
 
-@pytest.mark.parametrize("client_type", [openai.Client, cerebras.Client, deepseek.Client])
+@pytest.mark.parametrize("client_type", [OpenAIClient, CerebrasClient, DeepSeekClient])
 def test_client_construction_preserves_primary_failure_when_transport_close_fails(
     client_type: type[ProviderClient],
     monkeypatch: pytest.MonkeyPatch,
@@ -115,7 +125,7 @@ def test_client_construction_preserves_primary_failure_when_transport_close_fail
     assert "transport close failed" in caught.value.__notes__[0]
 
 
-@pytest.mark.parametrize("client_type", [openai.Client, cerebras.Client, deepseek.Client])
+@pytest.mark.parametrize("client_type", [OpenAIClient, CerebrasClient, DeepSeekClient])
 def test_failed_construction_does_not_close_a_caller_owned_transport(
     client_type: type[ProviderClient],
     monkeypatch: pytest.MonkeyPatch,
@@ -177,11 +187,11 @@ def test_engine_constructor_failure_closes_the_accepted_client(
 def test_runtime_accepts_same_provider_and_model_with_distinct_owned_clients() -> None:
     first_transport = CountingTransport()
     second_transport = CountingTransport()
-    first = openai.ResponsesEngine(
+    first = OpenAIResponsesEngine(
         client=_openai_client(first_transport),
         model="gpt-5.4",
     )
-    second = openai.ResponsesEngine(
+    second = OpenAIResponsesEngine(
         client=_openai_client(second_transport),
         model="gpt-5.4",
     )
@@ -199,7 +209,7 @@ def test_runtime_reaches_provider_client_only_through_engine_close(
 ) -> None:
     transport = CountingTransport()
     client = _openai_client(transport)
-    engine = openai.ResponsesEngine(client=client, model="gpt-5.4")
+    engine = OpenAIResponsesEngine(client=client, model="gpt-5.4")
     engine_close = engine.close
     client_close = client.close
     inside_engine_close = False

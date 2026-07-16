@@ -8,8 +8,8 @@ from symai.providers._client.transport import APIResponse
 from symai.providers._client.transport import ResponseMetadata as OpenAIResponseMetadata
 from symai.providers._engine.base import ProviderEngine, retry_after_seconds
 from symai.providers._engine.mapping import ClientErrorMessages, raise_mapped_client_error
-from symai.providers.openai.client import Client
 from symai.providers.openai.client import embeddings as embeddings_api
+from symai.providers.openai.client.client import Client
 from symai.runtime.errors import InvalidResponseError, UnsupportedFeatureError
 from symai.runtime.models import (
     EmbeddingModelSpec,

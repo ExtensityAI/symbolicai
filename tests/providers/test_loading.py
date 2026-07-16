@@ -6,7 +6,7 @@ from pydantic import SecretStr
 from symai.loading import load_runtime
 from symai.providers.cerebras.loading import load_chat_completions as load_cerebras
 from symai.providers.deepseek.loading import load_chat_completions as load_deepseek
-from symai.providers.openai import client as openai_client
+from symai.providers.openai.client import client as openai_client
 from symai.providers.openai.loading import load_embedding, load_responses
 from symai.runtime.config import EngineConfig, RuntimeConfig
 from symai.runtime.errors import UnsupportedModelError
@@ -62,7 +62,7 @@ def test_resolving_a_provider_loader_allocates_no_client(
         nonlocal allocations
         allocations += 1
 
-    from symai.providers.openai import client as openai_client
+    from symai.providers.openai.client import client as openai_client
 
     monkeypatch.setattr(openai_client.Client, "__init__", count_allocation)
     factory = load_responses({"api_key": SecretStr("key"), "model": "gpt-5.4"})
@@ -96,7 +96,7 @@ def test_provider_loaders_reject_cross_provider_settings_before_client_allocatio
         raise AssertionError("client allocation must follow provider validation")
 
     module_name = load.__module__.rsplit(".", 1)[0]
-    client_module = __import__(f"{module_name}.client", fromlist=["Client"])
+    client_module = __import__(f"{module_name}.client.client", fromlist=["Client"])
     monkeypatch.setattr(client_module.Client, "__init__", reject_allocation)
 
     with pytest.raises(UnsupportedModelError):
