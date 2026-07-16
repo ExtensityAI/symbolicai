@@ -1,5 +1,3 @@
-import math
-
 import pytest
 from pydantic import ValidationError
 
@@ -106,8 +104,6 @@ def test_complete_declared_request_serializes_with_aliases():
         messages=(_user_message(),),
         clear_thinking=False,
         frequency_penalty=-0.5,
-        logit_bias={"123": -100.0, "456": 100.0},
-        logprobs=True,
         max_completion_tokens=-1,
         prediction=Prediction(type="content", content="expected"),
         presence_penalty=0.5,
@@ -127,7 +123,6 @@ def test_complete_declared_request_serializes_with_aliases():
         service_tier=ServiceTier.DEFAULT,
         stop=(),
         temperature=0,
-        top_logprobs=20,
         top_p=1,
         user="user-1",
     )
@@ -137,8 +132,6 @@ def test_complete_declared_request_serializes_with_aliases():
         "model": "gpt-oss-120b",
         "clear_thinking": False,
         "frequency_penalty": -0.5,
-        "logit_bias": {"123": -100.0, "456": 100.0},
-        "logprobs": True,
         "max_completion_tokens": -1,
         "prediction": {"type": "content", "content": "expected"},
         "presence_penalty": 0.5,
@@ -158,7 +151,6 @@ def test_complete_declared_request_serializes_with_aliases():
         "service_tier": "default",
         "stop": [],
         "temperature": 0,
-        "top_logprobs": 20,
         "top_p": 1,
         "user": "user-1",
     }
@@ -292,8 +284,6 @@ def test_five_stop_sequences_are_rejected():
         ("frequency_penalty", 2.1),
         ("presence_penalty", -2.1),
         ("presence_penalty", 2.1),
-        ("top_logprobs", -1),
-        ("top_logprobs", 21),
         ("prompt_cache_key", "x" * 1_025),
     ],
 )
@@ -362,13 +352,22 @@ def test_json_schema_value_rejects_non_json_objects():
         JsonSchemaSpec.model_validate({"name": "Answer", "schema": {"value": object()}})
 
 
-@pytest.mark.parametrize("value", [math.nan, math.inf, -math.inf, -100.1, 100.1])
-def test_invalid_logit_bias_is_rejected(value: float):
+@pytest.mark.parametrize(
+    ("field", "value"),
+    [
+        ("logprobs", True),
+        ("top_logprobs", 5),
+        ("logit_bias", {"123": 1.0}),
+    ],
+)
+def test_removed_logprob_request_fields_are_rejected(field: str, value: object):
     with pytest.raises(ValidationError):
-        CreateChatCompletionRequest(
-            model="gpt-oss-120b",
-            messages=(_user_message(),),
-            logit_bias={"123": value},
+        CreateChatCompletionRequest.model_validate(
+            {
+                "model": "gpt-oss-120b",
+                "messages": (_user_message(),),
+                field: value,
+            }
         )
 
 

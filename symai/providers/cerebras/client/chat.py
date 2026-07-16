@@ -1,8 +1,9 @@
+from collections.abc import Mapping
 from dataclasses import dataclass
 from enum import StrEnum
 from typing import Annotated, Literal
 
-from pydantic import ConfigDict, Field, JsonValue
+from pydantic import ConfigDict, Field, JsonValue, model_validator
 
 from symai.providers._client.models import ModelId, StrictModel, TolerantModel
 
@@ -70,14 +71,12 @@ class ReasoningSpec:
 
 @dataclass(frozen=True, slots=True)
 class ModelSpec:
-    context_tokens: int
     response_tokens: int
     reasoning: ReasoningSpec | None
 
 
 MODEL_SPECS: dict[Model, ModelSpec] = {
     "gpt-oss-120b": ModelSpec(
-        131_072,
         40_000,
         reasoning=ReasoningSpec(
             (
@@ -88,7 +87,6 @@ MODEL_SPECS: dict[Model, ModelSpec] = {
         ),
     ),
     "gemma-4-31b": ModelSpec(
-        131_072,
         40_000,
         reasoning=ReasoningSpec(
             (
@@ -99,7 +97,6 @@ MODEL_SPECS: dict[Model, ModelSpec] = {
         ),
     ),
     "zai-glm-4.7": ModelSpec(
-        131_072,
         40_000,
         reasoning=ReasoningSpec(
             (
@@ -161,12 +158,11 @@ ResponseFormat = Annotated[
 ]
 
 
-_LogitBiasValue = Annotated[
-    float,
-    Field(ge=-100, le=100, allow_inf_nan=False),
-]
 _PositiveCompletionTokens = Annotated[int, Field(gt=0)]
 _StopSequence = Annotated[tuple[str, ...], Field(max_length=4)]
+
+
+_REMOVED_LOGPROB_FIELDS = ("logprobs", "top_logprobs", "logit_bias")
 
 
 class CreateChatCompletionRequest(StrictModel):
@@ -179,8 +175,6 @@ class CreateChatCompletionRequest(StrictModel):
     model: Model | ModelId
     clear_thinking: bool | None = None
     frequency_penalty: float | None = Field(default=None, ge=-2, le=2)
-    logit_bias: dict[str, _LogitBiasValue] | None = None
-    logprobs: bool | None = None
     max_completion_tokens: Literal[-1] | _PositiveCompletionTokens | None = None
     prediction: Prediction | None = None
     presence_penalty: float | None = Field(default=None, ge=-2, le=2)
@@ -192,9 +186,19 @@ class CreateChatCompletionRequest(StrictModel):
     service_tier: ServiceTier | None = None
     stop: str | _StopSequence | None = None
     temperature: float | None = Field(default=None, ge=0, le=2)
-    top_logprobs: int | None = Field(default=None, ge=0, le=20)
     top_p: float | None = Field(default=None, ge=0, le=1)
     user: str | None = None
+
+    @model_validator(mode="before")
+    @classmethod
+    def reject_removed_logprob_fields(cls, value: object) -> object:
+        if isinstance(value, Mapping):
+            for field in _REMOVED_LOGPROB_FIELDS:
+                if field in value:
+                    msg = f"Cerebras request field {field!r} is not supported"
+                    raise ValueError(msg)
+
+        return value
 
 
 class PromptTokensDetails(TolerantModel):

@@ -26,7 +26,6 @@ from symai.runtime.models import (
     FinishReason,
     ImageContent,
     ImageDetail,
-    JsonObject,
     JsonSchemaResponseFormat,
     LanguageModelRequest,
     MetadataLabel,
@@ -140,13 +139,11 @@ def test_execute_translates_normalized_request_and_response() -> None:
             ),
             response_format=JsonSchemaResponseFormat(
                 name="answer",
-                json_schema=JsonObject.parse(
-                    {
-                        "type": "object",
-                        "properties": {"answer": {"type": "string"}},
-                        "required": ["answer"],
-                    }
-                ),
+                json_schema={
+                    "type": "object",
+                    "properties": {"answer": {"type": "string"}},
+                    "required": ["answer"],
+                },
                 description="Answer shape",
                 strict=True,
             ),
@@ -154,7 +151,7 @@ def test_execute_translates_normalized_request_and_response() -> None:
                 effort=ReasoningEffort.HIGH,
                 summary=ReasoningSummary.DETAILED,
             ),
-            sampling=SamplingConfig(max_tokens=512, top_logprobs=4),
+            sampling=SamplingConfig(max_tokens=512),
             user="customer-42",
             metadata=(MetadataLabel(key="trace", value="abc"),),
         )
@@ -210,7 +207,6 @@ def test_execute_translates_normalized_request_and_response() -> None:
                 "strict": True,
             }
         },
-        "top_logprobs": 4,
         "user": "customer-42",
     }
     assert len(response.outputs) == 1
@@ -248,7 +244,6 @@ def test_nonreasoning_model_maps_supported_sampling_and_default_text_format() ->
                     max_tokens=128,
                     temperature=0.25,
                     top_p=0.8,
-                    top_logprobs=2,
                 ),
             )
         )
@@ -257,7 +252,7 @@ def test_nonreasoning_model_maps_supported_sampling_and_default_text_format() ->
 
     assert captured_body["temperature"] == 0.25
     assert captured_body["top_p"] == 0.8
-    assert captured_body["top_logprobs"] == 2
+    assert "top_logprobs" not in captured_body
     assert captured_body["text"] == {"format": {"type": "text"}}
     assert "reasoning" not in captured_body
 

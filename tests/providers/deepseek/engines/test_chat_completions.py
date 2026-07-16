@@ -24,11 +24,9 @@ from symai.runtime.models import (
     DeveloperMessage,
     FinishReason,
     ImageContent,
-    JsonObject,
     JsonObjectResponseFormat,
     JsonSchemaResponseFormat,
     LanguageModelRequest,
-    LogitBias,
     MetadataLabel,
     ReasoningConfig,
     ReasoningEffort,
@@ -101,18 +99,8 @@ def test_model_catalog_exposes_normalized_deepseek_capabilities() -> None:
 
     assert engine.provider == "deepseek"
     assert engine.model == "deepseek-v4-flash"
-    assert engine.model_spec.context_tokens == 1_000_000
     assert engine.model_spec.response_tokens == 384_000
     assert engine.model_spec.vision is False
-    assert tuple(role.value for role in engine.model_spec.message_roles) == (
-        "system",
-        "user",
-        "assistant",
-    )
-    assert tuple(value.value for value in engine.model_spec.response_formats) == (
-        "text",
-        "json_object",
-    )
     assert tuple(value.value for value in engine.model_spec.reasoning_fields) == (
         "enabled",
         "effort",
@@ -126,8 +114,6 @@ def test_model_catalog_exposes_normalized_deepseek_capabilities() -> None:
         "temperature",
         "top_p",
         "stop",
-        "logprobs",
-        "top_logprobs",
     )
 
 
@@ -171,8 +157,6 @@ def test_execute_translates_normalized_request_and_response() -> None:
                 sampling=SamplingConfig(
                     max_tokens=512,
                     stop=("END",),
-                    logprobs=True,
-                    top_logprobs=4,
                 ),
                 user="customer_42",
             )
@@ -192,8 +176,6 @@ def test_execute_translates_normalized_request_and_response() -> None:
         "max_tokens": 512,
         "response_format": {"type": "json_object"},
         "stop": ["END"],
-        "logprobs": True,
-        "top_logprobs": 4,
         "user_id": "customer_42",
     }
     assert tuple(output.index for output in response.outputs) == (0, 1)
@@ -258,7 +240,7 @@ def _unsupported_requests() -> list[LanguageModelRequest]:
             messages=(user,),
             response_format=JsonSchemaResponseFormat(
                 name="answer",
-                json_schema=JsonObject.parse({"type": "object"}),
+                json_schema={"type": "object"},
                 strict=True,
             ),
         ),
@@ -294,11 +276,6 @@ def _unsupported_requests() -> list[LanguageModelRequest]:
         LanguageModelRequest(messages=(user,), sampling=SamplingConfig(seed=1)),
         LanguageModelRequest(messages=(user,), sampling=SamplingConfig(frequency_penalty=0.1)),
         LanguageModelRequest(messages=(user,), sampling=SamplingConfig(presence_penalty=0.1)),
-        LanguageModelRequest(
-            messages=(user,),
-            sampling=SamplingConfig(logit_bias=(LogitBias(token="1", value=1),)),
-        ),
-        LanguageModelRequest(messages=(user,), sampling=SamplingConfig(top_logprobs=1)),
         LanguageModelRequest(messages=(user,), sampling=SamplingConfig(temperature=0.5)),
         LanguageModelRequest(
             messages=(user,),

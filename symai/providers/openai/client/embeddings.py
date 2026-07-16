@@ -17,14 +17,13 @@ Model = Literal[
 
 @dataclass(frozen=True, slots=True)
 class ModelSpec:
-    context_tokens: int
     dimensions: int
 
 
 MODEL_SPECS: dict[Model, ModelSpec] = {
-    "text-embedding-ada-002": ModelSpec(8_191, 1_536),
-    "text-embedding-3-small": ModelSpec(8_191, 1_536),
-    "text-embedding-3-large": ModelSpec(8_191, 3_072),
+    "text-embedding-ada-002": ModelSpec(1_536),
+    "text-embedding-3-small": ModelSpec(1_536),
+    "text-embedding-3-large": ModelSpec(3_072),
 }
 
 

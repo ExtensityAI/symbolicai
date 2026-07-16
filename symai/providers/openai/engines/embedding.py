@@ -35,10 +35,7 @@ _DIMENSIONALITY_MODELS: frozenset[embeddings_api.Model] = frozenset(
 
 MODEL_SPECS = MappingProxyType(
     {
-        model: EmbeddingModelSpec(
-            context_tokens=spec.context_tokens,
-            dimensions=spec.dimensions,
-        )
+        model: EmbeddingModelSpec(dimensions=spec.dimensions)
         for model, spec in embeddings_api.MODEL_SPECS.items()
     }
 )

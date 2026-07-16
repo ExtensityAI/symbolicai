@@ -5,11 +5,11 @@ from typing import get_args
 import pytest
 from pydantic import TypeAdapter, ValidationError
 
+import symai.runtime.models as models
 from symai.runtime.models import (
     AssistantMessage,
     AssistantOutputMessage,
     Content,
-    ContentType,
     DeveloperMessage,
     EmbeddingModelSpec,
     EmbeddingRequest,
@@ -18,18 +18,13 @@ from symai.runtime.models import (
     FinishReason,
     ImageContent,
     ImageDetail,
-    JsonArray,
-    JsonEntry,
-    JsonObject,
     JsonObjectResponseFormat,
     JsonSchemaResponseFormat,
     LanguageModelOutput,
     LanguageModelRequest,
     LanguageModelResponse,
     LanguageModelSpec,
-    LogitBias,
     Message,
-    MessageRole,
     MetadataLabel,
     RateLimitMetadata,
     ReasoningConfig,
@@ -38,7 +33,6 @@ from symai.runtime.models import (
     ReasoningFormat,
     ReasoningSummary,
     ResponseFormat,
-    ResponseFormatType,
     ResponseMetadata,
     SamplingConfig,
     SamplingField,
@@ -48,7 +42,6 @@ from symai.runtime.models import (
     TokenUsage,
     UserMessage,
 )
-
 
 
 def test_public_models_are_strict_frozen_and_forbid_extra_fields():
@@ -62,46 +55,35 @@ def test_public_models_are_strict_frozen_and_forbid_extra_fields():
         content.text = "changed"
 
 
-def test_json_boundary_recursively_freezes_and_serializes_values():
-    source = {
-        "name": "Ada",
-        "active": True,
-        "score": 2.5,
-        "attributes": {"level": 3, "empty": None},
-        "tags": ["math", {"year": 1843}],
+def test_json_schema_response_format_round_trips_plain_json_values():
+    schema = {
+        "type": "object",
+        "properties": {
+            "answer": {"type": "string"},
+            "tags": {"type": "array", "items": [{"type": "string"}]},
+        },
+        "required": ["answer"],
     }
 
-    value = JsonObject.parse(source)
-
-    assert isinstance(value.entries, tuple)
-    attributes = value.entries[3].value
-    tags = value.entries[4].value
-    assert isinstance(attributes, JsonObject)
-    assert isinstance(tags, JsonArray)
-    assert isinstance(tags.values, tuple)
-    assert isinstance(tags.values[1], JsonObject)
-    assert value.to_builtin() == source
-
-    with pytest.raises(ValidationError):
-        value.entries = ()
-    with pytest.raises(ValidationError):
-        tags.values = ()
-
-
-@pytest.mark.parametrize("invalid", [nan, inf, -inf, {"bad": object()}])
-def test_json_boundary_rejects_non_json_values(invalid):
-    with pytest.raises((TypeError, ValueError, ValidationError)):
-        JsonObject.parse({"value": invalid})
-
-
-def test_json_object_rejects_duplicate_direct_entries():
-    duplicate_entries = (
-        JsonEntry(key="same", value=1),
-        JsonEntry(key="same", value=2),
+    response_format = JsonSchemaResponseFormat(
+        name="answer",
+        json_schema=schema,
+        strict=True,
     )
 
+    assert response_format.json_schema == schema
+    assert response_format.model_dump(mode="json")["json_schema"] == schema
+
+
+def test_json_schema_response_format_rejects_non_json_values():
     with pytest.raises(ValidationError):
-        JsonObject(entries=duplicate_entries)
+        JsonSchemaResponseFormat.model_validate(
+            {
+                "name": "answer",
+                "json_schema": {"value": object()},
+                "strict": True,
+            }
+        )
 
 
 def test_content_message_and_response_format_unions_are_discriminated():
@@ -159,17 +141,15 @@ def test_assistant_message_requires_content_or_reasoning():
 
 
 def test_json_schema_response_format_uses_non_colliding_public_name():
-    schema_value = {"type": "object", "properties": {"answer": {"type": "string"}}}
-    schema = JsonObject.parse(schema_value)
+    schema = {"type": "object", "properties": {"answer": {"type": "string"}}}
     response_format = JsonSchemaResponseFormat(name="answer", json_schema=schema, strict=True)
 
     assert response_format.type == "json_schema"
-    assert response_format.json_schema is schema
+    assert response_format.json_schema == schema
     assert callable(JsonSchemaResponseFormat.schema)
     assert "schema" not in JsonSchemaResponseFormat.model_fields
-    assert response_format.model_dump()["json_schema"] == schema.model_dump()
+    assert response_format.model_dump()["json_schema"] == schema
     assert "json_schema" in json.loads(response_format.model_dump_json())
-    assert response_format.json_schema.to_builtin() == schema_value
 
 
 @pytest.mark.parametrize(
@@ -181,7 +161,6 @@ def test_json_schema_response_format_uses_non_colliding_public_name():
         ("top_p", 1.1),
         ("frequency_penalty", -2.1),
         ("presence_penalty", 2.1),
-        ("top_logprobs", 21),
     ],
 )
 def test_sampling_numeric_fields_are_finite_and_bounded(field, invalid):
@@ -198,9 +177,6 @@ def test_sampling_and_reasoning_config_are_typed_and_deeply_frozen():
         seed=7,
         frequency_penalty=-0.5,
         presence_penalty=0.5,
-        logprobs=True,
-        top_logprobs=5,
-        logit_bias=(LogitBias(token="42", value=-10.0),),
     )
     reasoning = ReasoningConfig(
         enabled=True,
@@ -211,31 +187,11 @@ def test_sampling_and_reasoning_config_are_typed_and_deeply_frozen():
     )
 
     assert isinstance(sampling.stop, tuple)
-    assert isinstance(sampling.logit_bias, tuple)
     assert reasoning.enabled is True
     with pytest.raises(ValidationError):
         sampling.stop = ("changed",)
     with pytest.raises(ValidationError):
         reasoning.clear = False
-
-
-@pytest.mark.parametrize("value", [nan, inf, -inf, -100.1, 100.1])
-def test_logit_bias_rejects_non_finite_or_out_of_range_values(value):
-    with pytest.raises(ValidationError):
-        LogitBias(token="1", value=value)
-
-
-def test_sampling_logit_bias_preserves_order_and_rejects_duplicate_tokens():
-    first = LogitBias(token="42", value=-10.0)
-    second = LogitBias(token="7", value=5.0)
-
-    sampling = SamplingConfig(logit_bias=(first, second))
-
-    assert sampling.logit_bias == (first, second)
-    with pytest.raises(ValidationError):
-        SamplingConfig(
-            logit_bias=(first, LogitBias(token="42", value=20.0)),
-        )
 
 
 def test_requests_are_concrete_frozen_and_raw_payload_free():
@@ -402,9 +358,7 @@ def test_response_metadata_and_rate_limits_are_frozen_and_bounded():
     assert metadata.response_model == "provider-resolved-cerebras-model"
     assert "model" not in metadata.model_dump()
     with pytest.raises(ValidationError):
-        ResponseMetadata.model_validate(
-            {"provider": "openai", "model": "gpt", "status_code": 200}
-        )
+        ResponseMetadata.model_validate({"provider": "openai", "model": "gpt", "status_code": 200})
     with pytest.raises(ValidationError):
         metadata.status_code = 500
     with pytest.raises(ValidationError):
@@ -429,30 +383,44 @@ def test_response_metadata_accepts_open_provider_ids_and_normalizes_case() -> No
         )
 
 
-
-def test_model_feature_metadata_is_strict_frozen_and_typed():
+def test_model_feature_metadata_contains_only_authoritative_capabilities():
     language_spec = LanguageModelSpec(
-        context_tokens=128_000,
         response_tokens=32_000,
-        message_roles=(MessageRole.SYSTEM, MessageRole.USER, MessageRole.ASSISTANT),
-        content_types=(ContentType.TEXT,),
-        response_formats=(ResponseFormatType.TEXT, ResponseFormatType.JSON_OBJECT),
         reasoning_fields=(ReasoningField.EFFORT,),
         reasoning_efforts=(ReasoningEffort.HIGH,),
         sampling_fields=(SamplingField.MAX_TOKENS, SamplingField.TOP_P),
         vision=False,
     )
-    embedding_spec = EmbeddingModelSpec(context_tokens=8_191, dimensions=1_536)
+    embedding_spec = EmbeddingModelSpec(dimensions=1_536)
 
     assert language_spec.reasoning_efforts == (ReasoningEffort.HIGH,)
     assert embedding_spec.dimensions == 1_536
+    assert {
+        "context_tokens",
+        "message_roles",
+        "content_types",
+        "response_formats",
+    }.isdisjoint(LanguageModelSpec.model_fields)
+    assert "context_tokens" not in EmbeddingModelSpec.model_fields
+    assert {
+        "logprobs",
+        "top_logprobs",
+        "logit_bias",
+    }.isdisjoint(SamplingConfig.model_fields)
+    assert {
+        "JsonEntry",
+        "JsonArray",
+        "JsonObject",
+        "MessageRole",
+        "ContentType",
+        "ResponseFormatType",
+        "LogitBias",
+    }.isdisjoint(vars(models))
+    assert {
+        "logprobs",
+        "top_logprobs",
+        "logit_bias",
+    }.isdisjoint(field.value for field in SamplingField)
+
     with pytest.raises(ValidationError):
-        language_spec.context_tokens = 1
-    with pytest.raises(ValidationError):
-        LanguageModelSpec(
-            context_tokens=0,
-            response_tokens=1,
-            message_roles=(MessageRole.USER,),
-            content_types=(ContentType.TEXT,),
-            response_formats=(ResponseFormatType.TEXT,),
-        )
+        SamplingConfig.model_validate({"logprobs": True})

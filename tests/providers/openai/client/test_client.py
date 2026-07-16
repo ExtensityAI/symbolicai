@@ -229,6 +229,25 @@ def test_responses_request_rejects_tool_calling_parameters():
         )
 
 
+@pytest.mark.parametrize(
+    ("field", "value"),
+    [
+        ("logprobs", True),
+        ("top_logprobs", 5),
+        ("logit_bias", {"123": 1.0}),
+    ],
+)
+def test_responses_request_rejects_removed_logprob_fields(field: str, value: object):
+    with pytest.raises(ValidationError):
+        CreateResponseRequest.model_validate(
+            {
+                "input": "hello",
+                "model": "gpt-5.4",
+                field: value,
+            }
+        )
+
+
 def test_request_models_accept_nonempty_future_model_ids():
     response_request = CreateResponseRequest(
         input="hello",

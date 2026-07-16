@@ -2,7 +2,7 @@ from math import isfinite
 from types import MappingProxyType
 from typing import cast
 
-from pydantic import JsonValue, ValidationError
+from pydantic import ValidationError
 
 from symai.providers.openai.client import Client
 from symai.providers.openai.client import errors as openai_errors
@@ -22,7 +22,6 @@ from symai.runtime.errors import (
 from symai.runtime.models import (
     AssistantMessage,
     AssistantOutputMessage,
-    ContentType,
     FinishReason,
     ImageContent,
     JsonObjectResponseFormat,
@@ -32,12 +31,10 @@ from symai.runtime.models import (
     LanguageModelResponse,
     LanguageModelSpec,
     Message,
-    MessageRole,
     ProviderId,
     ReasoningEffort,
     ReasoningField,
     ReasoningSummary,
-    ResponseFormatType,
     ResponseMetadata,
     SamplingField,
     TextContent,
@@ -48,11 +45,9 @@ from symai.runtime.models import (
 _HIGH_REASONING_EFFORT_MODELS: frozenset[responses_api.Model] = frozenset(
     {"gpt-5.5-pro", "gpt-5.4-pro", "o3-pro"}
 )
-_ALL_MESSAGE_ROLES = tuple(MessageRole)
-_ALL_RESPONSE_FORMATS = tuple(ResponseFormatType)
 _OPENAI_REASONING_FIELDS = (ReasoningField.EFFORT, ReasoningField.SUMMARY)
 _OPENAI_REASONING_SUMMARIES = tuple(ReasoningSummary)
-_OPENAI_BASE_SAMPLING_FIELDS = (SamplingField.MAX_TOKENS, SamplingField.TOP_LOGPROBS)
+_OPENAI_BASE_SAMPLING_FIELDS = (SamplingField.MAX_TOKENS,)
 _OPENAI_NONREASONING_SAMPLING_FIELDS = (
     *_OPENAI_BASE_SAMPLING_FIELDS,
     SamplingField.TEMPERATURE,
@@ -63,11 +58,7 @@ _OPENAI_NONREASONING_SAMPLING_FIELDS = (
 def _normalized_model_spec(spec: responses_api.ModelSpec) -> LanguageModelSpec:
     reasoning = spec.reasoning
     return LanguageModelSpec(
-        context_tokens=spec.context_tokens,
         response_tokens=spec.response_tokens,
-        message_roles=_ALL_MESSAGE_ROLES,
-        content_types=(ContentType.TEXT, ContentType.IMAGE) if spec.vision else (ContentType.TEXT,),
-        response_formats=_ALL_RESPONSE_FORMATS,
         reasoning_fields=_OPENAI_REASONING_FIELDS if reasoning is not None else (),
         reasoning_efforts=tuple(ReasoningEffort(effort.value) for effort in reasoning.efforts)
         if reasoning is not None
@@ -159,7 +150,6 @@ class ResponsesEngine:
             reasoning=self._reasoning_config(request),
             temperature=request.sampling.temperature,
             text=responses_api.TextConfig(format=self._response_format(request)),
-            top_logprobs=request.sampling.top_logprobs,
             top_p=request.sampling.top_p,
             user=request.user,
         )
@@ -228,10 +218,6 @@ class ResponsesEngine:
             self._unsupported("OpenAI Responses does not support normalized frequency penalty")
         if sampling.presence_penalty is not None:
             self._unsupported("OpenAI Responses does not support normalized presence penalty")
-        if sampling.logprobs is not None:
-            self._unsupported("OpenAI Responses does not support normalized logprobs toggle")
-        if sampling.logit_bias:
-            self._unsupported("OpenAI Responses does not support normalized logit bias")
 
     def _input_message(self, message: Message) -> responses_api.InputMessage:
         content: list[responses_api.InputContent] = []
@@ -258,7 +244,7 @@ class ResponsesEngine:
                 type="json_schema",
                 name=response_format.name,
                 description=response_format.description,
-                schema=cast("JsonValue", response_format.json_schema.to_builtin()),
+                schema=response_format.json_schema,
                 strict=response_format.strict,
             )
         if isinstance(response_format, JsonObjectResponseFormat):

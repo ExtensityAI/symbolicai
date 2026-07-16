@@ -34,7 +34,14 @@ def test_endpoint_packages_own_model_catalogs():
     assert cerebras_reasoning is not None
     assert deepseek_reasoning is not None
     assert openai_embeddings.MODEL_SPECS["text-embedding-3-large"].dimensions == 3_072
-    assert cerebras_chat.MODEL_SPECS["gpt-oss-120b"].context_tokens == 131_072
+    assert all(not hasattr(spec, "context_tokens") for spec in cerebras_chat.MODEL_SPECS.values())
+    assert all(not hasattr(spec, "context_tokens") for spec in deepseek_chat.MODEL_SPECS.values())
+    assert all(
+        not hasattr(spec, "context_tokens") for spec in openai_responses.MODEL_SPECS.values()
+    )
+    assert all(
+        not hasattr(spec, "context_tokens") for spec in openai_embeddings.MODEL_SPECS.values()
+    )
     assert deepseek_chat.MODEL_SPECS["deepseek-v4-flash"].vision is False
 
 

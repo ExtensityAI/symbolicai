@@ -54,7 +54,6 @@ class ReasoningSpec:
 
 @dataclass(frozen=True, slots=True)
 class ModelSpec:
-    context_tokens: int
     response_tokens: int
     reasoning: ReasoningSpec | None
     vision: bool = True
@@ -62,16 +61,16 @@ class ModelSpec:
 
 _REASONING = ReasoningSpec(tuple(ReasoningEffort))
 MODEL_SPECS: dict[Model, ModelSpec] = {
-    "gpt-5.5": ModelSpec(1_050_000, 128_000, reasoning=_REASONING),
-    "gpt-5.5-pro": ModelSpec(1_050_000, 128_000, reasoning=_REASONING),
-    "gpt-5.4": ModelSpec(1_050_000, 128_000, reasoning=_REASONING),
-    "gpt-5.4-pro": ModelSpec(1_050_000, 128_000, reasoning=_REASONING),
-    "gpt-5.4-mini": ModelSpec(400_000, 128_000, reasoning=_REASONING),
-    "gpt-5.4-nano": ModelSpec(400_000, 128_000, reasoning=_REASONING),
-    "o3-pro": ModelSpec(200_000, 100_000, reasoning=_REASONING),
-    "o3": ModelSpec(200_000, 100_000, reasoning=_REASONING),
-    "gpt-4.1": ModelSpec(1_047_576, 32_768, reasoning=None),
-    "gpt-4.1-mini": ModelSpec(1_047_576, 32_768, reasoning=None),
+    "gpt-5.5": ModelSpec(128_000, reasoning=_REASONING),
+    "gpt-5.5-pro": ModelSpec(128_000, reasoning=_REASONING),
+    "gpt-5.4": ModelSpec(128_000, reasoning=_REASONING),
+    "gpt-5.4-pro": ModelSpec(128_000, reasoning=_REASONING),
+    "gpt-5.4-mini": ModelSpec(128_000, reasoning=_REASONING),
+    "gpt-5.4-nano": ModelSpec(128_000, reasoning=_REASONING),
+    "o3-pro": ModelSpec(100_000, reasoning=_REASONING),
+    "o3": ModelSpec(100_000, reasoning=_REASONING),
+    "gpt-4.1": ModelSpec(32_768, reasoning=None),
+    "gpt-4.1-mini": ModelSpec(32_768, reasoning=None),
 }
 
 
@@ -245,7 +244,6 @@ class CreateResponseRequest(StrictModel):
     store: bool | None = None
     temperature: float | None = Field(default=None, ge=0, le=2)
     text: TextConfig | None = None
-    top_logprobs: int | None = Field(default=None, ge=0, le=20)
     top_p: float | None = Field(default=None, ge=0, le=1)
     truncation: Truncation | None = None
     user: str | None = None

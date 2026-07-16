@@ -69,10 +69,9 @@ def _absolute_imports(path: Path) -> set[str]:
 # --- Invariant 1: the multimodal (image) path is wired end-to-end --------------------
 
 
-def test_image_content_type_exists() -> None:
-    """The normalized contract must keep an image content type (do not delete as 'unused')."""
-    assert models.ContentType.IMAGE == "image"
-    assert models.ImageContent.__name__ == "ImageContent"
+def test_image_content_model_exists() -> None:
+    """The normalized contract must keep image content (do not delete it with metadata)."""
+    assert models.ImageContent.model_fields["type"].default == "image"
 
 
 def test_every_language_engine_wires_image_content() -> None:
@@ -98,7 +97,9 @@ def test_provider_clients_never_import_runtime() -> None:
     assert CLIENT_FILES, "no provider client modules discovered"
     offenders = {
         str(path.relative_to(PACKAGE)): sorted(
-            m for m in _absolute_imports(path) if m == "symai.runtime" or m.startswith("symai.runtime.")
+            m
+            for m in _absolute_imports(path)
+            if m == "symai.runtime" or m.startswith("symai.runtime.")
         )
         for path in CLIENT_FILES
     }
@@ -155,7 +156,9 @@ def test_every_usage_field_has_a_producing_engine() -> None:
 
 def test_every_rate_limit_field_has_a_producing_engine() -> None:
     produced = _call_kwarg_names(ENGINE_FILES)
-    unproduced = sorted(field for field in models.RateLimitMetadata.model_fields if field not in produced)
+    unproduced = sorted(
+        field for field in models.RateLimitMetadata.model_fields if field not in produced
+    )
     assert not unproduced, f"RateLimitMetadata fields with no engine producer: {unproduced}"
 
 

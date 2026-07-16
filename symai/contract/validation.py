@@ -5,7 +5,7 @@ from pydantic import ValidationError, model_validator
 
 from symai.contract.models import LLMDataModel
 from symai.operations import language_request
-from symai.runtime.models import JsonObject, JsonSchemaResponseFormat, LanguageModelRequest
+from symai.runtime.models import JsonSchemaResponseFormat, LanguageModelRequest
 from symai.runtime.runtime import LanguageModel
 
 
@@ -72,7 +72,7 @@ def structured_request(
     request = language_request(instruction, str(value))
     response_format = JsonSchemaResponseFormat(
         name=output_type.__name__,
-        json_schema=JsonObject.parse(output_type.model_json_schema()),
+        json_schema=output_type.model_json_schema(),
         strict=True,
     )
     return request.model_copy(update={"response_format": response_format})

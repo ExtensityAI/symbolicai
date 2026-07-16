@@ -1,8 +1,6 @@
 from __future__ import annotations
 
-from collections.abc import Mapping, Sequence
 from enum import StrEnum
-from math import isfinite
 from re import fullmatch
 from typing import Annotated, Literal, Self
 
@@ -11,6 +9,7 @@ from pydantic import (
     BeforeValidator,
     ConfigDict,
     Field,
+    JsonValue,
     field_validator,
     model_validator,
 )
@@ -39,24 +38,6 @@ class ImageDetail(StrEnum):
     AUTO = "auto"
     LOW = "low"
     HIGH = "high"
-
-
-class MessageRole(StrEnum):
-    SYSTEM = "system"
-    DEVELOPER = "developer"
-    USER = "user"
-    ASSISTANT = "assistant"
-
-
-class ContentType(StrEnum):
-    TEXT = "text"
-    IMAGE = "image"
-
-
-class ResponseFormatType(StrEnum):
-    TEXT = "text"
-    JSON_OBJECT = "json_object"
-    JSON_SCHEMA = "json_schema"
 
 
 class ReasoningEffort(StrEnum):
@@ -98,9 +79,6 @@ class SamplingField(StrEnum):
     SEED = "seed"
     FREQUENCY_PENALTY = "frequency_penalty"
     PRESENCE_PENALTY = "presence_penalty"
-    LOGPROBS = "logprobs"
-    TOP_LOGPROBS = "top_logprobs"
-    LOGIT_BIAS = "logit_bias"
 
 
 class FinishReason(StrEnum):
@@ -113,83 +91,6 @@ class FinishReason(StrEnum):
 FiniteFloat = Annotated[float, Field(allow_inf_nan=False)]
 NonNegativeFiniteFloat = Annotated[float, Field(ge=0, allow_inf_nan=False)]
 PositiveFiniteFloat = Annotated[float, Field(gt=0, allow_inf_nan=False)]
-JsonScalar = str | bool | int | FiniteFloat | None
-
-
-class JsonEntry(FrozenModel):
-    key: str
-    value: JsonValue
-
-
-class JsonArray(FrozenModel):
-    type: Literal["array"] = "array"
-    values: tuple[JsonValue, ...]
-
-    def to_builtin(self) -> list[object]:
-        return [_json_value_to_builtin(value) for value in self.values]
-
-
-class JsonObject(FrozenModel):
-    type: Literal["object"] = "object"
-    entries: tuple[JsonEntry, ...]
-
-    @model_validator(mode="after")
-    def validate_unique_keys(self) -> Self:
-        keys = tuple(entry.key for entry in self.entries)
-        if len(keys) != len(set(keys)):
-            msg = "JSON object keys must be unique"
-            raise ValueError(msg)
-
-        return self
-
-    @classmethod
-    def parse(cls, mapping: Mapping[str, object]) -> JsonObject:
-        entries = tuple(
-            JsonEntry(key=key, value=_parse_json_value(value)) for key, value in mapping.items()
-        )
-        return cls(entries=entries)
-
-    def to_builtin(self) -> dict[str, object]:
-        return {entry.key: _json_value_to_builtin(entry.value) for entry in self.entries}
-
-
-JsonValue = JsonScalar | JsonObject | JsonArray
-
-JsonEntry.model_rebuild(_types_namespace={"JsonValue": JsonValue})
-JsonArray.model_rebuild(_types_namespace={"JsonValue": JsonValue})
-JsonObject.model_rebuild(_types_namespace={"JsonValue": JsonValue})
-
-
-def _parse_json_value(value: object) -> JsonValue:
-    if value is None or isinstance(value, (str, bool)):
-        return value
-    if isinstance(value, int):
-        return value
-    if isinstance(value, float):
-        if not isfinite(value):
-            msg = "JSON numbers must be finite"
-            raise ValueError(msg)
-
-        return value
-    if isinstance(value, Mapping):
-        if not all(isinstance(key, str) for key in value):
-            msg = "JSON object keys must be strings"
-            raise TypeError(msg)
-
-        return JsonObject.parse(value)
-    if isinstance(value, Sequence) and not isinstance(value, (str, bytes, bytearray)):
-        return JsonArray(values=tuple(_parse_json_value(item) for item in value))
-
-    msg = f"Unsupported JSON value: {type(value).__name__}"
-    raise TypeError(msg)
-
-
-def _json_value_to_builtin(value: JsonValue) -> object:
-    if isinstance(value, JsonObject):
-        return value.to_builtin()
-    if isinstance(value, JsonArray):
-        return value.to_builtin()
-    return value
 
 
 class TextContent(FrozenModel):
@@ -258,7 +159,7 @@ class JsonObjectResponseFormat(FrozenModel):
 class JsonSchemaResponseFormat(FrozenModel):
     type: Literal["json_schema"] = "json_schema"
     name: str = Field(min_length=1)
-    json_schema: JsonObject
+    json_schema: JsonValue
     description: str | None = None
     strict: bool
 
@@ -272,11 +173,6 @@ ResponseFormat = Annotated[
 class MetadataLabel(FrozenModel):
     key: str
     value: str
-
-
-class LogitBias(FrozenModel):
-    token: str
-    value: float = Field(ge=-100, le=100, allow_inf_nan=False)
 
 
 class ReasoningConfig(FrozenModel):
@@ -295,20 +191,6 @@ class SamplingConfig(FrozenModel):
     seed: int | None = None
     frequency_penalty: float | None = Field(default=None, ge=-2, le=2, allow_inf_nan=False)
     presence_penalty: float | None = Field(default=None, ge=-2, le=2, allow_inf_nan=False)
-    logprobs: bool | None = None
-    top_logprobs: int | None = Field(default=None, ge=0, le=20)
-    logit_bias: tuple[LogitBias, ...] = ()
-
-    @model_validator(mode="after")
-    def validate_unique_logit_bias_tokens(self) -> Self:
-        seen: set[str] = set()
-        for bias in self.logit_bias:
-            if bias.token in seen:
-                msg = "Logit bias tokens must be unique"
-                raise ValueError(msg)
-            seen.add(bias.token)
-
-        return self
 
 
 class LanguageModelRequest(FrozenModel):
@@ -426,11 +308,7 @@ class EmbeddingResponse(FrozenModel):
 
 
 class LanguageModelSpec(FrozenModel):
-    context_tokens: int = Field(gt=0)
     response_tokens: int = Field(gt=0)
-    message_roles: tuple[MessageRole, ...] = Field(min_length=1)
-    content_types: tuple[ContentType, ...] = Field(min_length=1)
-    response_formats: tuple[ResponseFormatType, ...] = Field(min_length=1)
     reasoning_fields: tuple[ReasoningField, ...] = ()
     reasoning_efforts: tuple[ReasoningEffort, ...] = ()
     reasoning_summaries: tuple[ReasoningSummary, ...] = ()
@@ -440,7 +318,4 @@ class LanguageModelSpec(FrozenModel):
 
 
 class EmbeddingModelSpec(FrozenModel):
-    context_tokens: int = Field(gt=0)
     dimensions: int = Field(gt=0)
-
-

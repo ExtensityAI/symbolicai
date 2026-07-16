@@ -23,7 +23,6 @@ class ReasoningSpec:
 
 @dataclass(frozen=True, slots=True)
 class ModelSpec:
-    context_tokens: int
     response_tokens: int
     reasoning: ReasoningSpec | None
     vision: bool
@@ -31,8 +30,8 @@ class ModelSpec:
 
 _REASONING = ReasoningSpec(tuple(ReasoningEffort))
 MODEL_SPECS: dict[Model, ModelSpec] = {
-    "deepseek-v4-flash": ModelSpec(1_000_000, 384_000, _REASONING, False),
-    "deepseek-v4-pro": ModelSpec(1_000_000, 384_000, _REASONING, False),
+    "deepseek-v4-flash": ModelSpec(384_000, _REASONING, False),
+    "deepseek-v4-pro": ModelSpec(384_000, _REASONING, False),
 }
 
 
@@ -97,8 +96,6 @@ class CreateChatCompletionRequest(StrictModel):
     stop: str | _StopSequences | None = None
     temperature: float | None = Field(default=None, ge=0, le=2)
     top_p: float | None = Field(default=None, ge=0, le=1)
-    logprobs: bool | None = None
-    top_logprobs: int | None = Field(default=None, ge=0, le=20)
     user_id: _UserID | None = None
 
 

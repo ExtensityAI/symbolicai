@@ -22,7 +22,6 @@ from symai.runtime.errors import (
 )
 from symai.runtime.models import (
     AssistantOutputMessage,
-    ContentType,
     DeveloperMessage,
     FinishReason,
     ImageContent,
@@ -33,11 +32,9 @@ from symai.runtime.models import (
     LanguageModelResponse,
     LanguageModelSpec,
     Message,
-    MessageRole,
     ProviderId,
     ReasoningEffort,
     ReasoningField,
-    ResponseFormatType,
     ResponseMetadata,
     SamplingField,
     SystemMessage,
@@ -46,15 +43,6 @@ from symai.runtime.models import (
     UserMessage,
 )
 
-_DEEPSEEK_MESSAGE_ROLES = (
-    MessageRole.SYSTEM,
-    MessageRole.USER,
-    MessageRole.ASSISTANT,
-)
-_DEEPSEEK_RESPONSE_FORMATS = (
-    ResponseFormatType.TEXT,
-    ResponseFormatType.JSON_OBJECT,
-)
 _DEEPSEEK_REASONING_FIELDS = (
     ReasoningField.ENABLED,
     ReasoningField.EFFORT,
@@ -64,8 +52,6 @@ _DEEPSEEK_SAMPLING_FIELDS = (
     SamplingField.TEMPERATURE,
     SamplingField.TOP_P,
     SamplingField.STOP,
-    SamplingField.LOGPROBS,
-    SamplingField.TOP_LOGPROBS,
 )
 _USER_ID_PATTERN = re.compile(r"[A-Za-z0-9_-]+")
 
@@ -78,11 +64,7 @@ def _normalized_model_spec(spec: chat_api.ModelSpec) -> LanguageModelSpec:
         else ()
     )
     return LanguageModelSpec(
-        context_tokens=spec.context_tokens,
         response_tokens=spec.response_tokens,
-        message_roles=_DEEPSEEK_MESSAGE_ROLES,
-        content_types=(ContentType.TEXT,),
-        response_formats=_DEEPSEEK_RESPONSE_FORMATS,
         reasoning_fields=_DEEPSEEK_REASONING_FIELDS if reasoning is not None else (),
         reasoning_efforts=reasoning_efforts,
         sampling_fields=_DEEPSEEK_SAMPLING_FIELDS,
@@ -196,8 +178,6 @@ class ChatCompletionsEngine:
             stop=sampling.stop or None,
             temperature=sampling.temperature,
             top_p=sampling.top_p,
-            logprobs=sampling.logprobs,
-            top_logprobs=sampling.top_logprobs,
             user_id=request.user,
         )
 
@@ -257,8 +237,6 @@ class ChatCompletionsEngine:
         for field, value in unsupported_sampling:
             if value is not None:
                 self._unsupported(f"DeepSeek does not support normalized {field}")
-        if sampling.logit_bias:
-            self._unsupported("DeepSeek does not support normalized logit bias")
         if (request.reasoning is None or request.reasoning.enabled is not False) and (
             sampling.temperature is not None or sampling.top_p is not None
         ):
@@ -275,8 +253,6 @@ class ChatCompletionsEngine:
             )
         if len(sampling.stop) > 16:
             self._unsupported("DeepSeek supports at most sixteen stop sequences")
-        if sampling.top_logprobs is not None and sampling.logprobs is not True:
-            self._unsupported("DeepSeek top_logprobs requires logprobs to be true")
 
     @staticmethod
     def _message(message: Message) -> chat_api.Message:

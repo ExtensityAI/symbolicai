@@ -2,7 +2,7 @@ from math import isfinite
 from types import MappingProxyType
 from typing import cast
 
-from pydantic import JsonValue, ValidationError
+from pydantic import ValidationError
 
 from symai.providers.cerebras.client import Client
 from symai.providers.cerebras.client import chat as chat_api
@@ -21,7 +21,6 @@ from symai.runtime.errors import (
 )
 from symai.runtime.models import (
     AssistantOutputMessage,
-    ContentType,
     DeveloperMessage,
     FinishReason,
     ImageContent,
@@ -32,13 +31,11 @@ from symai.runtime.models import (
     LanguageModelResponse,
     LanguageModelSpec,
     Message,
-    MessageRole,
     ProviderId,
     RateLimitMetadata,
     ReasoningEffort,
     ReasoningField,
     ReasoningFormat,
-    ResponseFormatType,
     ResponseMetadata,
     SamplingField,
     SystemMessage,
@@ -47,8 +44,6 @@ from symai.runtime.models import (
     UserMessage,
 )
 
-_ALL_MESSAGE_ROLES = tuple(MessageRole)
-_ALL_RESPONSE_FORMATS = tuple(ResponseFormatType)
 _CEREBRAS_REASONING_FIELDS = (
     ReasoningField.EFFORT,
     ReasoningField.FORMAT,
@@ -61,11 +56,7 @@ _CEREBRAS_SAMPLING_FIELDS = tuple(SamplingField)
 def _normalized_model_spec(spec: chat_api.ModelSpec) -> LanguageModelSpec:
     reasoning = spec.reasoning
     return LanguageModelSpec(
-        context_tokens=spec.context_tokens,
         response_tokens=spec.response_tokens,
-        message_roles=_ALL_MESSAGE_ROLES,
-        content_types=(ContentType.TEXT, ContentType.IMAGE),
-        response_formats=_ALL_RESPONSE_FORMATS,
         reasoning_fields=_CEREBRAS_REASONING_FIELDS if reasoning is not None else (),
         reasoning_efforts=tuple(ReasoningEffort(effort.value) for effort in reasoning.efforts)
         if reasoning is not None
@@ -163,8 +154,6 @@ class ChatCompletionsEngine:
             model=self.model,
             clear_thinking=reasoning.clear if reasoning is not None else None,
             frequency_penalty=sampling.frequency_penalty,
-            logit_bias={bias.token: bias.value for bias in sampling.logit_bias} or None,
-            logprobs=sampling.logprobs,
             max_completion_tokens=sampling.max_tokens,
             presence_penalty=sampling.presence_penalty,
             reasoning_effort=(
@@ -181,7 +170,6 @@ class ChatCompletionsEngine:
             seed=sampling.seed,
             stop=sampling.stop or None,
             temperature=sampling.temperature,
-            top_logprobs=sampling.top_logprobs,
             top_p=sampling.top_p,
             user=request.user,
         )
@@ -231,8 +219,6 @@ class ChatCompletionsEngine:
             )
         if len(sampling.stop) > 4:
             self._unsupported("Cerebras supports at most four stop sequences")
-        if sampling.top_logprobs is not None and sampling.logprobs is not True:
-            self._unsupported("Cerebras top_logprobs requires logprobs to be true")
 
     def _message(self, message: Message) -> chat_api.Message:
         if isinstance(message, SystemMessage):
@@ -276,7 +262,7 @@ class ChatCompletionsEngine:
                 json_schema=chat_api.JsonSchemaSpec(
                     name=response_format.name,
                     description=response_format.description,
-                    body=cast("JsonValue", response_format.json_schema.to_builtin()),
+                    body=response_format.json_schema,
                     strict=response_format.strict,
                 ),
             )

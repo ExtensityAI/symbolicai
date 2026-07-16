@@ -29,8 +29,6 @@ def test_chat_request_serializes_supported_non_streaming_surface():
         stop=("END",),
         temperature=0.5,
         top_p=0.9,
-        logprobs=True,
-        top_logprobs=5,
         user_id="customer_42",
     )
 
@@ -48,8 +46,6 @@ def test_chat_request_serializes_supported_non_streaming_surface():
         "stop": ["END"],
         "temperature": 0.5,
         "top_p": 0.9,
-        "logprobs": True,
-        "top_logprobs": 5,
         "user_id": "customer_42",
     }
 
@@ -82,7 +78,6 @@ def test_assistant_message_rejects_beta_prefix_fields():
         ("stop", tuple(str(index) for index in range(17))),
         ("temperature", 2.1),
         ("top_p", 1.1),
-        ("top_logprobs", 21),
         ("user_id", "contains spaces"),
         ("user_id", "x" * 513),
     ],
@@ -108,6 +103,25 @@ def test_chat_request_rejects_streaming_tools_and_unknown_fields():
 
     with pytest.raises(ValidationError):
         CreateChatCompletionRequest(**payload)
+
+
+@pytest.mark.parametrize(
+    ("field", "value"),
+    [
+        ("logprobs", True),
+        ("top_logprobs", 5),
+        ("logit_bias", {"123": 1.0}),
+    ],
+)
+def test_chat_request_rejects_removed_logprob_fields(field: str, value: object):
+    with pytest.raises(ValidationError):
+        CreateChatCompletionRequest.model_validate(
+            {
+                "model": "deepseek-v4-flash",
+                "messages": (UserMessage(role="user", content="hello"),),
+                field: value,
+            }
+        )
 
 
 def test_chat_response_models_reasoning_cache_usage_and_logprobs():

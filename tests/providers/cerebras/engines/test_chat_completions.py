@@ -27,10 +27,8 @@ from symai.runtime.models import (
     FinishReason,
     ImageContent,
     ImageDetail,
-    JsonObject,
     JsonSchemaResponseFormat,
     LanguageModelRequest,
-    LogitBias,
     MetadataLabel,
     ReasoningConfig,
     ReasoningEffort,
@@ -151,13 +149,11 @@ def test_execute_translates_normalized_request_and_response() -> None:
                 ),
                 response_format=JsonSchemaResponseFormat(
                     name="answer",
-                    json_schema=JsonObject.parse(
-                        {
-                            "type": "object",
-                            "properties": {"answer": {"type": "string"}},
-                            "required": ["answer"],
-                        }
-                    ),
+                    json_schema={
+                        "type": "object",
+                        "properties": {"answer": {"type": "string"}},
+                        "required": ["answer"],
+                    },
                     description="Answer shape",
                     strict=True,
                 ),
@@ -173,13 +169,7 @@ def test_execute_translates_normalized_request_and_response() -> None:
                     stop=("END",),
                     seed=42,
                     frequency_penalty=-0.5,
-                    logit_bias=(
-                        LogitBias(token="123", value=-100),
-                        LogitBias(token="456", value=100),
-                    ),
                     presence_penalty=0.5,
-                    logprobs=True,
-                    top_logprobs=4,
                 ),
                 user="customer-42",
             )
@@ -210,8 +200,6 @@ def test_execute_translates_normalized_request_and_response() -> None:
         "model": "gpt-oss-120b",
         "clear_thinking": False,
         "frequency_penalty": -0.5,
-        "logit_bias": {"123": -100.0, "456": 100.0},
-        "logprobs": True,
         "max_completion_tokens": 512,
         "presence_penalty": 0.5,
         "reasoning_effort": "high",
@@ -232,7 +220,6 @@ def test_execute_translates_normalized_request_and_response() -> None:
         "seed": 42,
         "stop": ["END"],
         "temperature": 0.5,
-        "top_logprobs": 4,
         "top_p": 0.9,
         "user": "customer-42",
     }
