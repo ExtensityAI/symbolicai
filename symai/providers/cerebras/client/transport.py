@@ -1,10 +1,8 @@
 """Typed HTTP response envelopes and rate-limit metadata returned by Cerebras."""
 
-from typing import TypeVar
-
+from symai.providers._client import transport as _transport
 from symai.providers._client.models import StrictModel
-
-T = TypeVar("T")
+from symai.providers._client.transport import ResponseMetadata as BaseResponseMetadata
 
 
 class RateLimitState(StrictModel):
@@ -16,13 +14,8 @@ class RateLimitState(StrictModel):
     reset_tokens_minute: float | None = None
 
 
-class ResponseMetadata(StrictModel):
-    status_code: int
-    request_id: str | None
-    retry_after: float | None
+class ResponseMetadata(BaseResponseMetadata):
     rate_limit: RateLimitState
 
 
-class APIResponse[T](StrictModel):
-    data: T
-    metadata: ResponseMetadata
+APIResponse = _transport.APIResponse

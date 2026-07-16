@@ -1,4 +1,7 @@
+import httpx
 from pydantic import SecretStr
+
+from symai.providers._client.transport import ResponseMetadata
 
 
 def authorization_header(api_key: SecretStr) -> str:
@@ -36,3 +39,11 @@ def parse_optional_int(value: str | None) -> int | None:
         return int(value)
     except ValueError:
         return None
+
+
+def extract_response_metadata(response: httpx.Response) -> ResponseMetadata:
+    return ResponseMetadata(
+        status_code=response.status_code,
+        request_id=response.headers.get("x-request-id"),
+        retry_after=parse_optional_float(response.headers.get("retry-after")),
+    )

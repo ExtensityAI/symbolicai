@@ -1,5 +1,8 @@
 import httpx
 
+from symai.providers._client.headers import (
+    extract_response_metadata as extract_base_response_metadata,
+)
 from symai.providers._client.headers import parse_optional_float, parse_optional_int
 from symai.providers.cerebras.client.transport import RateLimitState, ResponseMetadata
 
@@ -14,20 +17,17 @@ RESET_TOKENS_MINUTE_HEADER = "x-ratelimit-reset-tokens-minute"
 
 
 def extract_response_metadata(response: httpx.Response) -> ResponseMetadata:
+    base_metadata = extract_base_response_metadata(response)
     headers = response.headers
     return ResponseMetadata(
-        status_code=response.status_code,
-        request_id=headers.get(REQUEST_ID_HEADER),
-        retry_after=parse_optional_float(headers.get(RETRY_AFTER_HEADER)),
+        status_code=base_metadata.status_code,
+        request_id=base_metadata.request_id,
+        retry_after=base_metadata.retry_after,
         rate_limit=RateLimitState(
             limit_requests_day=parse_optional_int(headers.get(LIMIT_REQUESTS_DAY_HEADER)),
             limit_tokens_minute=parse_optional_int(headers.get(LIMIT_TOKENS_MINUTE_HEADER)),
-            remaining_requests_day=parse_optional_int(
-                headers.get(REMAINING_REQUESTS_DAY_HEADER)
-            ),
-            remaining_tokens_minute=parse_optional_int(
-                headers.get(REMAINING_TOKENS_MINUTE_HEADER)
-            ),
+            remaining_requests_day=parse_optional_int(headers.get(REMAINING_REQUESTS_DAY_HEADER)),
+            remaining_tokens_minute=parse_optional_int(headers.get(REMAINING_TOKENS_MINUTE_HEADER)),
             reset_requests_day=parse_optional_float(headers.get(RESET_REQUESTS_DAY_HEADER)),
             reset_tokens_minute=parse_optional_float(headers.get(RESET_TOKENS_MINUTE_HEADER)),
         ),

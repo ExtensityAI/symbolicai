@@ -1,4 +1,4 @@
-from symai.providers.settings import HttpProviderSettings
+from symai.providers._client.settings import HttpProviderSettings
 
 
 class ResponsesSettings(HttpProviderSettings):

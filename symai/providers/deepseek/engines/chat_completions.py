@@ -1,25 +1,18 @@
 import re
-from math import isfinite
 from types import MappingProxyType
-from typing import Never, cast
+from typing import override
 
 from pydantic import ValidationError
 
+from symai.providers._client import errors as client_errors
+from symai.providers._engine.base import ProviderEngine, retry_after_seconds
+from symai.providers._engine.gate import validate_language_model_capabilities
+from symai.providers._engine.mapping import ClientErrorMessages, raise_mapped_client_error
 from symai.providers.deepseek.client import Client
 from symai.providers.deepseek.client import chat as chat_api
-from symai.providers.deepseek.client import errors as deepseek_errors
 from symai.providers.deepseek.client.transport import APIResponse
 from symai.providers.deepseek.client.transport import ResponseMetadata as DeepSeekResponseMetadata
-from symai.runtime.errors import (
-    AuthenticationError,
-    ErrorMetadata,
-    ExecutionError,
-    InvalidResponseError,
-    RateLimitError,
-    TransportError,
-    UnsupportedFeatureError,
-    UnsupportedModelError,
-)
+from symai.runtime.errors import ErrorMetadata, InvalidResponseError
 from symai.runtime.models import (
     AssistantOutputMessage,
     DeveloperMessage,
@@ -85,68 +78,38 @@ _FINISH_REASONS = MappingProxyType(
     }
 )
 
+_ERROR_MESSAGES = ClientErrorMessages(
+    authentication="DeepSeek rejected authentication",
+    rate_limit="DeepSeek rate-limited the request",
+    response="DeepSeek returned an invalid response",
+    transport="DeepSeek transport failed",
+    api="DeepSeek API request failed with status {status_code}",
+)
 
-class ChatCompletionsEngine:
+
+class ChatCompletionsEngine(ProviderEngine[Client, chat_api.Model, LanguageModelSpec]):
     provider: ProviderId = "deepseek"
 
+    @override
     def __init__(self, *, client: Client, model: str) -> None:
-        try:
-            try:
-                model_spec = MODEL_SPECS[model]
-            except KeyError as error:
-                msg = f"Unsupported DeepSeek language model: {model}"
-                raise UnsupportedModelError(msg) from error
-
-            self._client = client
-            self._model: chat_api.Model = cast("chat_api.Model", model)
-            self._model_spec = model_spec
-            self._closed = False
-        except BaseException as error:
-            try:
-                client.close()
-            except BaseException as cleanup_error:
-                error.add_note(f"Engine construction cleanup failed: {cleanup_error!r}")
-            raise
-
-    def close(self) -> None:
-        if self._closed:
-            return
-
-        self._closed = True
-        self._client.close()
-
-    @property
-    def model(self) -> chat_api.Model:
-        return self._model
-
-    @property
-    def model_spec(self) -> LanguageModelSpec:
-        return self._model_spec
+        super().__init__(
+            client=client,
+            model=model,
+            model_specs=MODEL_SPECS,
+            unsupported_model_message="Unsupported DeepSeek language model: {model}",
+        )
 
     def execute(self, request: LanguageModelRequest) -> LanguageModelResponse:
         provider_request = self._build_request(request)
         try:
             response = self._client.create_chat_completion(provider_request)
-        except deepseek_errors.AuthError as error:
-            metadata = self._error_metadata(error.metadata)
-            msg = "DeepSeek rejected authentication"
-            raise AuthenticationError(msg, metadata=metadata) from error
-        except deepseek_errors.RateLimitError as error:
-            metadata = self._error_metadata(error.metadata)
-            msg = "DeepSeek rate-limited the request"
-            raise RateLimitError(msg, metadata=metadata) from error
-        except deepseek_errors.ResponseError as error:
-            metadata = self._error_metadata(error.metadata)
-            msg = "DeepSeek returned an invalid response"
-            raise InvalidResponseError(msg, metadata=metadata) from error
-        except deepseek_errors.TransportError as error:
-            metadata = ErrorMetadata(provider=self.provider, model=self.model)
-            msg = "DeepSeek transport failed"
-            raise TransportError(msg, metadata=metadata) from error
-        except deepseek_errors.APIError as error:
-            metadata = self._error_metadata(error.metadata)
-            msg = f"DeepSeek API request failed with status {error.metadata.status_code}"
-            raise ExecutionError(msg, metadata=metadata) from error
+        except client_errors.ClientError as error:
+            raise_mapped_client_error(
+                error,
+                provider=self.provider,
+                model=self.model,
+                messages=_ERROR_MESSAGES,
+            )
 
         return self._parse_response(response)
 
@@ -197,8 +160,6 @@ class ChatCompletionsEngine:
         for message in request.messages:
             if isinstance(message, DeveloperMessage):
                 self._unsupported("DeepSeek does not support developer messages")
-            if any(isinstance(content, ImageContent) for content in message.content):
-                self._unsupported("DeepSeek does not support image content")
             if (
                 not isinstance(message, (SystemMessage, UserMessage))
                 and message.reasoning is not None
@@ -207,49 +168,23 @@ class ChatCompletionsEngine:
                     "DeepSeek does not support normalized assistant reasoning prefixes"
                 )
 
+        validate_language_model_capabilities(
+            request,
+            spec=self.model_spec,
+            provider="DeepSeek",
+            model=self.model,
+        )
+
         reasoning = request.reasoning
-        if reasoning is not None:
-            if reasoning.summary is not None:
-                self._unsupported("DeepSeek reasoning does not support normalized summaries")
-            if reasoning.format is not None:
-                self._unsupported("DeepSeek reasoning does not support normalized formats")
-            if reasoning.clear is not None:
-                self._unsupported("DeepSeek reasoning does not support normalized clear behavior")
-            if (
-                reasoning.effort is not None
-                and reasoning.effort not in self.model_spec.reasoning_efforts
-            ):
-                self._unsupported(
-                    f"DeepSeek model {self.model} does not support reasoning effort "
-                    f"{reasoning.effort.value}"
-                )
-            if reasoning.enabled is False and reasoning.effort is not None:
-                self._unsupported(
-                    "DeepSeek reasoning effort cannot be set when thinking is disabled"
-                )
+        if reasoning is not None and reasoning.enabled is False and reasoning.effort is not None:
+            self._unsupported("DeepSeek reasoning effort cannot be set when thinking is disabled")
 
         sampling = request.sampling
-        unsupported_sampling = (
-            ("seed", sampling.seed),
-            ("frequency_penalty", sampling.frequency_penalty),
-            ("presence_penalty", sampling.presence_penalty),
-        )
-        for field, value in unsupported_sampling:
-            if value is not None:
-                self._unsupported(f"DeepSeek does not support normalized {field}")
         if (request.reasoning is None or request.reasoning.enabled is not False) and (
             sampling.temperature is not None or sampling.top_p is not None
         ):
             self._unsupported(
                 "DeepSeek ignores temperature and top_p unless thinking is explicitly disabled"
-            )
-        if (
-            sampling.max_tokens is not None
-            and sampling.max_tokens > self.model_spec.response_tokens
-        ):
-            self._unsupported(
-                f"DeepSeek model {self.model} supports at most "
-                f"{self.model_spec.response_tokens} output tokens"
             )
         if len(sampling.stop) > 16:
             self._unsupported("DeepSeek supports at most sixteen stop sequences")
@@ -278,7 +213,7 @@ class ChatCompletionsEngine:
 
     def _parse_response(
         self,
-        response: APIResponse[chat_api.ChatCompletion],
+        response: APIResponse[chat_api.ChatCompletion, DeepSeekResponseMetadata],
     ) -> LanguageModelResponse:
         raw = response.data
         error_metadata = self._error_metadata(response.metadata)
@@ -334,7 +269,7 @@ class ChatCompletionsEngine:
 
     def _response_metadata(
         self,
-        response: APIResponse[chat_api.ChatCompletion],
+        response: APIResponse[chat_api.ChatCompletion, DeepSeekResponseMetadata],
     ) -> ResponseMetadata:
         raw = response.data
         return ResponseMetadata(
@@ -343,7 +278,7 @@ class ChatCompletionsEngine:
             response_model=raw.model,
             status_code=response.metadata.status_code,
             request_id=response.metadata.request_id,
-            retry_after=self._retry_after(response.metadata.retry_after),
+            retry_after=retry_after_seconds(response.metadata.retry_after),
             response_id=raw.id,
             created_at=raw.created,
             system_fingerprint=raw.system_fingerprint,
@@ -392,13 +327,5 @@ class ChatCompletionsEngine:
             provider=self.provider,
             model=self.model,
             request_id=metadata.request_id,
-            retry_after=self._retry_after(metadata.retry_after),
+            retry_after=retry_after_seconds(metadata.retry_after),
         )
-
-    @staticmethod
-    def _retry_after(value: float | None) -> float | None:
-        return value if value is not None and value >= 0 and isfinite(value) else None
-
-    @staticmethod
-    def _unsupported(message: str) -> Never:
-        raise UnsupportedFeatureError(message)

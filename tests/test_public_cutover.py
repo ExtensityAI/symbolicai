@@ -7,9 +7,6 @@ import subprocess
 import sys
 from pathlib import Path
 
-import symai.decoding as decoding
-import symai.function as function
-import symai.loading as loading
 import symai.runtime.config as config
 import symai.runtime.errors as errors
 import symai.runtime.models as models
@@ -79,6 +76,7 @@ DELETED_FILES = {
     "backend/streaming.py",
     "backend/transport.py",
     "backend/usage.py",
+    "providers/settings.py",
 }
 
 DELETED_TREES = {
@@ -279,13 +277,14 @@ def test_deleted_production_tree_and_adapter_inventory() -> None:
 
     assert {path.name for path in (PACKAGE / "providers/_client").glob("*.py")} == {
         "__init__.py",
+        "client.py",
         "errors.py",
         "headers.py",
         "models.py",
+        "settings.py",
+        "transport.py",
     }
-    assert {
-        path.name for path in (PACKAGE / "providers/openai/client").glob("*.py")
-    } == {
+    assert {path.name for path in (PACKAGE / "providers/openai/client").glob("*.py")} == {
         "__init__.py",
         "_client.py",
         "embeddings.py",
@@ -294,13 +293,13 @@ def test_deleted_production_tree_and_adapter_inventory() -> None:
         "responses.py",
         "transport.py",
     }
-    assert {
-        path.name for path in (PACKAGE / "providers/openai/engines").glob("*.py")
-    } == {"__init__.py", "embedding.py", "responses.py"}
+    assert {path.name for path in (PACKAGE / "providers/openai/engines").glob("*.py")} == {
+        "__init__.py",
+        "embedding.py",
+        "responses.py",
+    }
     for provider in ("cerebras", "deepseek"):
-        assert {
-            path.name for path in (PACKAGE / f"providers/{provider}/client").glob("*.py")
-        } == {
+        assert {path.name for path in (PACKAGE / f"providers/{provider}/client").glob("*.py")} == {
             "__init__.py",
             "_client.py",
             "chat.py",
@@ -308,9 +307,10 @@ def test_deleted_production_tree_and_adapter_inventory() -> None:
             "headers.py",
             "transport.py",
         }
-        assert {
-            path.name for path in (PACKAGE / f"providers/{provider}/engines").glob("*.py")
-        } == {"__init__.py", "chat_completions.py"}
+        assert {path.name for path in (PACKAGE / f"providers/{provider}/engines").glob("*.py")} == {
+            "__init__.py",
+            "chat_completions.py",
+        }
 
 
 def _production_ast_violations(package: Path) -> list[str]:

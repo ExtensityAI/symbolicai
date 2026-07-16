@@ -75,13 +75,18 @@ def test_image_content_model_exists() -> None:
 
 
 def test_every_language_engine_wires_image_content() -> None:
-    """Each language engine must still reference ``ImageContent`` — the multimodal request path."""
-    language_engines = [p for p in ENGINE_FILES if p.name not in {"__init__.py", "embedding.py"}]
+    """Each language engine must preserve the shared multimodal capability gate."""
+    language_engines = [
+        path for path in ENGINE_FILES if path.name not in {"__init__.py", "embedding.py"}
+    ]
     assert language_engines, "no language engine modules discovered"
+    gate_source = (PACKAGE / "providers" / "_engine" / "gate.py").read_text(encoding="utf-8")
+    assert "ImageContent" in gate_source
     missing = [
-        str(p.relative_to(PACKAGE))
-        for p in language_engines
-        if "ImageContent" not in p.read_text(encoding="utf-8")
+        str(path.relative_to(PACKAGE))
+        for path in language_engines
+        if "ImageContent" not in path.read_text(encoding="utf-8")
+        and "validate_language_model_capabilities" not in path.read_text(encoding="utf-8")
     ]
     assert not missing, f"language engines dropped the image/multimodal path: {missing}"
 

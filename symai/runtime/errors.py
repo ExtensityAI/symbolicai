@@ -19,8 +19,6 @@ class SymbolicAIRuntimeError(Exception):
     """Base exception for provider-neutral runtime failures."""
 
 
-
-
 class RuntimeClosedError(SymbolicAIRuntimeError):
     """Raised when a runtime cannot accept work in its current lifecycle state."""
 

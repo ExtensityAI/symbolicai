@@ -180,7 +180,11 @@ def contract(
                         )
                     attempts = result.attempts
                     exception = _violation(stage, result)
-                    contract_result = _unwrap(result.value) if result.value is not None else None
+                    contract_result = (
+                        _unwrap(result.value)
+                        if output_is_dynamic and result.value is not None
+                        else result.value
+                    )
                     self.contract_successful = result.succeeded
                     self.contract_result = contract_result
                     self.contract_exception = exception

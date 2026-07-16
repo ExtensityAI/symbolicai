@@ -1,29 +1,21 @@
-from math import isfinite
 from types import MappingProxyType
-from typing import cast
+from typing import override
 
 from pydantic import ValidationError
 
+from symai.providers._client import errors as client_errors
+from symai.providers._engine.base import ProviderEngine, retry_after_seconds
+from symai.providers._engine.gate import validate_language_model_capabilities
+from symai.providers._engine.mapping import ClientErrorMessages, raise_mapped_client_error
 from symai.providers.openai.client import Client
-from symai.providers.openai.client import errors as openai_errors
 from symai.providers.openai.client import responses as responses_api
 from symai.providers.openai.client.transport import APIResponse
 from symai.providers.openai.client.transport import ResponseMetadata as OpenAIResponseMetadata
-from symai.runtime.errors import (
-    AuthenticationError,
-    ErrorMetadata,
-    ExecutionError,
-    InvalidResponseError,
-    RateLimitError,
-    TransportError,
-    UnsupportedFeatureError,
-    UnsupportedModelError,
-)
+from symai.runtime.errors import ErrorMetadata, InvalidResponseError
 from symai.runtime.models import (
     AssistantMessage,
     AssistantOutputMessage,
     FinishReason,
-    ImageContent,
     JsonObjectResponseFormat,
     JsonSchemaResponseFormat,
     LanguageModelOutput,
@@ -39,7 +31,6 @@ from symai.runtime.models import (
     SamplingField,
     TextContent,
     TokenUsage,
-    UserMessage,
 )
 
 _HIGH_REASONING_EFFORT_MODELS: frozenset[responses_api.Model] = frozenset(
@@ -75,68 +66,38 @@ MODEL_SPECS = MappingProxyType(
     {model: _normalized_model_spec(spec) for model, spec in responses_api.MODEL_SPECS.items()}
 )
 
+_ERROR_MESSAGES = ClientErrorMessages(
+    authentication="OpenAI rejected authentication",
+    rate_limit="OpenAI rate-limited the request",
+    response="OpenAI returned an invalid response",
+    transport="OpenAI transport failed",
+    api="OpenAI API request failed with status {status_code}",
+)
 
-class ResponsesEngine:
+
+class ResponsesEngine(ProviderEngine[Client, responses_api.Model, LanguageModelSpec]):
     provider: ProviderId = "openai"
 
+    @override
     def __init__(self, *, client: Client, model: str) -> None:
-        try:
-            try:
-                model_spec = MODEL_SPECS[model]
-            except KeyError as error:
-                msg = f"Unsupported OpenAI language model: {model}"
-                raise UnsupportedModelError(msg) from error
-
-            self._client = client
-            self._model: responses_api.Model = cast("responses_api.Model", model)
-            self._model_spec = model_spec
-            self._closed = False
-        except BaseException as error:
-            try:
-                client.close()
-            except BaseException as cleanup_error:
-                error.add_note(f"Engine construction cleanup failed: {cleanup_error!r}")
-            raise
-
-    def close(self) -> None:
-        if self._closed:
-            return
-
-        self._closed = True
-        self._client.close()
-
-    @property
-    def model(self) -> responses_api.Model:
-        return self._model
-
-    @property
-    def model_spec(self) -> LanguageModelSpec:
-        return self._model_spec
+        super().__init__(
+            client=client,
+            model=model,
+            model_specs=MODEL_SPECS,
+            unsupported_model_message="Unsupported OpenAI language model: {model}",
+        )
 
     def execute(self, request: LanguageModelRequest) -> LanguageModelResponse:
         provider_request = self._build_request(request)
         try:
             response = self._client.create_response(provider_request)
-        except openai_errors.AuthError as error:
-            metadata = self._error_metadata(error.metadata)
-            msg = "OpenAI rejected authentication"
-            raise AuthenticationError(msg, metadata=metadata) from error
-        except openai_errors.RateLimitError as error:
-            metadata = self._error_metadata(error.metadata)
-            msg = "OpenAI rate-limited the request"
-            raise RateLimitError(msg, metadata=metadata) from error
-        except openai_errors.ResponseError as error:
-            metadata = self._error_metadata(error.metadata)
-            msg = "OpenAI returned an invalid response"
-            raise InvalidResponseError(msg, metadata=metadata) from error
-        except openai_errors.TransportError as error:
-            metadata = ErrorMetadata(provider=self.provider, model=self.model)
-            msg = "OpenAI transport failed"
-            raise TransportError(msg, metadata=metadata) from error
-        except openai_errors.APIError as error:
-            metadata = self._error_metadata(error.metadata)
-            msg = f"OpenAI API request failed with status {error.metadata.status_code}"
-            raise ExecutionError(msg, metadata=metadata) from error
+        except client_errors.ClientError as error:
+            raise_mapped_client_error(
+                error,
+                provider=self.provider,
+                model=self.model,
+                messages=_ERROR_MESSAGES,
+            )
 
         return self._parse_response(response)
 
@@ -158,66 +119,16 @@ class ResponsesEngine:
         for message in request.messages:
             if isinstance(message, AssistantMessage) and message.reasoning is not None:
                 self._unsupported("OpenAI does not accept normalized assistant reasoning input")
-            if isinstance(message, UserMessage):
-                has_image = any(isinstance(content, ImageContent) for content in message.content)
-                if has_image and not self.model_spec.vision:
-                    self._unsupported(f"OpenAI model {self.model} does not support image input")
 
-        reasoning = request.reasoning
-        if not self.model_spec.reasoning_fields:
-            if reasoning is not None:
-                self._unsupported(f"OpenAI model {self.model} does not support reasoning")
-        elif reasoning is not None:
-            if reasoning.enabled is not None:
-                self._unsupported("OpenAI reasoning does not support the normalized enabled field")
-            if reasoning.format is not None:
-                self._unsupported("OpenAI reasoning does not support normalized reasoning format")
-            if reasoning.clear is not None:
-                self._unsupported("OpenAI reasoning does not support normalized reasoning clearing")
-            if (
-                reasoning.effort is not None
-                and reasoning.effort not in self.model_spec.reasoning_efforts
-            ):
-                self._unsupported(
-                    f"OpenAI model {self.model} does not support reasoning effort "
-                    f"{reasoning.effort.value}"
-                )
-            if (
-                reasoning.summary is not None
-                and reasoning.summary not in self.model_spec.reasoning_summaries
-            ):
-                self._unsupported(
-                    f"OpenAI model {self.model} does not support reasoning summary "
-                    f"{reasoning.summary.value}"
-                )
+        if request.reasoning is not None and not self.model_spec.reasoning_fields:
+            self._unsupported(f"OpenAI model {self.model} does not support reasoning")
 
-        sampling = request.sampling
-        if (
-            sampling.max_tokens is not None
-            and sampling.max_tokens > self.model_spec.response_tokens
-        ):
-            self._unsupported(
-                f"OpenAI model {self.model} supports at most "
-                f"{self.model_spec.response_tokens} output tokens"
-            )
-        if (
-            sampling.temperature is not None
-            and SamplingField.TEMPERATURE not in self.model_spec.sampling_fields
-        ):
-            self._unsupported(f"OpenAI model {self.model} does not support temperature")
-        if (
-            sampling.top_p is not None
-            and SamplingField.TOP_P not in self.model_spec.sampling_fields
-        ):
-            self._unsupported(f"OpenAI model {self.model} does not support top_p")
-        if sampling.stop:
-            self._unsupported("OpenAI Responses does not support normalized stop sequences")
-        if sampling.seed is not None:
-            self._unsupported("OpenAI Responses does not support normalized seed")
-        if sampling.frequency_penalty is not None:
-            self._unsupported("OpenAI Responses does not support normalized frequency penalty")
-        if sampling.presence_penalty is not None:
-            self._unsupported("OpenAI Responses does not support normalized presence penalty")
+        validate_language_model_capabilities(
+            request,
+            spec=self.model_spec,
+            provider="OpenAI",
+            model=self.model,
+        )
 
     def _input_message(self, message: Message) -> responses_api.InputMessage:
         content: list[responses_api.InputContent] = []
@@ -277,7 +188,7 @@ class ResponsesEngine:
         return responses_api.ReasoningConfig(effort=effort, summary=summary)
 
     def _parse_response(
-        self, response: APIResponse[responses_api.Response]
+        self, response: APIResponse[responses_api.Response, OpenAIResponseMetadata]
     ) -> LanguageModelResponse:
         raw = response.data
         error_metadata = self._execution_metadata(response)
@@ -374,7 +285,7 @@ class ResponsesEngine:
 
     def _response_metadata(
         self,
-        response: APIResponse[responses_api.Response],
+        response: APIResponse[responses_api.Response, OpenAIResponseMetadata],
     ) -> ResponseMetadata:
         raw = response.data
         normalized_usage = self._usage(response)
@@ -384,7 +295,7 @@ class ResponsesEngine:
             response_model=raw.model,
             status_code=response.metadata.status_code,
             request_id=response.metadata.request_id,
-            retry_after=self._retry_after(response.metadata.retry_after),
+            retry_after=retry_after_seconds(response.metadata.retry_after),
             response_id=raw.id,
             created_at=raw.created_at,
             usage=normalized_usage,
@@ -392,7 +303,7 @@ class ResponsesEngine:
 
     def _usage(
         self,
-        response: APIResponse[responses_api.Response],
+        response: APIResponse[responses_api.Response, OpenAIResponseMetadata],
     ) -> TokenUsage | None:
         usage = response.data.usage
         if usage is None:
@@ -417,24 +328,16 @@ class ResponsesEngine:
 
     def _execution_metadata(
         self,
-        response: APIResponse[responses_api.Response],
+        response: APIResponse[responses_api.Response, OpenAIResponseMetadata],
     ) -> ErrorMetadata:
         return self._error_metadata(response.metadata)
 
     def _error_metadata(self, metadata: OpenAIResponseMetadata) -> ErrorMetadata:
         request_id = metadata.request_id
-        retry_after = self._retry_after(metadata.retry_after)
+        retry_after = retry_after_seconds(metadata.retry_after)
         return ErrorMetadata(
             provider=self.provider,
             model=self.model,
             request_id=request_id,
             retry_after=retry_after,
         )
-
-    @staticmethod
-    def _retry_after(value: float | None) -> float | None:
-        return value if value is not None and value >= 0 and isfinite(value) else None
-
-    @staticmethod
-    def _unsupported(message: str) -> None:
-        raise UnsupportedFeatureError(message)

@@ -1,24 +1,16 @@
-from math import isfinite
 from types import MappingProxyType
-from typing import cast
+from typing import cast, override
 
 from pydantic import ValidationError
 
+from symai.providers._client import errors as client_errors
+from symai.providers._engine.base import ProviderEngine, retry_after_seconds
+from symai.providers._engine.mapping import ClientErrorMessages, raise_mapped_client_error
 from symai.providers.openai.client import Client
 from symai.providers.openai.client import embeddings as embeddings_api
-from symai.providers.openai.client import errors as openai_errors
 from symai.providers.openai.client.transport import APIResponse
 from symai.providers.openai.client.transport import ResponseMetadata as OpenAIResponseMetadata
-from symai.runtime.errors import (
-    AuthenticationError,
-    ErrorMetadata,
-    ExecutionError,
-    InvalidResponseError,
-    RateLimitError,
-    TransportError,
-    UnsupportedFeatureError,
-    UnsupportedModelError,
-)
+from symai.runtime.errors import ErrorMetadata, InvalidResponseError, UnsupportedFeatureError
 from symai.runtime.models import (
     EmbeddingModelSpec,
     EmbeddingRequest,
@@ -40,43 +32,26 @@ MODEL_SPECS = MappingProxyType(
     }
 )
 
+_ERROR_MESSAGES = ClientErrorMessages(
+    authentication="OpenAI rejected authentication",
+    rate_limit="OpenAI rate-limited the request",
+    response="OpenAI returned an invalid embedding response",
+    transport="OpenAI embedding transport failed",
+    api="OpenAI embedding request failed with status {status_code}",
+)
 
-class EmbeddingEngine:
+
+class EmbeddingEngine(ProviderEngine[Client, embeddings_api.Model, EmbeddingModelSpec]):
     provider: ProviderId = "openai"
 
+    @override
     def __init__(self, *, client: Client, model: str) -> None:
-        try:
-            try:
-                model_spec = MODEL_SPECS[model]
-            except KeyError as error:
-                msg = f"Unsupported OpenAI embedding model: {model}"
-                raise UnsupportedModelError(msg) from error
-
-            self._client = client
-            self._model: embeddings_api.Model = cast("embeddings_api.Model", model)
-            self._model_spec = model_spec
-            self._closed = False
-        except BaseException as error:
-            try:
-                client.close()
-            except BaseException as cleanup_error:
-                error.add_note(f"Engine construction cleanup failed: {cleanup_error!r}")
-            raise
-
-    def close(self) -> None:
-        if self._closed:
-            return
-
-        self._closed = True
-        self._client.close()
-
-    @property
-    def model(self) -> embeddings_api.Model:
-        return self._model
-
-    @property
-    def model_spec(self) -> EmbeddingModelSpec:
-        return self._model_spec
+        super().__init__(
+            client=client,
+            model=model,
+            model_specs=MODEL_SPECS,
+            unsupported_model_message="Unsupported OpenAI embedding model: {model}",
+        )
 
     def execute(self, request: EmbeddingRequest) -> EmbeddingResponse:
         self._validate_request(request)
@@ -89,26 +64,13 @@ class EmbeddingEngine:
         )
         try:
             response = self._client.create_embeddings(provider_request)
-        except openai_errors.AuthError as error:
-            metadata = self._error_metadata(error.metadata)
-            msg = "OpenAI rejected authentication"
-            raise AuthenticationError(msg, metadata=metadata) from error
-        except openai_errors.RateLimitError as error:
-            metadata = self._error_metadata(error.metadata)
-            msg = "OpenAI rate-limited the request"
-            raise RateLimitError(msg, metadata=metadata) from error
-        except openai_errors.ResponseError as error:
-            metadata = self._error_metadata(error.metadata)
-            msg = "OpenAI returned an invalid embedding response"
-            raise InvalidResponseError(msg, metadata=metadata) from error
-        except openai_errors.TransportError as error:
-            metadata = ErrorMetadata(provider=self.provider, model=self.model)
-            msg = "OpenAI embedding transport failed"
-            raise TransportError(msg, metadata=metadata) from error
-        except openai_errors.APIError as error:
-            metadata = self._error_metadata(error.metadata)
-            msg = f"OpenAI embedding request failed with status {error.metadata.status_code}"
-            raise ExecutionError(msg, metadata=metadata) from error
+        except client_errors.ClientError as error:
+            raise_mapped_client_error(
+                error,
+                provider=self.provider,
+                model=self.model,
+                messages=_ERROR_MESSAGES,
+            )
 
         return self._parse_response(
             response,
@@ -132,7 +94,7 @@ class EmbeddingEngine:
 
     def _parse_response(
         self,
-        response: APIResponse[embeddings_api.EmbeddingList],
+        response: APIResponse[embeddings_api.EmbeddingList, OpenAIResponseMetadata],
         *,
         expected_count: int,
         expected_dimensions: int,
@@ -173,7 +135,7 @@ class EmbeddingEngine:
                 response_model=raw.model,
                 status_code=response.metadata.status_code,
                 request_id=response.metadata.request_id,
-                retry_after=self._retry_after(response.metadata.retry_after),
+                retry_after=retry_after_seconds(response.metadata.retry_after),
                 usage=normalized_usage,
             )
             return EmbeddingResponse(vectors=vectors, metadata=metadata)
@@ -202,9 +164,5 @@ class EmbeddingEngine:
             provider=self.provider,
             model=self.model,
             request_id=metadata.request_id if metadata is not None else None,
-            retry_after=self._retry_after(metadata.retry_after if metadata is not None else None),
+            retry_after=retry_after_seconds(metadata.retry_after if metadata is not None else None),
         )
-
-    @staticmethod
-    def _retry_after(value: float | None) -> float | None:
-        return value if value is not None and value >= 0 and isfinite(value) else None

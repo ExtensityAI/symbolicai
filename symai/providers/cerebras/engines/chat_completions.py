@@ -1,24 +1,17 @@
-from math import isfinite
 from types import MappingProxyType
-from typing import cast
+from typing import cast, override
 
 from pydantic import ValidationError
 
+from symai.providers._client import errors as client_errors
+from symai.providers._engine.base import ProviderEngine, retry_after_seconds
+from symai.providers._engine.gate import validate_language_model_capabilities
+from symai.providers._engine.mapping import ClientErrorMessages, raise_mapped_client_error
 from symai.providers.cerebras.client import Client
 from symai.providers.cerebras.client import chat as chat_api
-from symai.providers.cerebras.client import errors as cerebras_errors
 from symai.providers.cerebras.client.transport import APIResponse
 from symai.providers.cerebras.client.transport import ResponseMetadata as CerebrasResponseMetadata
-from symai.runtime.errors import (
-    AuthenticationError,
-    ErrorMetadata,
-    ExecutionError,
-    InvalidResponseError,
-    RateLimitError,
-    TransportError,
-    UnsupportedFeatureError,
-    UnsupportedModelError,
-)
+from symai.runtime.errors import ErrorMetadata, InvalidResponseError
 from symai.runtime.models import (
     AssistantOutputMessage,
     DeveloperMessage,
@@ -80,68 +73,38 @@ _FINISH_REASONS = MappingProxyType(
     }
 )
 
+_ERROR_MESSAGES = ClientErrorMessages(
+    authentication="Cerebras rejected authentication",
+    rate_limit="Cerebras rate-limited the request",
+    response="Cerebras returned an invalid response",
+    transport="Cerebras transport failed",
+    api="Cerebras API request failed with status {status_code}",
+)
 
-class ChatCompletionsEngine:
+
+class ChatCompletionsEngine(ProviderEngine[Client, chat_api.Model, LanguageModelSpec]):
     provider: ProviderId = "cerebras"
 
+    @override
     def __init__(self, *, client: Client, model: str) -> None:
-        try:
-            try:
-                model_spec = MODEL_SPECS[model]
-            except KeyError as error:
-                msg = f"Unsupported Cerebras language model: {model}"
-                raise UnsupportedModelError(msg) from error
-
-            self._client = client
-            self._model: chat_api.Model = cast("chat_api.Model", model)
-            self._model_spec = model_spec
-            self._closed = False
-        except BaseException as error:
-            try:
-                client.close()
-            except BaseException as cleanup_error:
-                error.add_note(f"Engine construction cleanup failed: {cleanup_error!r}")
-            raise
-
-    def close(self) -> None:
-        if self._closed:
-            return
-
-        self._closed = True
-        self._client.close()
-
-    @property
-    def model(self) -> chat_api.Model:
-        return self._model
-
-    @property
-    def model_spec(self) -> LanguageModelSpec:
-        return self._model_spec
+        super().__init__(
+            client=client,
+            model=model,
+            model_specs=MODEL_SPECS,
+            unsupported_model_message="Unsupported Cerebras language model: {model}",
+        )
 
     def execute(self, request: LanguageModelRequest) -> LanguageModelResponse:
         provider_request = self._build_request(request)
         try:
             response = self._client.create_chat_completion(provider_request)
-        except cerebras_errors.AuthError as error:
-            metadata = self._error_metadata(error.metadata)
-            msg = "Cerebras rejected authentication"
-            raise AuthenticationError(msg, metadata=metadata) from error
-        except cerebras_errors.RateLimitError as error:
-            metadata = self._error_metadata(error.metadata)
-            msg = "Cerebras rate-limited the request"
-            raise RateLimitError(msg, metadata=metadata) from error
-        except cerebras_errors.ResponseError as error:
-            metadata = self._error_metadata(error.metadata)
-            msg = "Cerebras returned an invalid response"
-            raise InvalidResponseError(msg, metadata=metadata) from error
-        except cerebras_errors.TransportError as error:
-            metadata = ErrorMetadata(provider=self.provider, model=self.model)
-            msg = "Cerebras transport failed"
-            raise TransportError(msg, metadata=metadata) from error
-        except cerebras_errors.APIError as error:
-            metadata = self._error_metadata(error.metadata)
-            msg = f"Cerebras API request failed with status {error.metadata.status_code}"
-            raise ExecutionError(msg, metadata=metadata) from error
+        except client_errors.ClientError as error:
+            raise_mapped_client_error(
+                error,
+                provider=self.provider,
+                model=self.model,
+                messages=_ERROR_MESSAGES,
+            )
 
         return self._parse_response(response)
 
@@ -183,40 +146,14 @@ class ChatCompletionsEngine:
                 if isinstance(content, ImageContent) and content.detail is not None:
                     self._unsupported("Cerebras does not support normalized image detail")
 
-        reasoning = request.reasoning
-        if reasoning is not None:
-            if reasoning.enabled is not None:
-                self._unsupported(
-                    "Cerebras reasoning does not support the normalized enabled field"
-                )
-            if reasoning.summary is not None:
-                self._unsupported("Cerebras reasoning does not support normalized summaries")
-            if (
-                reasoning.effort is not None
-                and reasoning.effort not in self.model_spec.reasoning_efforts
-            ):
-                self._unsupported(
-                    f"Cerebras model {self.model} does not support reasoning effort "
-                    f"{reasoning.effort.value}"
-                )
-            if (
-                reasoning.format is not None
-                and reasoning.format not in self.model_spec.reasoning_formats
-            ):
-                self._unsupported(
-                    f"Cerebras model {self.model} does not support reasoning format "
-                    f"{reasoning.format.value}"
-                )
+        validate_language_model_capabilities(
+            request,
+            spec=self.model_spec,
+            provider="Cerebras",
+            model=self.model,
+        )
 
         sampling = request.sampling
-        if (
-            sampling.max_tokens is not None
-            and sampling.max_tokens > self.model_spec.response_tokens
-        ):
-            self._unsupported(
-                f"Cerebras model {self.model} supports at most "
-                f"{self.model_spec.response_tokens} output tokens"
-            )
         if len(sampling.stop) > 4:
             self._unsupported("Cerebras supports at most four stop sequences")
 
@@ -272,7 +209,7 @@ class ChatCompletionsEngine:
 
     def _parse_response(
         self,
-        response: APIResponse[chat_api.ChatCompletion],
+        response: APIResponse[chat_api.ChatCompletion, CerebrasResponseMetadata],
     ) -> LanguageModelResponse:
         raw = response.data
         error_metadata = self._error_metadata(response.metadata)
@@ -328,7 +265,7 @@ class ChatCompletionsEngine:
 
     def _response_metadata(
         self,
-        response: APIResponse[chat_api.ChatCompletion],
+        response: APIResponse[chat_api.ChatCompletion, CerebrasResponseMetadata],
     ) -> ResponseMetadata:
         raw = response.data
         usage = self._usage(raw.usage)
@@ -339,7 +276,7 @@ class ChatCompletionsEngine:
             response_model=raw.model,
             status_code=response.metadata.status_code,
             request_id=response.metadata.request_id,
-            retry_after=self._retry_after(response.metadata.retry_after),
+            retry_after=retry_after_seconds(response.metadata.retry_after),
             response_id=raw.id,
             created_at=raw.created,
             system_fingerprint=raw.system_fingerprint,
@@ -428,13 +365,5 @@ class ChatCompletionsEngine:
             provider=self.provider,
             model=self.model,
             request_id=metadata.request_id,
-            retry_after=self._retry_after(metadata.retry_after),
+            retry_after=retry_after_seconds(metadata.retry_after),
         )
-
-    @staticmethod
-    def _retry_after(value: float | None) -> float | None:
-        return value if value is not None and value >= 0 and isfinite(value) else None
-
-    @staticmethod
-    def _unsupported(message: str) -> None:
-        raise UnsupportedFeatureError(message)
