@@ -5,6 +5,7 @@ from pydantic import TypeAdapter
 
 from symai.runtime.config import EngineConfig, ImplementationId, RuntimeConfig
 from symai.runtime.engines import EmbeddingEngine, LanguageModelEngine
+from symai.runtime.observability import Observer
 from symai.runtime.runtime import Runtime
 
 LanguageModelLoader = Callable[[Mapping[str, object]], LanguageModelEngine]
@@ -21,6 +22,7 @@ def load_runtime(
     *,
     language_model_loaders: Sequence[LanguageModelLoaderEntry],
     embedding_loaders: Sequence[EmbeddingLoaderEntry],
+    observers: Sequence[Observer] = (),
 ) -> Runtime:
     """Load an immutable envelope after a complete allocation-free preflight."""
     language_index, embedding_index = _preflight(
@@ -45,6 +47,7 @@ def load_runtime(
         return Runtime(
             language_models=language_models,
             embeddings=embeddings,
+            observers=observers,
         )
     except BaseException as error:
         cleanup_failures: list[BaseException] = []

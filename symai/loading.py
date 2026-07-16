@@ -10,6 +10,7 @@ from symai.runtime.loading import (
 from symai.runtime.loading import (
     load_runtime as _load_runtime,
 )
+from symai.runtime.observability import Observer
 from symai.runtime.runtime import Runtime
 
 
@@ -62,6 +63,7 @@ def load_runtime(
     *,
     language_model_loaders: Sequence[LanguageModelLoaderEntry] = (),
     embedding_loaders: Sequence[EmbeddingLoaderEntry] = (),
+    observers: Sequence[Observer] = (),
 ) -> Runtime:
     """Compose immutable built-ins with explicit extension entries and load a Runtime."""
     return _load_runtime(
@@ -71,4 +73,5 @@ def load_runtime(
             *language_model_loaders,
         ),
         embedding_loaders=(*BUILTIN_EMBEDDING_LOADERS, *embedding_loaders),
+        observers=observers,
     )

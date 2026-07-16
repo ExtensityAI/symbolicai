@@ -6,6 +6,7 @@ from pydantic import BaseModel, ConfigDict
 from symai.loading import load_runtime as load_builtin_runtime
 from symai.runtime.config import EngineConfig, RuntimeConfig
 from symai.runtime.loading import load_runtime
+from symai.runtime.observability import ExecutionRecord
 from symai.runtime.models import (
     AssistantOutputMessage,
     EmbeddingRequest,
@@ -84,6 +85,7 @@ def _request() -> LanguageModelRequest:
 
 def test_credential_free_external_loader_constructs_and_executes() -> None:
     events: list[str] = []
+    records: list[ExecutionRecord] = []
 
     def load_local(settings: Mapping[str, object]) -> LocalEngine:
         parsed = LocalSettings.model_validate(dict(settings))
@@ -103,12 +105,43 @@ def test_credential_free_external_loader_constructs_and_executes() -> None:
         config,
         language_model_loaders=(("local:gguf", load_local),),
         embedding_loaders=(),
+        observers=(records.append,),
     )
     with runtime:
         response = runtime.execute(_request())
 
     assert response.outputs[0].text == "loaded:/models/tiny.gguf"
     assert events == ["load", "execute", "close"]
+    assert [record.engine for record in records] == ["offline"]
+
+
+def test_builtin_loader_forwards_execution_observers() -> None:
+    events: list[str] = []
+    records: list[ExecutionRecord] = []
+
+    def load_local(settings: Mapping[str, object]) -> LocalEngine:
+        parsed = LocalSettings.model_validate(dict(settings))
+        events.append("load")
+        return LocalEngine(parsed, events)
+
+    config = RuntimeConfig(
+        language_models={
+            "offline": EngineConfig(
+                implementation="local:observed",
+                settings={"model_path": "/models/tiny.gguf", "context_size": 4096},
+            )
+        },
+    )
+
+    runtime = load_builtin_runtime(
+        config,
+        language_model_loaders=(("local:observed", load_local),),
+        observers=(records.append,),
+    )
+    with runtime:
+        runtime.execute(_request())
+
+    assert [record.engine for record in records] == ["offline"]
 
 
 def test_all_implementation_references_are_checked_before_allocation() -> None:

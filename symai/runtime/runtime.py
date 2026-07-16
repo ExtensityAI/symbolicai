@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from enum import StrEnum
 from threading import Lock, get_ident
+from time import monotonic
 from types import MappingProxyType, TracebackType
 from typing import TYPE_CHECKING, Literal, cast, overload
 
@@ -13,6 +14,7 @@ from symai.runtime.errors import (
     EngineCapabilityError,
     RuntimeClosedError,
     RuntimeOwnershipError,
+    SymbolicAIRuntimeError,
     UnknownEngineError,
     UnsupportedCapabilityError,
 )
@@ -22,9 +24,16 @@ from symai.runtime.models import (
     LanguageModelRequest,
     LanguageModelResponse,
 )
+from symai.runtime.observability import (
+    ExecutionRecord,
+    Observer,
+    _record_from_error,
+    _record_from_response,
+    logger,
+)
 
 if TYPE_CHECKING:
-    from collections.abc import Mapping
+    from collections.abc import Mapping, Sequence
 
 type _OwnedEngine = LanguageModelEngine | EmbeddingEngine
 
@@ -61,6 +70,7 @@ class Runtime:
         "_embeddings",
         "_language_models",
         "_lifecycle_lock",
+        "_observers",
         "_owner_thread_id",
         "_state",
     )
@@ -70,13 +80,18 @@ class Runtime:
         *,
         language_models: Mapping[str, LanguageModelEngine] | None = None,
         embeddings: Mapping[str, EmbeddingEngine] | None = None,
+        observers: Sequence[Observer] = (),
     ) -> None:
         language_snapshot = dict(language_models) if language_models is not None else {}
         embedding_snapshot = dict(embeddings) if embeddings is not None else {}
+        observer_snapshot = tuple(observers)
 
         self._validate_aliases("language-model", language_snapshot)
         self._validate_aliases("embedding", embedding_snapshot)
         self._validate_engine_identities(language_snapshot, embedding_snapshot)
+        if not all(callable(observer) for observer in observer_snapshot):
+            msg = "Each execution observer must be callable"
+            raise TypeError(msg)
         if not language_snapshot and not embedding_snapshot:
             msg = "Runtime requires at least one engine"
             raise ValueError(msg)
@@ -89,6 +104,7 @@ class Runtime:
         self._language_models = MappingProxyType(language_snapshot)
         self._embeddings = MappingProxyType(embedding_snapshot)
         self._lifecycle_lock = Lock()
+        self._observers = observer_snapshot
         self._owner_thread_id: int | None = None
         self._state = _RuntimeState.CREATED
 
@@ -204,6 +220,7 @@ class Runtime:
                     self._embeddings,
                     engine,
                 )
+                capability: EngineCapability = "language_model"
                 selected = self._language_models[engine_name]
             elif isinstance(request, EmbeddingRequest):
                 engine_name = self._resolve_engine_name(
@@ -212,14 +229,43 @@ class Runtime:
                     self._language_models,
                     engine,
                 )
+                capability = "embedding"
                 selected = self._embeddings[engine_name]
             else:
                 msg = f"Unsupported runtime request type: {type(request).__name__}"
                 raise TypeError(msg)
 
-        if isinstance(request, LanguageModelRequest):
-            return cast("LanguageModelEngine", selected).execute(request)
-        return cast("EmbeddingEngine", selected).execute(request)
+        start = monotonic()
+        try:
+            if isinstance(request, LanguageModelRequest):
+                response = cast("LanguageModelEngine", selected).execute(request)
+            else:
+                response = cast("EmbeddingEngine", selected).execute(request)
+        except SymbolicAIRuntimeError as error:
+            record = _record_from_error(
+                engine_name,
+                capability,
+                error,
+                monotonic() - start,
+            )
+            self._emit(record)
+            raise
+
+        record = _record_from_response(
+            engine_name,
+            capability,
+            response,
+            monotonic() - start,
+        )
+        self._emit(record)
+        return response
+
+    def _emit(self, record: ExecutionRecord) -> None:
+        for observer in self._observers:
+            try:
+                observer(record)
+            except Exception:
+                logger.exception("Execution observer failed")
 
     @staticmethod
     def _resolve_engine_name(

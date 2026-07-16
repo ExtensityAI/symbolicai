@@ -8,8 +8,10 @@ import pytest
 from symai.runtime.errors import (
     AmbiguousEngineError,
     EngineCapabilityError,
+    ErrorMetadata,
     RuntimeClosedError,
     RuntimeOwnershipError,
+    TransportError,
     UnknownEngineError,
 )
 from symai.runtime.models import (
@@ -25,6 +27,7 @@ from symai.runtime.models import (
     TextContent,
     UserMessage,
 )
+from symai.runtime.observability import ExecutionRecord
 from symai.runtime.runtime import Runtime
 
 LANGUAGE_REQUEST = LanguageModelRequest(
@@ -509,3 +512,102 @@ def test_runtime_can_be_owned_entirely_by_its_entering_thread() -> None:
     error = capture_thread_error(use_runtime)
 
     assert error is None
+
+
+def test_execution_observers_receive_normalized_success_records_in_order() -> None:
+    records: list[ExecutionRecord] = []
+    observers: list[Callable[[ExecutionRecord], None]] = [
+        records.append,
+        records.append,
+    ]
+    runtime = Runtime(
+        language_models={"chat": LanguageEngine()},
+        observers=observers,
+    )
+    observers.clear()
+
+    with runtime:
+        assert runtime.execute(LANGUAGE_REQUEST, engine="chat") is LANGUAGE_RESPONSE
+
+    assert len(records) == 2
+    assert records[0] is records[1]
+    record = records[0]
+    assert record.engine == "chat"
+    assert record.capability == "language_model"
+    assert record.provider == "openai"
+    assert record.requested_model == "test-model"
+    assert record.response_model is None
+    assert record.usage is None
+    assert record.rate_limit is None
+    assert record.request_id is None
+    assert record.status_code == 200
+    assert record.duration_s >= 0
+    assert record.error is None
+    assert not hasattr(record, "request")
+
+
+def test_execution_observers_receive_runtime_errors_before_reraise() -> None:
+    failure = TransportError(
+        "transport failed",
+        metadata=ErrorMetadata(
+            provider="openai",
+            model="test-model",
+            request_id="request-error",
+        ),
+    )
+    records: list[ExecutionRecord] = []
+
+    class FailingEngine(LanguageEngine):
+        def execute(self, request: LanguageModelRequest, /) -> LanguageModelResponse:
+            self.requests.append(request)
+            raise failure
+
+    runtime = Runtime(
+        language_models={"chat": FailingEngine()},
+        observers=(records.append,),
+    )
+
+    with runtime, pytest.raises(TransportError) as caught:
+        runtime.execute(LANGUAGE_REQUEST, engine="chat")
+
+    assert caught.value is failure
+    assert len(records) == 1
+    record = records[0]
+    assert record.provider == "openai"
+    assert record.requested_model == "test-model"
+    assert record.request_id == "request-error"
+    assert record.status_code is None
+    assert record.error is failure
+
+
+def test_observer_failures_are_logged_without_breaking_execution(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    records: list[ExecutionRecord] = []
+
+    def fail(_record: ExecutionRecord) -> None:
+        msg = "observer failed"
+        raise RuntimeError(msg)
+
+    runtime = Runtime(
+        language_models={"chat": LanguageEngine()},
+        observers=(fail, records.append),
+    )
+
+    with caplog.at_level("ERROR", logger="symai.runtime"), runtime:
+        assert runtime.execute(LANGUAGE_REQUEST) is LANGUAGE_RESPONSE
+
+    assert len(records) == 1
+    assert "Execution observer failed" in caplog.text
+
+
+def test_runtime_rejects_noncallable_observers_before_ownership_transfer() -> None:
+    engine = LanguageEngine()
+
+    with pytest.raises(TypeError, match="observer"):
+        Runtime(
+            language_models={"chat": engine},
+            observers=(object(),),  # pyright: ignore[reportArgumentType]
+        )
+
+    assert engine.close_count == 0
