@@ -52,15 +52,23 @@ All 30 Critical and High findings (1 Critical + 29 High):
 
 | Outcome | Count | Findings |
 |---|---:|---|
-| Closed, with evidence | 25 | BUG-05/API-01 *(the only Critical)*, BUG-01, BUG-06, BUG-07, BUG-09, BUG-10, BUG-13, SEC-01, SEC-03, SOC-01, SOC-02, CX-01, CX-02, CON-01, CON-02, FP-08, EXT-01, EXT-05, TST-01, PERSIST-01, CLI-02, API-02, API-05, DOC-01, PKG-01 |
-| Partially closed | 1 | SOC-03 (see below) |
+| Closed, with evidence | 26 | BUG-05/API-01 *(the only Critical)*, BUG-01, BUG-06, BUG-07, BUG-09, BUG-10, BUG-13, SEC-01, SEC-03, SOC-01, SOC-02, CX-01, CX-02, CON-01, CON-02, FP-08, EXT-01, EXT-05, TST-01, PERSIST-01, CLI-02, API-02, API-05, DOC-01, PKG-01 |
+| Closed (see the correction below) | 1 | SOC-03 |
 | Withdrawn / reframed by spec | 1 | UX-01 (FIXPLAN §9 — automatic POST retry is a correctness hazard, not a missing feature) |
 | Accepted product decision | 2 | FP-02, FP-03 (FIXPLAN §2 / §13 capability-scope deferral) |
 | **Open — needs a ruling** | **1** | **FP-04** (token counting / context truncation: no spec rules on it) |
 
 Closed by deleting the defective surface rather than repairing it: PERSIST-01, SEC-03, CLI-02, BUG-13.
 
-**SOC-03 is partial.** The three language-model engines now share `_engine/base.py`, `_engine/mapping.py`, and `_engine/gate.py`, and duplication measurably fell (openai↔cerebras 188→125 identical lines, openai↔deepseek 164→119). But Cerebras↔DeepSeek stayed at **59%** — 188 identical lines across 13 runs of ≥4 lines. `_parse_response`, `_output`, `_response_metadata`, and `_error_metadata` (byte-identical modulo a type annotation) are still copied, because the shared OpenAI-compatible chat module FIXPLAN §10 names was never built. §10's acceptance — "adding an OpenAI-compatible provider supplies a small schema/policy delta" — is therefore not met at the engine layer: a third such provider means re-copying ~190 lines.
+**SOC-03 is closed. The earlier "partial" verdict rested on a bad measurement, and the remedy it demanded was refuted by building it.**
+
+The residual Cerebras↔DeepSeek overlap was reported as 188 identical lines across 13 runs (59%). Re-measured with `difflib.SequenceMatcher` (autojunk off): **138 lines across 19 runs — 42%** of the DeepSeek file, much of it imports, `def` headers, blanks, and `)`. The claim that `_parse_response`, `_output`, `_response_metadata`, and `_error_metadata` were "byte-identical modulo a type annotation" held for exactly **one** of the four: `_error_metadata`. `_response_metadata` differs because Cerebras carries real `x-ratelimit-*` state; `_parse_response` differs because the two client schemas disagree about whether `index` is optional; `_output` differs on message shape and `reasoning` vs `reasoning_content`.
+
+FIXPLAN §10's "common OpenAI-compatible chat mechanics" was then prototyped and measured. A shared `normalized_chat_response` choice-loop **adds 44 lines**: the loop is ~14 lines, but extracting it needs four message strings and three callbacks per site, so each call site plus the shared module costs more than the duplication it removes. It also *loses* a real distinction — unifying the index checks to `index is None or index < 0` makes Cerebras report "did not contain an index" for a negative one, and no test covers that, so it would have shipped silently. The duplication is cheaper than the abstraction.
+
+What §10 actually asks for — "adding an OpenAI-compatible provider supplies a small schema/policy delta" — is delivered at the **loader**, not at response normalization: `_engine/loading.py::resolve_http_engine` now states the two-phase rule once, and `ProviderEngine._error_metadata` shares the one derivation all four engines had in common. The engines' remaining divergence is earned: finish reasons, usage accounting, message shape, rate-limit headers, response formats, stop limits, and reasoning controls all differ for real provider reasons.
+
+**Open follow-up (not SOC-03):** the Cerebras and DeepSeek chat clients make opposite tolerance decisions about the same wire contract. Cerebras declares `ChatCompletion.id/choices/created/model/usage`, `Choice.index/message/finish_reason`, and `ResponseMessage.role` all `| None` (`cerebras/client/chat.py:244-262`); DeepSeek declares the same fields required (`deepseek/client/chat.py:102-134`). The Cerebras engine then re-derives required-ness by hand (`chat_completions.py:238-240,257-260,261-263`, plus a laundering `cast("int", choice.index)`), doing what pydantic does for free on the DeepSeek side — and *that*, not copy-paste, is the source of the `_parse_response`/`_output` divergence. One of the two is wrong about the live API. Settling it needs a canary, and it should be settled before anyone revisits §10: if Cerebras's fields are genuinely required, the two bodies converge for a real reason and a shared loop might finally cost ~0.
 
 Medium findings closed during this sequence and annotated in place: PERF-01, DOC-02, PKG-02.
 
