@@ -22,7 +22,7 @@ def embed(
     *,
     dimensions: int | None = None,
     user: str | None = None,
-) -> Symbol[list[list[float]]]:
+) -> Symbol[tuple[tuple[float, ...], ...]]:
     inputs = _text_inputs(source)
     response = model.execute(
         embedding_request(inputs, dimensions=dimensions, user=user),

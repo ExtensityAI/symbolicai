@@ -404,7 +404,7 @@ def test_embedding_is_explicit_ordered_and_executes_once_without_function(
             user="tenant-user",
         )
 
-    assert result.value == [[1.0, 2.0], [3.0, 4.0]]
+    assert result.value == ((1.0, 2.0), (3.0, 4.0))
     assert result is not source
     assert source.value == ("first", "second")
     assert selected.requests == [

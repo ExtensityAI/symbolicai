@@ -116,7 +116,7 @@ def test_embedding_parser_orders_provider_vectors_and_rejects_duplicates() -> No
         metadata=METADATA,
     )
 
-    assert parse_embedding_response(response) == [[1.0, 2.0], [3.0, 4.0]]
+    assert parse_embedding_response(response) == ((1.0, 2.0), (3.0, 4.0))
 
     duplicate = response.model_copy(
         update={

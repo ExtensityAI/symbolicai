@@ -95,15 +95,21 @@ def embedding_request(
     )
 
 
-def parse_embedding_response(response: EmbeddingResponse) -> list[list[float]]:
+def parse_embedding_response(response: EmbeddingResponse) -> tuple[tuple[float, ...], ...]:
+    """Return the response vectors in input order, one tuple of floats per input.
+
+    The vectors are returned as validated, not re-copied: `EmbeddingVector.values` is
+    already an immutable tuple of finite floats, so handing it back directly is both
+    exact and free.
+    """
     indices = tuple(vector.index for vector in response.vectors)
     if len(indices) != len(set(indices)):
         msg = "Embedding response indices must be unique"
         raise ValueError(msg)
-    return [
-        [float(value) for value in vector.values]
-        for vector in sorted(response.vectors, key=lambda vector: vector.index)
-    ]
+
+    return tuple(
+        vector.values for vector in sorted(response.vectors, key=lambda vector: vector.index)
+    )
 
 
 def _string_tuple(values: Sequence[str], field: str) -> tuple[str, ...]:

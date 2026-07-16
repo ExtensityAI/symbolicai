@@ -10,7 +10,6 @@ from pydantic import (
     ConfigDict,
     Field,
     JsonValue,
-    field_validator,
     model_validator,
 )
 
@@ -311,16 +310,11 @@ class LanguageModelResponse(FrozenModel):
 
 class EmbeddingVector(FrozenModel):
     index: int = Field(ge=0)
+    # `values` is validated entirely by the annotation: strict mode rejects str and bool,
+    # and allow_inf_nan=False rejects inf and nan. A Python-level pre-scan over every
+    # element costs more than the validation it would guard, at batch sizes where the
+    # payload is millions of floats.
     values: tuple[FiniteFloat, ...] = Field(min_length=1)
-
-    @field_validator("values", mode="before")
-    @classmethod
-    def validate_float_values(cls, values: object) -> object:
-        if isinstance(values, tuple) and any(type(value) is not float for value in values):
-            msg = "Embedding values must be floats"
-            raise TypeError(msg)
-
-        return values
 
 
 class EmbeddingResponse(FrozenModel):
