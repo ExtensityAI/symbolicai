@@ -1,10 +1,9 @@
 from __future__ import annotations
 
-from collections.abc import Mapping
 from enum import StrEnum
 from threading import Lock, get_ident
 from types import MappingProxyType, TracebackType
-from typing import Literal, overload
+from typing import TYPE_CHECKING, Literal, cast, overload
 
 from symai.runtime.engines import EmbeddingEngine, LanguageModelEngine
 from symai.runtime.errors import (
@@ -22,6 +21,9 @@ from symai.runtime.models import (
     LanguageModelRequest,
     LanguageModelResponse,
 )
+
+if TYPE_CHECKING:
+    from collections.abc import Mapping
 
 type _OwnedEngine = LanguageModelEngine | EmbeddingEngine
 
@@ -86,7 +88,7 @@ class Runtime:
     @staticmethod
     def _validate_aliases(
         operation: str,
-        engines: Mapping[object, object],
+        engines: Mapping[str, object],
     ) -> None:
         for alias in engines:
             if not isinstance(alias, str):
@@ -207,7 +209,9 @@ class Runtime:
                 msg = f"Unsupported runtime request type: {type(request).__name__}"
                 raise TypeError(msg)
 
-        return selected.execute(request)
+        if isinstance(request, LanguageModelRequest):
+            return cast("LanguageModelEngine", selected).execute(request)
+        return cast("EmbeddingEngine", selected).execute(request)
 
     @staticmethod
     def _resolve_engine[EngineT](

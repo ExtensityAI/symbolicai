@@ -4,9 +4,9 @@ from typing import cast
 
 from pydantic import ValidationError
 
+from symai.providers.openai.client import Client
 from symai.providers.openai.client import embeddings as embeddings_api
 from symai.providers.openai.client import errors as openai_errors
-from symai.providers.openai.client import Client
 from symai.providers.openai.client.transport import APIResponse
 from symai.providers.openai.client.transport import ResponseMetadata as OpenAIResponseMetadata
 from symai.runtime.errors import (

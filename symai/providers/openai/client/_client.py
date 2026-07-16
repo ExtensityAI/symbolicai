@@ -28,7 +28,7 @@ def _raise_for_status(response: httpx.Response, metadata: ResponseMetadata):
         raise errors.APIError(metadata, response.text)
 
 
-def _parse_response(response: httpx.Response, metadata: ResponseMetadata, model: type[T]) -> T:
+def _parse_response[T: BaseModel](response: httpx.Response, metadata: ResponseMetadata, model: type[T]) -> T:
     try:
         payload = response.json()
     except (json.JSONDecodeError, UnicodeDecodeError) as exc:

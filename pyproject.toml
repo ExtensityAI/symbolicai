@@ -15,7 +15,7 @@ authors = [
 ]
 description = "Explicit typed runtimes for OpenAI, Cerebras, and DeepSeek language models and OpenAI embeddings"
 readme = "README.md"
-requires-python = ">=3.11"
+requires-python = ">=3.12"
 keywords = ["large language models", "embeddings", "openai", "cerebras", "deepseek"]
 license = "BSD-3-Clause"
 license-files = ["LICENSE"]
@@ -52,7 +52,19 @@ source-exclude = [
 ]
 
 [dependency-groups]
-dev = ["ruff>=0.14.4", "pytest>=8.3.1", "pytest-xdist>=3.6.0"]
+dev = [
+    "ruff>=0.14.4",
+    "pytest>=8.3.1",
+    "pytest-xdist>=3.6.0",
+    "pyright>=1.1.411",
+]
+
+[tool.pyright]
+include = ["symai", "tests/typecheck"]
+pythonVersion = "3.12"
+reportImplicitOverride = "warning"
+reportMatchNotExhaustive = "warning"
+reportUnnecessaryTypeIgnoreComment = "error"
 
 [project.urls]
 "Homepage" = "https://extensity.ai"

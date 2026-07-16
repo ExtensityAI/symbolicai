@@ -1,8 +1,10 @@
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from symai.providers.cerebras.client import Client
-    from symai.providers.cerebras.engines import ChatCompletionsEngine
+    from symai.providers.cerebras.client import Client as Client
+    from symai.providers.cerebras.engines import (
+        ChatCompletionsEngine as ChatCompletionsEngine,
+    )
 
 
 def __getattr__(name: str) -> object:

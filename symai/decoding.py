@@ -1,15 +1,14 @@
 import ast
-from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Generic, Protocol, TypeVar, cast
+from typing import TYPE_CHECKING, Protocol, cast, override
 
 from pydantic import BaseModel, TypeAdapter, ValidationError
 
 from symai.runtime.models import LanguageModelResponse
 
-T = TypeVar("T")
-T_co = TypeVar("T_co", covariant=True)
-ModelT = TypeVar("ModelT", bound=BaseModel)
+if TYPE_CHECKING:
+    from collections.abc import Callable
+
 
 _TRUE_VALUES = frozenset({"true", "yes", "1"})
 _FALSE_VALUES = frozenset({"false", "no", "0"})
@@ -24,6 +23,7 @@ class Missing:
 
     __slots__ = ()
 
+    @override
     def __repr__(self) -> str:
         return "MISSING"
 
@@ -31,7 +31,7 @@ class Missing:
 MISSING = Missing()
 
 
-class Decoder(Protocol[T_co]):
+class Decoder[T_co](Protocol):
     """Strategy that converts normalized language-model text to one result type."""
 
     def decode(self, text: str, /) -> T_co: ...
@@ -44,7 +44,7 @@ class TextDecoder:
 
 
 @dataclass(frozen=True, slots=True)
-class ConstructorDecoder(Generic[T]):
+class ConstructorDecoder[T]:
     constructor: type[T]
 
     def decode(self, text: str, /) -> T:
@@ -57,10 +57,7 @@ class ConstructorDecoder(Generic[T]):
             if self.constructor in (list, tuple, set, dict):
                 value = ast.literal_eval(normalized)
                 if type(value) is not self.constructor:
-                    msg = (
-                        f"Expected {self.constructor.__name__}, "
-                        f"received {type(value).__name__}"
-                    )
+                    msg = f"Expected {self.constructor.__name__}, received {type(value).__name__}"
                     raise ValueError(msg)
                 return cast("T", value)
 
@@ -73,7 +70,7 @@ class ConstructorDecoder(Generic[T]):
 
 
 @dataclass(frozen=True, slots=True)
-class TypeAdapterDecoder(Generic[T]):
+class TypeAdapterDecoder[T]:
     adapter: TypeAdapter[T]
 
     def decode(self, text: str, /) -> T:
@@ -84,7 +81,7 @@ class TypeAdapterDecoder(Generic[T]):
 
 
 @dataclass(frozen=True, slots=True)
-class PydanticDecoder(Generic[ModelT]):
+class PydanticDecoder[ModelT: BaseModel]:
     model: type[ModelT]
 
     def decode(self, text: str, /) -> ModelT:
@@ -94,7 +91,7 @@ class PydanticDecoder(Generic[ModelT]):
             raise _decode_error(self, error) from error
 
 
-def decode_output(
+def decode_output[T](
     response: LanguageModelResponse,
     decoder: Decoder[T],
     *,
@@ -146,7 +143,7 @@ def _output_text(response: LanguageModelResponse, output_index: int) -> str:
     raise IndexError(msg)
 
 
-def _limit_value(value: T, limit: int | None) -> T:
+def _limit_value[T](value: T, limit: int | None) -> T:
     if limit is None:
         return value
     if limit <= 0:

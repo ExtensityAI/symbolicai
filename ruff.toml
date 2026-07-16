@@ -32,7 +32,7 @@ exclude = [
 
 line-length = 100
 indent-width = 4
-target-version = "py311"
+target-version = "py312"
 
 [lint]
 # Rules URL: https://docs.astral.sh/ruff/rules
@@ -56,6 +56,15 @@ unfixable = []
 
 # Allow unused variables when underscore-prefixed.
 dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
+
+[lint.per-file-ignores]
+# Lazy provider loading imports inside functions on purpose (import-on-demand).
+"symai/loading.py" = ["PLC0415"]
+"symai/providers/*/loading.py" = ["PLC0415"]
+"symai/providers/*/__init__.py" = ["PLC0415"]
+# ops.text intentionally exposes builtin-named operations (`filter`, `map`) as its public surface;
+# ops `__all__` tuples follow the design (SYMBOL_REDESIGN §5) order, not alphabetical.
+"symai/ops/*.py" = ["A001", "RUF022"]
 
 [lint.flake8-tidy-imports]
 ban-relative-imports = "all"

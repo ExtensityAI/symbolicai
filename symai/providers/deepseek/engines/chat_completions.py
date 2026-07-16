@@ -5,9 +5,9 @@ from typing import Never, cast
 
 from pydantic import ValidationError
 
+from symai.providers.deepseek.client import Client
 from symai.providers.deepseek.client import chat as chat_api
 from symai.providers.deepseek.client import errors as deepseek_errors
-from symai.providers.deepseek.client import Client
 from symai.providers.deepseek.client.transport import APIResponse
 from symai.providers.deepseek.client.transport import ResponseMetadata as DeepSeekResponseMetadata
 from symai.runtime.errors import (

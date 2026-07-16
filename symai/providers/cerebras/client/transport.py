@@ -1,6 +1,6 @@
 """Typed HTTP response envelopes and rate-limit metadata returned by Cerebras."""
 
-from typing import Generic, TypeVar
+from typing import TypeVar
 
 from symai.providers._client.models import StrictModel
 
@@ -23,6 +23,6 @@ class ResponseMetadata(StrictModel):
     rate_limit: RateLimitState
 
 
-class APIResponse(StrictModel, Generic[T]):
+class APIResponse[T](StrictModel):
     data: T
     metadata: ResponseMetadata

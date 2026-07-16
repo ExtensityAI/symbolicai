@@ -6,6 +6,8 @@ from symai.runtime.engines import EmbeddingEngine, LanguageModelEngine
 from symai.runtime.loading import (
     EmbeddingLoaderEntry,
     LanguageModelLoaderEntry,
+)
+from symai.runtime.loading import (
     load_runtime as _load_runtime,
 )
 from symai.runtime.runtime import Runtime

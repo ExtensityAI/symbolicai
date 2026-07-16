@@ -1,13 +1,15 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
-from typing import Literal
+from typing import TYPE_CHECKING, Literal
 
 import numpy as np
 
 from symai.operations import embedding_request, parse_embedding_response
-from symai.runtime.runtime import Runtime
 from symai.symbol import Symbol
+
+if TYPE_CHECKING:
+    from symai.runtime.runtime import Runtime
 
 __all__ = ("embed", "similarity", "distance", "mmd", "kernel")
 

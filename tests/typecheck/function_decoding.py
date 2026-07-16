@@ -32,4 +32,4 @@ def prove_decoder_result_inference(response: LanguageModelResponse) -> None:
 
 function = Function("Answer.")
 assert_type(function, Function)
-Function[int]("Answer.")  # pyright: ignore[reportGeneralTypeIssues]
+Function[int]("Answer.")  # pyright: ignore[reportInvalidTypeArguments]

@@ -4,9 +4,9 @@ from typing import cast
 
 from pydantic import JsonValue, ValidationError
 
+from symai.providers.cerebras.client import Client
 from symai.providers.cerebras.client import chat as chat_api
 from symai.providers.cerebras.client import errors as cerebras_errors
-from symai.providers.cerebras.client import Client
 from symai.providers.cerebras.client.transport import APIResponse
 from symai.providers.cerebras.client.transport import ResponseMetadata as CerebrasResponseMetadata
 from symai.runtime.errors import (

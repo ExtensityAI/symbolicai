@@ -1,6 +1,6 @@
 """Typed HTTP response envelopes returned by the DeepSeek client."""
 
-from typing import Generic, TypeVar
+from typing import TypeVar
 
 from symai.providers._client.models import StrictModel
 
@@ -13,6 +13,6 @@ class ResponseMetadata(StrictModel):
     retry_after: float | None
 
 
-class APIResponse(StrictModel, Generic[T]):
+class APIResponse[T](StrictModel):
     data: T
     metadata: ResponseMetadata

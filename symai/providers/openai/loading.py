@@ -34,8 +34,8 @@ def load_embedding(settings: Mapping[str, object]) -> EmbeddingEngine:
     import httpx
 
     from symai.providers.openai.client import Client
-    from symai.providers.openai.engines.embedding import EmbeddingEngine as OpenAIEmbeddingEngine
     from symai.providers.openai.engines.embedding import MODEL_SPECS
+    from symai.providers.openai.engines.embedding import EmbeddingEngine as OpenAIEmbeddingEngine
 
     if parsed.model not in MODEL_SPECS:
         msg = f"Unsupported OpenAI embedding model: {parsed.model}"

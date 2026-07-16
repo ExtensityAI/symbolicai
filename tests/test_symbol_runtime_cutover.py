@@ -133,7 +133,7 @@ REMOTE_CASES = (
         ),
         language_request(
             "Modify the text to match the criteria:\n",
-            "text 'source' modify 'make concise'=>",
+            "text 'source' modify 'make concise' =>",
             examples=text._MODIFY_EXAMPLES,
         ),
     ),
@@ -189,7 +189,7 @@ REMOTE_CASES = (
         ),
         language_request(
             "Replace text parts by string pattern.\n",
-            "text 'source' replace 'old' with 'new'=>",
+            "text 'source' replace 'old' with 'new' =>",
             examples=text._REPLACE_EXAMPLES,
         ),
     ),
@@ -254,7 +254,7 @@ REMOTE_CASES = (
         ),
         language_request(
             "Evaluate the logic expression:\n",
-            "expr :source: AND :other: =>",
+            "expr source AND other =>",
             examples=reason._LOGIC_EXAMPLES,
         ),
     ),
@@ -289,7 +289,7 @@ REMOTE_CASES = (
         ),
         language_request(
             "Is 'A' semantically an instance of the described type 'B'?\n",
-            "source is instance of a programming language =>",
+            "source isinstanceof a programming language =>",
             examples=compare._IS_INSTANCE_OF_EXAMPLES,
         ),
         boolean=True,
@@ -297,11 +297,15 @@ REMOTE_CASES = (
     RemoteCase(
         "rank",
         lambda runtime, source, _other: rank.rank(
-            runtime, source, "quality", engine="selected"
+            runtime,
+            source,
+            "quality",
+            order="asc",
+            engine="selected",
         ),
         language_request(
-            "Rank the objects from highest to lowest by the requested measure:\n",
-            "measure: 'quality' list: source =>",
+            "Rank the objects by the requested measure and order:\n",
+            "order: 'asc' measure: 'quality' list: source =>",
             examples=rank._RANK_EXAMPLES,
         ),
     ),
@@ -315,6 +319,31 @@ def test_extract_examples_preserve_packet_responder_text() -> None:
 
     assert len(packet_examples) == 2
     assert all("dfs.DataNode$PacketResponder" in example for example in packet_examples)
+
+
+def test_few_shot_examples_are_well_formed() -> None:
+    assert len(text._FORMAT_EXAMPLES) == 11
+    assert len(compare._CONTAINS_EXAMPLES) == 26
+    assert all("[33, 'a', ," not in example for example in rank._RANK_EXAMPLES)
+    assert all(" instanceof " not in example for example in compare._IS_INSTANCE_OF_EXAMPLES)
+    assert all("symai.symbol.Symbol" not in example for example in compare._CONTAINS_EXAMPLES)
+    assert 'not("x = 5") =>x ≠ 5.' in reason._INTERPRET_EXAMPLES
+
+
+def test_rank_rejects_unknown_order_before_execution() -> None:
+    engine = RecordingLanguageEngine(language_response("unused"))
+    runtime = language_runtime(engine, RecordingLanguageEngine(language_response("unused")))
+
+    with runtime, pytest.raises(ValueError, match="Unsupported rank order"):
+        rank.rank(
+            runtime,
+            Symbol(["a", "b"]),
+            "quality",
+            order="sideways",  # pyright: ignore[reportArgumentType]
+            engine="selected",
+        )
+
+    assert engine.requests == []
 
 
 @pytest.mark.parametrize("case", REMOTE_CASES, ids=lambda case: case.name)

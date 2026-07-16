@@ -1,7 +1,5 @@
 from collections.abc import Iterator
-from typing import Any, Generic, TypeVar
-
-T = TypeVar("T")
+from typing import Any, override
 
 
 def _unwrap_operand(value: object) -> object:
@@ -10,17 +8,19 @@ def _unwrap_operand(value: object) -> object:
     return value
 
 
-class Symbol(Generic[T]):
+class Symbol[T]:
     __slots__ = ("_value",)
-    __hash__ = None
+    __hash__ = None  # pyright: ignore[reportAssignmentType]
 
     def __init__(self, value: T) -> None:
         object.__setattr__(self, "_value", value)
 
+    @override
     def __setattr__(self, _name: str, _value: object) -> None:
         msg = f"{type(self).__name__} is immutable"
         raise AttributeError(msg)
 
+    @override
     def __delattr__(self, _name: str) -> None:
         msg = f"{type(self).__name__} is immutable"
         raise AttributeError(msg)
@@ -29,9 +29,11 @@ class Symbol(Generic[T]):
     def value(self) -> T:
         return self._value
 
+    @override
     def __eq__(self, other: object) -> bool:
         return bool(self._value == _unwrap_operand(other))
 
+    @override
     def __ne__(self, other: object) -> bool:
         return bool(self._value != _unwrap_operand(other))
 
@@ -174,6 +176,7 @@ class Symbol(Generic[T]):
     def __bool__(self) -> bool:
         return bool(self._value)
 
+    @override
     def __str__(self) -> str:
         return str(self._value)
 
