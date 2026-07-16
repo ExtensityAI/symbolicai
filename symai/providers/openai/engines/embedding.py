@@ -44,7 +44,7 @@ _ERROR_MESSAGES = ClientErrorMessages(
 )
 
 
-class EmbeddingEngine(ProviderEngine[Client, embeddings_api.Model, EmbeddingModelSpec]):
+class EmbeddingEngine(ProviderEngine[Client, EmbeddingModelSpec]):
     provider: ProviderId = "openai"
 
     @override

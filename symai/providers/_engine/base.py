@@ -1,6 +1,6 @@
 from collections.abc import Mapping
 from math import isfinite
-from typing import Never, Protocol, cast
+from typing import Never, Protocol
 
 from symai.runtime.errors import (
     ErrorMetadata,
@@ -36,7 +36,7 @@ def retry_after_seconds(value: float | None) -> float | None:
     return value if value is not None and value >= 0 and isfinite(value) else None
 
 
-class ProviderEngine[ClientT: _Closeable, ModelT: str, ModelSpecT]:
+class ProviderEngine[ClientT: _Closeable, ModelSpecT]:
     # Set by each engine. Declared here because `_error_metadata` stamps it onto every
     # error the engine raises.
     provider: ProviderId
@@ -57,7 +57,7 @@ class ProviderEngine[ClientT: _Closeable, ModelT: str, ModelSpecT]:
                 raise UnsupportedModelError(msg) from error
 
             self._client = client
-            self._model = cast("ModelT", model)
+            self._model = model
             self._model_spec = model_spec
             self._closed = False
         except BaseException as error:
@@ -75,7 +75,7 @@ class ProviderEngine[ClientT: _Closeable, ModelT: str, ModelSpecT]:
         self._client.close()
 
     @property
-    def model(self) -> ModelT:
+    def model(self) -> str:
         return self._model
 
     @property

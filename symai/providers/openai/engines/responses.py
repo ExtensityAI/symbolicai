@@ -79,7 +79,7 @@ _ERROR_MESSAGES = ClientErrorMessages(
 )
 
 
-class ResponsesEngine(ProviderEngine[Client, responses_api.Model, LanguageModelSpec]):
+class ResponsesEngine(ProviderEngine[Client, LanguageModelSpec]):
     provider: ProviderId = "openai"
 
     @override

@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from http import HTTPStatus
-from typing import Never, Protocol, cast
+from typing import Never
 
 from symai.providers._client import errors as client_errors
 from symai.providers._engine.base import retry_after_seconds
@@ -32,12 +32,6 @@ _RETRYABLE_STATUS = frozenset(
 )
 
 
-class _ResponseMetadata(Protocol):
-    status_code: int
-    request_id: str | None
-    retry_after: float | None
-
-
 @dataclass(frozen=True, slots=True)
 class ClientErrorMessages:
     authentication: str
@@ -65,8 +59,7 @@ def raise_mapped_client_error(
     if isinstance(error, client_errors.TransportError):
         raise TransportError(messages.transport, metadata=metadata) from error
     if isinstance(error, client_errors.APIError):
-        client_metadata = cast("_ResponseMetadata", error.metadata)
-        status_code = client_metadata.status_code
+        status_code = error.metadata.status_code
         message = messages.api.format(status_code=status_code)
         raise _api_error_type(status_code)(message, metadata=metadata) from error
 
@@ -91,8 +84,16 @@ def _runtime_metadata(
     provider: ProviderId,
     model: str,
 ) -> ErrorMetadata:
-    client_metadata = cast("_ResponseMetadata | None", getattr(error, "metadata", None))
-    details = getattr(error, "details", None)
+    # Only an error raised from a response carries one to describe; a transport failure
+    # never reached one. Narrowing states that, where `getattr(error, "metadata", None)`
+    # only worked around the base class not declaring it and erased the type on the way.
+    if isinstance(error, (client_errors.APIError, client_errors.ResponseError)):
+        client_metadata = error.metadata
+        details = error.details
+    else:
+        client_metadata = None
+        details = None
+
     status_code = client_metadata.status_code if client_metadata is not None else None
     return ErrorMetadata(
         provider=provider,

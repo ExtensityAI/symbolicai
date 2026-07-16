@@ -95,7 +95,7 @@ _ERROR_MESSAGES = ClientErrorMessages(
 )
 
 
-class ChatCompletionsEngine(ProviderEngine[Client, chat_api.Model, LanguageModelSpec]):
+class ChatCompletionsEngine(ProviderEngine[Client, LanguageModelSpec]):
     provider: ProviderId = "cerebras"
 
     @override
