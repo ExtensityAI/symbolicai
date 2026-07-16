@@ -1,5 +1,10 @@
 from __future__ import annotations
 
+from typing import Annotated
+
+import pytest
+from pydantic import Field, ValidationError
+
 from symai.contract.decorator import contract
 from symai.contract.models import LLMDataModel
 from symai.runtime.models import (
@@ -83,3 +88,21 @@ def test_decorator_resolves_postponed_forward_and_act_annotations() -> None:
 
     assert normalized == Verdict(label="loud")
     assert total == 6
+
+
+def test_decorator_preserves_annotated_constraints_in_postponed_hints() -> None:
+    @contract()
+    class Positive:
+        prompt = "Return the value."
+
+        def forward(
+            self,
+            value: Annotated[int, Field(gt=0, description="Positive value")],
+        ) -> int:
+            return value
+
+    engine = RecordingEngine(('{"value":1}',))
+    runtime = Runtime(language_models={"smart": engine})
+
+    with runtime, pytest.raises(ValidationError):
+        Positive(runtime.language_model("smart"))(-1)

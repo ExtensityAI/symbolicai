@@ -324,6 +324,7 @@ def _resolved_type_hints(
             target,
             globalns=getattr(target, "__globals__", None),
             localns=namespace,
+            include_extras=True,
         )
     except (NameError, TypeError) as error:
         msg = f"Contract annotations on {owner.__name__}.{target.__name__} could not be resolved"
