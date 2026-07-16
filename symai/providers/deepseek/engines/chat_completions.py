@@ -61,7 +61,7 @@ def _normalized_model_spec(spec: chat_api.ModelSpec) -> LanguageModelSpec:
         reasoning_fields=_DEEPSEEK_REASONING_FIELDS if reasoning is not None else (),
         reasoning_efforts=reasoning_efforts,
         sampling_fields=_DEEPSEEK_SAMPLING_FIELDS,
-        vision=False,
+        vision=spec.vision,
     )
 
 
@@ -179,14 +179,7 @@ class ChatCompletionsEngine(ProviderEngine[Client, chat_api.Model, LanguageModel
         if reasoning is not None and reasoning.enabled is False and reasoning.effort is not None:
             self._unsupported("DeepSeek reasoning effort cannot be set when thinking is disabled")
 
-        sampling = request.sampling
-        if (request.reasoning is None or request.reasoning.enabled is not False) and (
-            sampling.temperature is not None or sampling.top_p is not None
-        ):
-            self._unsupported(
-                "DeepSeek ignores temperature and top_p unless thinking is explicitly disabled"
-            )
-        if len(sampling.stop) > 16:
+        if len(request.sampling.stop) > 16:
             self._unsupported("DeepSeek supports at most sixteen stop sequences")
 
     @staticmethod

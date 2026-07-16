@@ -692,3 +692,121 @@ def test_unsupported_provider_output_item_is_not_silently_dropped() -> None:
             )
     finally:
         engine.close()
+
+
+def _execute(response_json: dict[str, object], model: str = "gpt-5.4") -> object:
+    def handler(_request: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, headers={"x-request-id": "request-id"}, json=response_json)
+
+    engine = ResponsesEngine(client=_client(handler), model=model)
+    try:
+        return engine.execute(
+            LanguageModelRequest(messages=(UserMessage(content=(TextContent(text="q"),)),))
+        )
+    finally:
+        engine.close()
+
+
+def _message(
+    text: str,
+    *,
+    phase: str | None = None,
+    annotations: list[dict[str, object]] | None = None,
+) -> dict[str, object]:
+    return {
+        "id": "message-id",
+        "type": "message",
+        "role": "assistant",
+        "status": "completed",
+        "phase": phase,
+        "content": [{"type": "output_text", "text": text, "annotations": annotations or []}],
+    }
+
+
+def test_reasoning_truncated_before_any_message_keeps_length_and_usage() -> None:
+    response = _execute(
+        _response_json(
+            status="incomplete",
+            output=[],
+            reasoning=[
+                {
+                    "id": "reasoning-id",
+                    "type": "reasoning",
+                    "summary": [],
+                    "content": [{"type": "reasoning_text", "text": "thinking"}],
+                }
+            ],
+        )
+        | {"incomplete_details": {"reason": "max_output_tokens"}}
+    )
+
+    output = response.outputs[0]
+    assert output.finish_reason is FinishReason.LENGTH
+    assert output.text == ""
+    assert output.message.reasoning is not None
+    assert output.message.reasoning.text == "thinking"
+    assert response.metadata.usage is not None
+    assert response.metadata.usage.total_tokens == 18
+
+
+def test_multi_phase_output_answers_once_and_keeps_commentary_as_reasoning() -> None:
+    response = _execute(
+        _response_json(
+            output=[
+                _message("let me think", phase="commentary"),
+                _message("42", phase="final_answer"),
+            ]
+        )
+    )
+
+    assert len(response.outputs) == 1
+    output = response.outputs[0]
+    assert output.text == "42"
+    assert output.message.reasoning is not None
+    assert output.message.reasoning.text == "let me think"
+
+
+def test_response_normalizes_when_provider_omits_echoed_request_fields() -> None:
+    minimal = {
+        "id": "response-id",
+        "object": "response",
+        "created_at": 1.5,
+        "status": "completed",
+        "model": "gpt-5.4",
+        "output": [_message("answer")],
+    }
+
+    assert _execute(minimal).outputs[0].text == "answer"
+
+
+def test_unknown_provider_error_code_does_not_mask_a_parseable_response() -> None:
+    response = _execute(
+        _response_json() | {"error": {"code": "brand_new_code", "message": "unknown"}}
+    )
+
+    assert response.outputs[0].text == "answer"
+
+
+def test_additive_fields_on_citations_and_echoed_format_are_tolerated() -> None:
+    response = _execute(
+        _response_json(
+            output=[
+                _message(
+                    "cited",
+                    annotations=[
+                        {
+                            "type": "url_citation",
+                            "url": "https://example.com",
+                            "title": "t",
+                            "start_index": 0,
+                            "end_index": 1,
+                            "brand_new_field": True,
+                        }
+                    ],
+                )
+            ]
+        )
+        | {"text": {"format": {"type": "text", "brand_new_field": True}}}
+    )
+
+    assert response.outputs[0].text == "cited"

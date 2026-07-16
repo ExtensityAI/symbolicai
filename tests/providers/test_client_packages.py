@@ -1,10 +1,10 @@
 import symai.providers.cerebras.client as cerebras_client
+import symai.providers.deepseek.client as deepseek_client
+import symai.providers.openai.client as openai_client
 from symai.providers.cerebras.client import chat as cerebras_chat
 from symai.providers.cerebras.client import errors as cerebras_errors
-import symai.providers.deepseek.client as deepseek_client
 from symai.providers.deepseek.client import chat as deepseek_chat
 from symai.providers.deepseek.client import errors as deepseek_errors
-import symai.providers.openai.client as openai_client
 from symai.providers.openai.client import embeddings as openai_embeddings
 from symai.providers.openai.client import errors as openai_errors
 from symai.providers.openai.client import responses as openai_responses

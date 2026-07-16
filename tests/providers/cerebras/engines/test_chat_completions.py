@@ -121,15 +121,16 @@ def test_execute_translates_normalized_request_and_response() -> None:
                 **_RATE_LIMIT_HEADERS,
             },
             json=_chat_json(
+                model="gemma-4-31b",
                 choices=[
                     _choice(index=1, finish_reason="length", content="second", reasoning=None),
                     _choice(index=0),
-                ]
+                ],
             ),
         )
 
     client = _client(handler)
-    engine = ChatCompletionsEngine(client=client, model="gpt-oss-120b")
+    engine = ChatCompletionsEngine(client=client, model="gemma-4-31b")
     try:
         response = engine.execute(
             LanguageModelRequest(
@@ -160,7 +161,6 @@ def test_execute_translates_normalized_request_and_response() -> None:
                 reasoning=ReasoningConfig(
                     effort=ReasoningEffort.HIGH,
                     format=ReasoningFormat.PARSED,
-                    clear=False,
                 ),
                 sampling=SamplingConfig(
                     max_tokens=512,
@@ -197,8 +197,7 @@ def test_execute_translates_normalized_request_and_response() -> None:
                 "reasoning": "prior thought",
             },
         ],
-        "model": "gpt-oss-120b",
-        "clear_thinking": False,
+        "model": "gemma-4-31b",
         "frequency_penalty": -0.5,
         "max_completion_tokens": 512,
         "presence_penalty": 0.5,
@@ -230,8 +229,8 @@ def test_execute_translates_normalized_request_and_response() -> None:
     assert response.outputs[1].text == "second"
     assert response.outputs[1].finish_reason is FinishReason.LENGTH
     assert response.metadata.provider == "cerebras"
-    assert response.metadata.requested_model == "gpt-oss-120b"
-    assert response.metadata.response_model == "gpt-oss-120b"
+    assert response.metadata.requested_model == "gemma-4-31b"
+    assert response.metadata.response_model == "gemma-4-31b"
     assert response.metadata.request_id == "request-id"
     assert response.metadata.retry_after == 1.25
     assert response.metadata.response_id == "response-id"
@@ -616,3 +615,112 @@ def test_invalid_normalized_response_is_chained() -> None:
         engine.close()
 
     assert isinstance(caught.value.__cause__, ValidationError)
+
+
+def _matrix_engine(model: str, captured: dict[str, object]) -> ChatCompletionsEngine:
+    def handler(request: httpx.Request) -> httpx.Response:
+        captured.update(json.loads(request.read()))
+        return httpx.Response(200, json=_chat_json(model=model))
+
+    return ChatCompletionsEngine(client=_client(handler), model=model)
+
+
+def _vision_request() -> LanguageModelRequest:
+    # No `detail`: Cerebras rejects normalized image detail on every model, which would
+    # mask the per-model vision decision under test.
+    return LanguageModelRequest(
+        messages=(UserMessage(content=(ImageContent(url="https://example.com/i.png"),)),)
+    )
+
+
+def _reasoning_request(**kwargs: object) -> LanguageModelRequest:
+    return LanguageModelRequest(
+        messages=(UserMessage(content=(TextContent(text="hello"),)),),
+        reasoning=ReasoningConfig(**kwargs),  # pyright: ignore[reportArgumentType]
+    )
+
+
+# Each capability is per-model: a model that lacks it must reject before any HTTP call,
+# and the one that has it must still reach the wire.
+@pytest.mark.parametrize(
+    ("model", "supported"),
+    [("gemma-4-31b", True), ("gpt-oss-120b", False), ("zai-glm-4.7", False)],
+)
+def test_vision_support_follows_the_model_spec(model: str, supported: bool) -> None:
+    captured: dict[str, object] = {}
+    engine = _matrix_engine(model, captured)
+    try:
+        if not supported:
+            with pytest.raises(UnsupportedFeatureError):
+                engine.execute(_vision_request())
+            assert captured == {}
+            return
+
+        engine.execute(_vision_request())
+        assert captured["model"] == model
+    finally:
+        engine.close()
+
+
+@pytest.mark.parametrize(
+    ("model", "supported"),
+    [("zai-glm-4.7", True), ("gpt-oss-120b", False), ("gemma-4-31b", False)],
+)
+def test_clear_thinking_support_follows_the_model_spec(model: str, supported: bool) -> None:
+    captured: dict[str, object] = {}
+    engine = _matrix_engine(model, captured)
+    try:
+        request = _reasoning_request(clear=True)
+        if not supported:
+            with pytest.raises(UnsupportedFeatureError):
+                engine.execute(request)
+            assert captured == {}
+            return
+
+        engine.execute(request)
+        assert captured["clear_thinking"] is True
+    finally:
+        engine.close()
+
+
+@pytest.mark.parametrize(
+    ("model", "supported"),
+    [("gpt-oss-120b", True), ("zai-glm-4.7", True), ("gemma-4-31b", False)],
+)
+def test_raw_reasoning_format_support_follows_the_model_spec(model: str, supported: bool) -> None:
+    captured: dict[str, object] = {}
+    engine = _matrix_engine(model, captured)
+    try:
+        request = _reasoning_request(format=ReasoningFormat.RAW)
+        if not supported:
+            with pytest.raises(UnsupportedFeatureError):
+                engine.execute(request)
+            assert captured == {}
+            return
+
+        engine.execute(request)
+        assert captured["reasoning_format"] == "raw"
+    finally:
+        engine.close()
+
+
+def test_parsed_reasoning_format_is_supported_by_every_reasoning_model() -> None:
+    for model in ("gpt-oss-120b", "gemma-4-31b", "zai-glm-4.7"):
+        captured: dict[str, object] = {}
+        engine = _matrix_engine(model, captured)
+        try:
+            engine.execute(_reasoning_request(format=ReasoningFormat.PARSED))
+            assert captured["reasoning_format"] == "parsed"
+        finally:
+            engine.close()
+
+
+def test_request_model_rejects_unknown_fields_like_the_other_providers() -> None:
+    with pytest.raises(ValidationError):
+        CreateChatCompletionRequest.model_validate(
+            {
+                "messages": [{"role": "user", "content": "hi"}],
+                "model": "gpt-oss-120b",
+                "temperatur": 0.5,
+            }
+        )

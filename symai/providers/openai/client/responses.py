@@ -59,16 +59,30 @@ class ModelSpec:
     vision: bool = True
 
 
-_REASONING = ReasoningSpec(tuple(ReasoningEffort))
+# Reasoning efforts are per-model: advertising one the model rejects turns a local
+# validation pass into an API 400. The GPT-5 family takes neither `minimal` nor `max`,
+# and the o-series takes neither of those nor `none`/`xhigh`.
+_GPT_5_REASONING = ReasoningSpec(
+    (
+        ReasoningEffort.NONE,
+        ReasoningEffort.LOW,
+        ReasoningEffort.MEDIUM,
+        ReasoningEffort.HIGH,
+        ReasoningEffort.XHIGH,
+    )
+)
+_O_SERIES_REASONING = ReasoningSpec(
+    (ReasoningEffort.LOW, ReasoningEffort.MEDIUM, ReasoningEffort.HIGH)
+)
 MODEL_SPECS: dict[Model, ModelSpec] = {
-    "gpt-5.5": ModelSpec(128_000, reasoning=_REASONING),
-    "gpt-5.5-pro": ModelSpec(128_000, reasoning=_REASONING),
-    "gpt-5.4": ModelSpec(128_000, reasoning=_REASONING),
-    "gpt-5.4-pro": ModelSpec(128_000, reasoning=_REASONING),
-    "gpt-5.4-mini": ModelSpec(128_000, reasoning=_REASONING),
-    "gpt-5.4-nano": ModelSpec(128_000, reasoning=_REASONING),
-    "o3-pro": ModelSpec(100_000, reasoning=_REASONING),
-    "o3": ModelSpec(100_000, reasoning=_REASONING),
+    "gpt-5.5": ModelSpec(128_000, reasoning=_GPT_5_REASONING),
+    "gpt-5.5-pro": ModelSpec(128_000, reasoning=_GPT_5_REASONING),
+    "gpt-5.4": ModelSpec(128_000, reasoning=_GPT_5_REASONING),
+    "gpt-5.4-pro": ModelSpec(128_000, reasoning=_GPT_5_REASONING),
+    "gpt-5.4-mini": ModelSpec(128_000, reasoning=_GPT_5_REASONING),
+    "gpt-5.4-nano": ModelSpec(128_000, reasoning=_GPT_5_REASONING),
+    "o3-pro": ModelSpec(100_000, reasoning=_O_SERIES_REASONING),
+    "o3": ModelSpec(100_000, reasoning=_O_SERIES_REASONING),
     "gpt-4.1": ModelSpec(32_768, reasoning=None),
     "gpt-4.1-mini": ModelSpec(32_768, reasoning=None),
 }
@@ -206,8 +220,32 @@ class TextConfig(StrictModel):
     verbosity: Verbosity | None = None
 
 
+class ResponseTextFormat(TolerantModel):
+    type: Literal["text"]
+
+
+class ResponseJsonObjectFormat(TolerantModel):
+    type: Literal["json_object"]
+
+
+class ResponseJsonSchemaFormat(TolerantModel):
+    model_config = ConfigDict(validate_by_name=True, serialize_by_alias=True)
+
+    type: Literal["json_schema"]
+    name: str
+    description: str | None = None
+    schema_: JsonValue = Field(alias="schema")
+    strict: bool | None = None
+
+
+ResponseOutputFormat = Annotated[
+    ResponseTextFormat | ResponseJsonObjectFormat | ResponseJsonSchemaFormat,
+    Field(discriminator="type"),
+]
+
+
 class ResponseTextConfig(TolerantModel):
-    format: OutputFormat | None = None
+    format: ResponseOutputFormat | None = None
     verbosity: Verbosity | None = None
 
 
@@ -249,14 +287,14 @@ class CreateResponseRequest(StrictModel):
     user: str | None = None
 
 
-class FileCitation(StrictModel):
+class FileCitation(TolerantModel):
     type: Literal["file_citation"]
     file_id: str
     filename: str
     index: int
 
 
-class URLCitation(StrictModel):
+class URLCitation(TolerantModel):
     type: Literal["url_citation"]
     url: str
     title: str
@@ -264,7 +302,7 @@ class URLCitation(StrictModel):
     end_index: int
 
 
-class ContainerFileCitation(StrictModel):
+class ContainerFileCitation(TolerantModel):
     type: Literal["container_file_citation"]
     container_id: str
     file_id: str
@@ -273,7 +311,7 @@ class ContainerFileCitation(StrictModel):
     end_index: int
 
 
-class FilePath(StrictModel):
+class FilePath(TolerantModel):
     type: Literal["file_path"]
     file_id: str
     index: int
@@ -391,41 +429,31 @@ class ResponseErrorCode(StrEnum):
     IMAGE_FILE_NOT_FOUND = "image_file_not_found"
 
 
-class ResponseError(TolerantModel):
-    code: ResponseErrorCode
+class ResponseErrorDetails(TolerantModel):
+    # `code` stays open: an unlisted provider code must not mask the real failure by
+    # turning a parseable error response into a schema violation.
+    code: ResponseErrorCode | str
     message: str
 
 
 class IncompleteDetails(TolerantModel):
-    reason: Literal["max_output_tokens", "content_filter"] | None = None
-
-
-class RetrieveResponseParams(StrictModel):
-    include: tuple[Include, ...] | None = None
-
-
-class ListInputItemsParams(StrictModel):
-    after: str | None = None
-    include: tuple[Include, ...] | None = None
-    limit: int | None = Field(default=None, ge=1, le=100)
-    order: Literal["asc", "desc"] | None = None
-
-
-InputItem = InputMessage | OutputMessage | ReasoningOutput | CompactionOutput
+    reason: str | None = None
 
 
 class Response(TolerantModel):
+    # Only the fields the engine normalizes are required: everything else is an echo of
+    # the request, and a provider that omits one must not fail an otherwise good response.
     id: str
     object: Literal["response"]
     created_at: float
     status: ResponseStatus
-    background: bool
-    error: ResponseError | None
-    incomplete_details: IncompleteDetails | None
-    instructions: str | tuple[InputMessage, ...] | None
-    max_output_tokens: int | None
     model: str
     output: tuple[OutputItem, ...]
+    background: bool | None = None
+    error: ResponseErrorDetails | None = None
+    incomplete_details: IncompleteDetails | None = None
+    instructions: str | tuple[InputMessage, ...] | None = None
+    max_output_tokens: int | None = None
     previous_response_id: str | None = None
     prompt: PromptReference | None = None
     prompt_cache_key: str | None = None
@@ -433,26 +461,12 @@ class Response(TolerantModel):
     reasoning: ResponseReasoningConfig | None = None
     safety_identifier: str | None = None
     service_tier: ServiceTier | None = None
-    store: bool
+    store: bool | None = None
     temperature: float | None = None
     text: ResponseTextConfig | None = None
     top_logprobs: int | None = None
     top_p: float | None = None
-    truncation: Truncation
-    usage: Usage | None
+    truncation: Truncation | None = None
+    usage: Usage | None = None
     user: str | None = None
-    metadata: dict[str, str]
-
-
-class DeletedResponse(StrictModel):
-    id: str
-    object: Literal["response.deleted"]
-    deleted: Literal[True]
-
-
-class InputItemList(TolerantModel):
-    object: Literal["list"]
-    data: tuple[InputItem, ...]
-    first_id: str | None = None
-    last_id: str | None = None
-    has_more: bool
+    metadata: dict[str, str] = Field(default_factory=dict)

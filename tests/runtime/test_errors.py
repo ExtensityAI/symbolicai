@@ -144,6 +144,4 @@ def test_error_metadata_has_open_provider_ids_and_finite_non_negative_retry_afte
     with pytest.raises(ValidationError):
         ErrorMetadata(provider="openai", model="gpt-5.5", retry_after=float("inf"))
     with pytest.raises(ValidationError):
-        ErrorMetadata.model_validate(
-            {"provider": "openai", "model": "gpt-5.5", "unknown": "raw"}
-        )
+        ErrorMetadata.model_validate({"provider": "openai", "model": "gpt-5.5", "unknown": "raw"})

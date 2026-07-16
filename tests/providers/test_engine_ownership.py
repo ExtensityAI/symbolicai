@@ -71,7 +71,9 @@ ENGINE_CASES: tuple[tuple[ClientFactory, EngineFactory, str], ...] = (
 
 
 @pytest.mark.parametrize("client_type", [openai.Client, cerebras.Client, deepseek.Client])
-def test_provider_clients_construct_their_owned_http_client(client_type: type[ProviderClient]) -> None:
+def test_provider_clients_construct_their_owned_http_client(
+    client_type: type[ProviderClient],
+) -> None:
     parameters = signature(client_type).parameters
 
     assert "transport" in parameters

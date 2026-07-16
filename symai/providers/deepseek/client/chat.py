@@ -105,26 +105,10 @@ class ResponseMessage(TolerantModel):
     reasoning_content: str | None = None
 
 
-class TopLogprob(TolerantModel):
-    token: str
-    logprob: float
-    bytes: tuple[int, ...] | None
-
-
-class TokenLogprob(TopLogprob):
-    top_logprobs: tuple[TopLogprob, ...]
-
-
-class Logprobs(TolerantModel):
-    content: tuple[TokenLogprob, ...] | None
-    reasoning_content: tuple[TokenLogprob, ...] | None = None
-
-
 class Choice(TolerantModel):
     finish_reason: str
     index: int
     message: ResponseMessage
-    logprobs: Logprobs | None = None
 
 
 class CompletionTokensDetails(TolerantModel):

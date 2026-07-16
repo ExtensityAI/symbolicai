@@ -2,6 +2,7 @@ import pytest
 from pydantic import ValidationError
 
 from symai.providers.cerebras.client.chat import (
+    MODEL_SPECS,
     AssistantMessage,
     ChatCompletion,
     CreateChatCompletionRequest,
@@ -11,6 +12,7 @@ from symai.providers.cerebras.client.chat import (
     JsonObjectResponseFormat,
     JsonSchemaResponseFormat,
     JsonSchemaSpec,
+    Model,
     Prediction,
     ReasoningEffort,
     ReasoningFormat,
@@ -24,6 +26,29 @@ from symai.providers.cerebras.client.chat import (
 
 def _user_message() -> UserMessage:
     return UserMessage(role="user", content="hello")
+
+
+@pytest.mark.parametrize(
+    ("model", "vision", "clear_thinking", "formats"),
+    [
+        ("gpt-oss-120b", False, False, tuple(ReasoningFormat)),
+        ("gemma-4-31b", True, False, (ReasoningFormat.NONE, ReasoningFormat.PARSED)),
+        ("zai-glm-4.7", False, True, tuple(ReasoningFormat)),
+    ],
+)
+def test_model_specs_record_per_model_capabilities(
+    model: Model,
+    vision: bool,
+    clear_thinking: bool,
+    formats: tuple[ReasoningFormat, ...],
+):
+    spec = MODEL_SPECS[model]
+    reasoning = spec.reasoning
+
+    assert spec.vision is vision
+    assert reasoning is not None
+    assert reasoning.clear_thinking is clear_thinking
+    assert reasoning.formats == formats
 
 
 def test_message_union_routes_raw_non_tool_roles_and_image_content():
@@ -325,24 +350,22 @@ def test_arbitrary_model_id_and_reasoning_combination_are_accepted():
     assert request.reasoning_effort is ReasoningEffort.NONE
 
 
-def test_json_compatible_unknown_request_extra_is_preserved():
-    request = CreateChatCompletionRequest.model_validate(
-        {
-            "model": "gpt-oss-120b",
-            "messages": (_user_message(),),
-            "future_option": {"enabled": True},
-        }
-    )
-    assert request.model_dump(mode="json")["future_option"] == {"enabled": True}
-
-
-def test_non_json_unknown_request_extra_is_rejected():
+@pytest.mark.parametrize(
+    ("field", "value"),
+    [
+        ("temperatur", 0.5),
+        ("max_tokens", 99),
+        ("future_option", {"enabled": True}),
+        ("future_option", object()),
+    ],
+)
+def test_unknown_request_fields_are_rejected(field: str, value: object):
     with pytest.raises(ValidationError):
         CreateChatCompletionRequest.model_validate(
             {
                 "model": "gpt-oss-120b",
                 "messages": (_user_message(),),
-                "future_option": object(),
+                field: value,
             }
         )
 

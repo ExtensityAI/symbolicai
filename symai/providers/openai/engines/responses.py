@@ -1,3 +1,4 @@
+from collections.abc import Sequence
 from types import MappingProxyType
 from typing import override
 
@@ -203,57 +204,70 @@ class ResponsesEngine(ProviderEngine[Client, responses_api.Model, LanguageModelS
             msg = "OpenAI returned an unsupported output item"
             raise InvalidResponseError(msg, metadata=error_metadata)
 
-        reasoning = self._reasoning_text(raw)
         messages = [item for item in raw.output if isinstance(item, responses_api.OutputMessage)]
-        if reasoning is not None and len(messages) != 1:
-            msg = "OpenAI reasoning output requires exactly one assistant message"
-            raise InvalidResponseError(msg, metadata=error_metadata)
+        for message in messages:
+            self._validate_message_status(message, error_metadata, finish_reason)
 
         try:
-            outputs = tuple(
-                self._language_output(
-                    index,
-                    message,
-                    reasoning if index == 0 else None,
-                    error_metadata,
-                    finish_reason,
-                )
-                for index, message in enumerate(messages)
-            )
-            return LanguageModelResponse(outputs=outputs, metadata=metadata)
+            output = self._language_output(messages, raw, finish_reason)
+            return LanguageModelResponse(outputs=(output,), metadata=metadata)
         except ValidationError as error:
             msg = "OpenAI response could not become a normalized language response"
             raise InvalidResponseError(msg, metadata=error_metadata) from error
 
     def _language_output(
         self,
-        index: int,
-        message: responses_api.OutputMessage,
-        reasoning: TextContent | None,
-        error_metadata: ErrorMetadata,
+        messages: Sequence[responses_api.OutputMessage],
+        raw: responses_api.Response,
         finish_reason: FinishReason,
     ) -> LanguageModelOutput:
-        if message.status is not responses_api.ItemStatus.COMPLETED and not (
-            message.status is responses_api.ItemStatus.INCOMPLETE
-            and finish_reason is not FinishReason.STOP
-        ):
-            msg = f"OpenAI assistant output status was {message.status.value!r}"
-            raise InvalidResponseError(msg, metadata=error_metadata)
+        """Normalize one Responses result into a single output.
+
+        The Responses API returns one logical answer as an ordered item list rather than
+        N alternative completions, so every assistant message belongs to the same output.
+        A response truncated while thinking carries reasoning and no message at all; its
+        finish reason and usage still matter, so it must normalize rather than raise.
+        Commentary-phase messages are the model thinking aloud, so they join the reasoning
+        rather than contaminating the answer text.
+        """
+        answers = [message for message in messages if message.phase != "commentary"]
+        commentary = [message for message in messages if message.phase == "commentary"]
+        reasoning = self._reasoning_text(raw, commentary)
 
         text = tuple(
             TextContent(text=part.text)
+            for message in answers
             for part in message.content
             if isinstance(part, responses_api.OutputText)
         )
         refusal = "".join(
-            part.refusal for part in message.content if isinstance(part, responses_api.Refusal)
+            part.refusal
+            for message in answers
+            for part in message.content
+            if isinstance(part, responses_api.Refusal)
         )
         return LanguageModelOutput(
-            index=index,
+            index=0,
             message=AssistantOutputMessage(content=text, reasoning=reasoning),
             refusal=refusal or None,
             finish_reason=finish_reason,
         )
+
+    def _validate_message_status(
+        self,
+        message: responses_api.OutputMessage,
+        error_metadata: ErrorMetadata,
+        finish_reason: FinishReason,
+    ) -> None:
+        if message.status is responses_api.ItemStatus.COMPLETED:
+            return
+        if message.status is responses_api.ItemStatus.INCOMPLETE and finish_reason is not (
+            FinishReason.STOP
+        ):
+            return
+
+        msg = f"OpenAI assistant output status was {message.status.value!r}"
+        raise InvalidResponseError(msg, metadata=error_metadata)
 
     def _finish_reason(
         self,
@@ -274,13 +288,23 @@ class ResponsesEngine(ProviderEngine[Client, responses_api.Model, LanguageModelS
         msg = f"OpenAI response status was {response.status.value!r}"
         raise InvalidResponseError(msg, metadata=error_metadata)
 
-    def _reasoning_text(self, response: responses_api.Response) -> TextContent | None:
+    def _reasoning_text(
+        self,
+        response: responses_api.Response,
+        commentary: Sequence[responses_api.OutputMessage] = (),
+    ) -> TextContent | None:
         parts: list[str] = []
         for output in response.output:
             if not isinstance(output, responses_api.ReasoningOutput):
                 continue
             parts.extend(summary.text for summary in output.summary)
             parts.extend(content.text for content in output.content)
+        parts.extend(
+            part.text
+            for message in commentary
+            for part in message.content
+            if isinstance(part, responses_api.OutputText)
+        )
         return TextContent(text="\n".join(parts)) if parts else None
 
     def _response_metadata(

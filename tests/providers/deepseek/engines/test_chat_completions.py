@@ -8,8 +8,10 @@ from pydantic import JsonValue, SecretStr, ValidationError
 
 from symai.providers.deepseek import ChatCompletionsEngine
 from symai.providers.deepseek.client import Client
+from symai.providers.deepseek.client import chat as chat_api
 from symai.providers.deepseek.client import errors as deepseek_errors
 from symai.providers.deepseek.client.transport import ResponseMetadata as DeepSeekResponseMetadata
+from symai.providers.deepseek.engines.chat_completions import MODEL_SPECS, _normalized_model_spec
 from symai.runtime.errors import (
     AuthenticationError,
     ExecutionError,
@@ -33,6 +35,7 @@ from symai.runtime.models import (
     ReasoningFormat,
     ReasoningSummary,
     SamplingConfig,
+    SamplingField,
     SystemMessage,
     TextContent,
     UserMessage,
@@ -120,6 +123,72 @@ def test_model_catalog_exposes_normalized_deepseek_capabilities() -> None:
 def test_unknown_model_is_rejected_before_client_use() -> None:
     with pytest.raises(UnsupportedModelError, match="future-model"):
         ChatCompletionsEngine(client=cast("Client", object()), model="future-model")
+
+
+def test_normalized_spec_sources_vision_from_the_client_catalog() -> None:
+    spec = chat_api.ModelSpec(response_tokens=1_000, reasoning=None, vision=True)
+
+    assert _normalized_model_spec(spec).vision is True
+    assert _normalized_model_spec(chat_api.ModelSpec(1_000, None, False)).vision is False
+
+
+_SAMPLING_FIELD_VALUES: dict[SamplingField, object] = {
+    SamplingField.MAX_TOKENS: 512,
+    SamplingField.TEMPERATURE: 0.5,
+    SamplingField.TOP_P: 0.9,
+    SamplingField.STOP: ("END",),
+    SamplingField.SEED: 1,
+    SamplingField.FREQUENCY_PENALTY: 0.1,
+    SamplingField.PRESENCE_PENALTY: 0.1,
+}
+
+
+@pytest.mark.parametrize("field", list(MODEL_SPECS["deepseek-v4-flash"].sampling_fields))
+def test_every_advertised_sampling_field_is_accepted_by_enforcement(field: SamplingField) -> None:
+    """The declared capability matrix must never advertise a field that _validate_request rejects."""
+
+    def handler(_request: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, json=_chat_json())
+
+    client = _client(handler)
+    engine = ChatCompletionsEngine(client=client, model="deepseek-v4-flash")
+    try:
+        engine.execute(
+            LanguageModelRequest(
+                messages=(UserMessage(content=(TextContent(text="hello"),)),),
+                reasoning=ReasoningConfig(enabled=True),
+                sampling=SamplingConfig.model_validate(
+                    {field.value: _SAMPLING_FIELD_VALUES[field]}
+                ),
+            )
+        )
+    finally:
+        engine.close()
+
+
+def test_thinking_mode_forwards_temperature_and_top_p_that_deepseek_ignores() -> None:
+    captured_body: dict[str, object] = {}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        captured_body.update(json.loads(request.read()))
+        return httpx.Response(200, json=_chat_json())
+
+    client = _client(handler)
+    engine = ChatCompletionsEngine(client=client, model="deepseek-v4-flash")
+    try:
+        engine.execute(
+            LanguageModelRequest(
+                messages=(UserMessage(content=(TextContent(text="hello"),)),),
+                reasoning=ReasoningConfig(enabled=True),
+                sampling=SamplingConfig(temperature=0.5, top_p=0.9),
+            )
+        )
+    finally:
+        engine.close()
+
+    assert captured_body["thinking"] == {"type": "enabled"}
+    assert captured_body["temperature"] == 0.5
+    assert captured_body["top_p"] == 0.9
 
 
 def test_execute_translates_normalized_request_and_response() -> None:
@@ -276,12 +345,6 @@ def _unsupported_requests() -> list[LanguageModelRequest]:
         LanguageModelRequest(messages=(user,), sampling=SamplingConfig(seed=1)),
         LanguageModelRequest(messages=(user,), sampling=SamplingConfig(frequency_penalty=0.1)),
         LanguageModelRequest(messages=(user,), sampling=SamplingConfig(presence_penalty=0.1)),
-        LanguageModelRequest(messages=(user,), sampling=SamplingConfig(temperature=0.5)),
-        LanguageModelRequest(
-            messages=(user,),
-            reasoning=ReasoningConfig(enabled=True),
-            sampling=SamplingConfig(top_p=0.5),
-        ),
         LanguageModelRequest(messages=(user,), metadata=(MetadataLabel(key="trace", value="x"),)),
         LanguageModelRequest(messages=(user,), user="not valid"),
     ]

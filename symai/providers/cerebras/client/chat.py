@@ -64,57 +64,69 @@ class ReasoningEffort(StrEnum):
     HIGH = "high"
 
 
+class ReasoningFormat(StrEnum):
+    NONE = "none"
+    PARSED = "parsed"
+    RAW = "raw"
+    HIDDEN = "hidden"
+
+
 @dataclass(frozen=True, slots=True)
 class ReasoningSpec:
     efforts: tuple[ReasoningEffort, ...]
+    formats: tuple[ReasoningFormat, ...]
+    clear_thinking: bool
 
 
 @dataclass(frozen=True, slots=True)
 class ModelSpec:
     response_tokens: int
     reasoning: ReasoningSpec | None
+    vision: bool
 
 
 MODEL_SPECS: dict[Model, ModelSpec] = {
     "gpt-oss-120b": ModelSpec(
-        40_000,
+        response_tokens=40_000,
         reasoning=ReasoningSpec(
-            (
+            efforts=(
                 ReasoningEffort.LOW,
                 ReasoningEffort.MEDIUM,
                 ReasoningEffort.HIGH,
-            )
+            ),
+            formats=tuple(ReasoningFormat),
+            clear_thinking=False,
         ),
+        vision=False,
     ),
     "gemma-4-31b": ModelSpec(
-        40_000,
+        response_tokens=40_000,
         reasoning=ReasoningSpec(
-            (
+            efforts=(
                 ReasoningEffort.LOW,
                 ReasoningEffort.MEDIUM,
                 ReasoningEffort.HIGH,
-            )
+            ),
+            formats=(ReasoningFormat.NONE, ReasoningFormat.PARSED),
+            clear_thinking=False,
         ),
+        vision=True,
     ),
     "zai-glm-4.7": ModelSpec(
-        40_000,
+        response_tokens=40_000,
         reasoning=ReasoningSpec(
-            (
+            efforts=(
                 ReasoningEffort.NONE,
                 ReasoningEffort.LOW,
                 ReasoningEffort.MEDIUM,
                 ReasoningEffort.HIGH,
-            )
+            ),
+            formats=tuple(ReasoningFormat),
+            clear_thinking=True,
         ),
+        vision=False,
     ),
 }
-
-
-class ReasoningFormat(StrEnum):
-    NONE = "none"
-    PARSED = "parsed"
-    RAW = "raw"
-    HIDDEN = "hidden"
 
 
 class ServiceTier(StrEnum):
@@ -166,11 +178,6 @@ _REMOVED_LOGPROB_FIELDS = ("logprobs", "top_logprobs", "logit_bias")
 
 
 class CreateChatCompletionRequest(StrictModel):
-    model_config = ConfigDict(extra="allow")
-    __pydantic_extra__: dict[str, JsonValue] = Field(  # pyright: ignore[reportIncompatibleVariableOverride]
-        init=False
-    )
-
     messages: tuple[Message, ...] = Field(min_length=1)
     model: Model | ModelId
     clear_thinking: bool | None = None

@@ -37,26 +37,37 @@ from symai.runtime.models import (
     UserMessage,
 )
 
-_CEREBRAS_REASONING_FIELDS = (
-    ReasoningField.EFFORT,
-    ReasoningField.FORMAT,
-    ReasoningField.CLEAR,
-)
-_CEREBRAS_REASONING_FORMATS = tuple(ReasoningFormat)
 _CEREBRAS_SAMPLING_FIELDS = tuple(SamplingField)
+
+
+def _reasoning_fields(spec: chat_api.ReasoningSpec) -> tuple[ReasoningField, ...]:
+    fields: list[ReasoningField] = []
+    if spec.efforts:
+        fields.append(ReasoningField.EFFORT)
+    if spec.formats:
+        fields.append(ReasoningField.FORMAT)
+    if spec.clear_thinking:
+        fields.append(ReasoningField.CLEAR)
+
+    return tuple(fields)
 
 
 def _normalized_model_spec(spec: chat_api.ModelSpec) -> LanguageModelSpec:
     reasoning = spec.reasoning
+    if reasoning is None:
+        return LanguageModelSpec(
+            response_tokens=spec.response_tokens,
+            sampling_fields=_CEREBRAS_SAMPLING_FIELDS,
+            vision=spec.vision,
+        )
+
     return LanguageModelSpec(
         response_tokens=spec.response_tokens,
-        reasoning_fields=_CEREBRAS_REASONING_FIELDS if reasoning is not None else (),
-        reasoning_efforts=tuple(ReasoningEffort(effort.value) for effort in reasoning.efforts)
-        if reasoning is not None
-        else (),
-        reasoning_formats=_CEREBRAS_REASONING_FORMATS if reasoning is not None else (),
+        reasoning_fields=_reasoning_fields(reasoning),
+        reasoning_efforts=tuple(ReasoningEffort(effort.value) for effort in reasoning.efforts),
+        reasoning_formats=tuple(ReasoningFormat(value.value) for value in reasoning.formats),
         sampling_fields=_CEREBRAS_SAMPLING_FIELDS,
-        vision=True,
+        vision=spec.vision,
     )
 
 
@@ -69,7 +80,6 @@ _FINISH_REASONS = MappingProxyType(
         "stop": FinishReason.STOP,
         "length": FinishReason.LENGTH,
         "content_filter": FinishReason.CONTENT_FILTER,
-        "error": FinishReason.ERROR,
     }
 )
 

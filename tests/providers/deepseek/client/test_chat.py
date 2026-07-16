@@ -124,7 +124,7 @@ def test_chat_request_rejects_removed_logprob_fields(field: str, value: object):
         )
 
 
-def test_chat_response_models_reasoning_cache_usage_and_logprobs():
+def test_chat_response_models_reasoning_and_cache_usage():
     response = ChatCompletion.model_validate(
         {
             "id": "response-id",
@@ -136,17 +136,6 @@ def test_chat_response_models_reasoning_cache_usage_and_logprobs():
                         "role": "assistant",
                         "content": "answer",
                         "reasoning_content": "thought",
-                    },
-                    "logprobs": {
-                        "content": [
-                            {
-                                "token": "answer",
-                                "logprob": -0.1,
-                                "bytes": [97],
-                                "top_logprobs": [],
-                            }
-                        ],
-                        "reasoning_content": None,
                     },
                 }
             ],
@@ -167,13 +156,34 @@ def test_chat_response_models_reasoning_cache_usage_and_logprobs():
 
     choice = response.choices[0]
     completion_details = response.usage.completion_tokens_details
-    logprobs = choice.logprobs
 
     assert completion_details is not None
-    assert logprobs is not None
-    assert logprobs.content is not None
     assert choice.message.reasoning_content == "thought"
     assert response.usage.prompt_cache_hit_tokens == 2
     assert completion_details.reasoning_tokens == 2
-    assert logprobs.content[0].token == "answer"
     assert response.model_extra == {"future_field": {"kept": True}}
+
+
+def test_chat_response_tolerates_unrequested_logprobs_payload():
+    response = ChatCompletion.model_validate(
+        {
+            "id": "response-id",
+            "choices": [
+                {
+                    "finish_reason": "stop",
+                    "index": 0,
+                    "message": {"role": "assistant", "content": "answer"},
+                    "logprobs": {"content": [{"token": "answer", "logprob": -0.1}]},
+                }
+            ],
+            "created": 1,
+            "model": "deepseek-v4-pro",
+            "object": "chat.completion",
+            "usage": {"completion_tokens": 4, "prompt_tokens": 3, "total_tokens": 7},
+        }
+    )
+
+    choice = response.choices[0]
+
+    assert choice.message.content == "answer"
+    assert choice.model_extra == {"logprobs": {"content": [{"token": "answer", "logprob": -0.1}]}}
