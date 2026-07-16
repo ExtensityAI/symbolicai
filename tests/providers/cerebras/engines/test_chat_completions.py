@@ -9,8 +9,7 @@ from pydantic import JsonValue, SecretStr, ValidationError
 from symai.providers.cerebras.client import errors as cerebras_errors
 from symai.providers.cerebras.client.chat import CreateChatCompletionRequest
 from symai.providers.cerebras.client.client import Client
-from symai.providers.cerebras.client.transport import RateLimitState
-from symai.providers.cerebras.client.transport import ResponseMetadata as CerebrasResponseMetadata
+from symai.providers.cerebras.client.response import HttpMetadata, RateLimitState
 from symai.providers.cerebras.engines.chat_completions import ChatCompletionsEngine
 from symai.runtime.errors import (
     AuthenticationError,
@@ -514,7 +513,7 @@ def test_inconsistent_reported_usage_is_omitted(usage: dict[str, JsonValue]) -> 
     [
         (
             cerebras_errors.AuthError(
-                CerebrasResponseMetadata(
+                HttpMetadata(
                     status_code=401,
                     request_id="auth-id",
                     retry_after=None,
@@ -526,7 +525,7 @@ def test_inconsistent_reported_usage_is_omitted(usage: dict[str, JsonValue]) -> 
         ),
         (
             cerebras_errors.RateLimitError(
-                CerebrasResponseMetadata(
+                HttpMetadata(
                     status_code=429,
                     request_id="rate-id",
                     retry_after=2.0,
@@ -540,7 +539,7 @@ def test_inconsistent_reported_usage_is_omitted(usage: dict[str, JsonValue]) -> 
         (
             cerebras_errors.ResponseError(
                 "invalid response",
-                metadata=CerebrasResponseMetadata(
+                metadata=HttpMetadata(
                     status_code=200,
                     request_id="response-id",
                     retry_after=None,
@@ -552,7 +551,7 @@ def test_inconsistent_reported_usage_is_omitted(usage: dict[str, JsonValue]) -> 
         ),
         (
             cerebras_errors.APIError(
-                CerebrasResponseMetadata(
+                HttpMetadata(
                     status_code=500,
                     request_id="api-id",
                     retry_after=None,

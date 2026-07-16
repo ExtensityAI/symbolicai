@@ -2,7 +2,7 @@
 
 The layering was previously guarded by rules scattered across two tests, each keyed to a
 *directory name* rather than to the tier it meant, with disagreeing forbidden-lists. The
-gaps were not theoretical: adding `import symai.symbol` to `symai/providers/_client/` —
+gaps were not theoretical: adding `import symai.symbol` to `symai/providers/_http/` —
 a direct violation of the constraint that a client never knows the framework — passed the
 entire suite, because the one test watching that directory only grepped for the prefix
 `symai.runtime`, and `symai/symbol.py` imports nothing, so no runtime module ever loaded.
@@ -80,7 +80,7 @@ def _classify(module: str) -> tuple[str, str | None]:
             return ("runtime", None)
         case ["symai", "contract", *_]:
             return ("contract", None)
-        case ["symai", "providers", "_client", *_]:
+        case ["symai", "providers", "_http", *_]:
             return ("client:shared", None)
         case ["symai", "providers", "_engine", *_]:
             return ("engine:shared", None)
@@ -171,3 +171,19 @@ def test_the_contract_classifies_every_layer_it_claims_to_govern() -> None:
         "runtime",
         "user",
     }
+
+
+def test_the_client_tier_is_the_only_layer_that_speaks_http() -> None:
+    """Pins what makes the engine rule above worth enforcing.
+
+    The engine layer may not import the client tier because that tier is HTTP-shaped, and
+    an integration reaching a local binary has no status code to report. If `HttpMetadata`
+    ever lost `status_code`, that rule would still pass while guarding nothing — the
+    contract would look enforced and mean less. `ErrorMetadata` is the deliberate contrast:
+    its `status_code` is optional precisely so the error path stays transport-agnostic.
+    """
+    from symai.providers._http.response import HttpMetadata
+    from symai.runtime.errors import ErrorMetadata
+
+    assert HttpMetadata.model_fields["status_code"].is_required()
+    assert not ErrorMetadata.model_fields["status_code"].is_required()

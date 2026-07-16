@@ -2,16 +2,16 @@ import pytest
 from pydantic import BaseModel, ValidationError
 
 from symai.providers.cerebras.client.chat import ChatCompletion
-from symai.providers.cerebras.client.transport import (
+from symai.providers.cerebras.client.response import (
     APIResponse,
+    HttpMetadata,
     RateLimitState,
-    ResponseMetadata,
 )
 
 
 def test_response_carries_exact_data_and_metadata_objects():
     data = ChatCompletion()
-    metadata = ResponseMetadata(
+    metadata = HttpMetadata(
         status_code=200,
         request_id="req-1",
         retry_after=2.5,
@@ -27,7 +27,7 @@ def test_response_carries_exact_data_and_metadata_objects():
 
 
 def test_response_values_are_immutable():
-    metadata = ResponseMetadata(
+    metadata = HttpMetadata(
         status_code=200,
         request_id=None,
         retry_after=None,

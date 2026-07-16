@@ -2,7 +2,7 @@ from typing import Annotated
 
 from pydantic import Field, SecretStr
 
-from symai.providers._client.models import StrictModel
+from symai.providers._http.schema import StrictModel
 
 PositiveFiniteFloat = Annotated[float, Field(gt=0, allow_inf_nan=False)]
 

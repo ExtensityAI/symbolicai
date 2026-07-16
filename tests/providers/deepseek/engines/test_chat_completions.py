@@ -6,7 +6,7 @@ import httpx
 import pytest
 from pydantic import JsonValue, SecretStr, ValidationError
 
-from symai.providers._client.transport import ResponseMetadata as DeepSeekResponseMetadata
+from symai.providers._http.response import HttpMetadata
 from symai.providers.deepseek.client import chat as chat_api
 from symai.providers.deepseek.client import errors as deepseek_errors
 from symai.providers.deepseek.client.client import Client
@@ -689,21 +689,21 @@ def test_empty_choices_are_rejected() -> None:
     [
         (
             deepseek_errors.AuthError(
-                DeepSeekResponseMetadata(status_code=401, request_id="auth-id", retry_after=None),
+                HttpMetadata(status_code=401, request_id="auth-id", retry_after=None),
                 "secret body",
             ),
             AuthenticationError,
         ),
         (
             deepseek_errors.RateLimitError(
-                DeepSeekResponseMetadata(status_code=429, request_id="rate-id", retry_after=2.5),
+                HttpMetadata(status_code=429, request_id="rate-id", retry_after=2.5),
                 "secret body",
             ),
             RateLimitError,
         ),
         (
             deepseek_errors.APIError(
-                DeepSeekResponseMetadata(status_code=500, request_id="api-id", retry_after=None),
+                HttpMetadata(status_code=500, request_id="api-id", retry_after=None),
                 "secret body",
             ),
             ExecutionError,
@@ -711,7 +711,7 @@ def test_empty_choices_are_rejected() -> None:
         (
             deepseek_errors.ResponseError(
                 "invalid body",
-                metadata=DeepSeekResponseMetadata(
+                metadata=HttpMetadata(
                     status_code=200,
                     request_id="response-id",
                     retry_after=None,

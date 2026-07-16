@@ -4,7 +4,7 @@ import httpx
 import pytest
 from pydantic import BaseModel, Field, SecretStr
 
-from symai.providers._client.headers import _UNSAFE_API_KEY_MESSAGE
+from symai.providers._http.headers import _UNSAFE_API_KEY_MESSAGE
 from symai.providers.deepseek.client.chat import CreateChatCompletionRequest, UserMessage
 from symai.providers.deepseek.client.client import Client
 from symai.providers.deepseek.client.errors import (

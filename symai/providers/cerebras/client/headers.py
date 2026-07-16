@@ -1,10 +1,10 @@
 import httpx
 
-from symai.providers._client.headers import (
+from symai.providers._http.headers import (
     extract_response_metadata as extract_base_response_metadata,
 )
-from symai.providers._client.headers import parse_optional_float, parse_optional_int
-from symai.providers.cerebras.client.transport import RateLimitState, ResponseMetadata
+from symai.providers._http.headers import parse_optional_float, parse_optional_int
+from symai.providers.cerebras.client.response import HttpMetadata, RateLimitState
 
 REQUEST_ID_HEADER = "x-request-id"
 RETRY_AFTER_HEADER = "retry-after"
@@ -16,10 +16,10 @@ RESET_REQUESTS_DAY_HEADER = "x-ratelimit-reset-requests-day"
 RESET_TOKENS_MINUTE_HEADER = "x-ratelimit-reset-tokens-minute"
 
 
-def extract_response_metadata(response: httpx.Response) -> ResponseMetadata:
+def extract_response_metadata(response: httpx.Response) -> HttpMetadata:
     base_metadata = extract_base_response_metadata(response)
     headers = response.headers
-    return ResponseMetadata(
+    return HttpMetadata(
         status_code=base_metadata.status_code,
         request_id=base_metadata.request_id,
         retry_after=base_metadata.retry_after,

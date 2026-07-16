@@ -5,7 +5,7 @@ import httpx
 import pytest
 from pydantic import SecretStr, ValidationError
 
-from symai.providers._client.headers import _UNSAFE_API_KEY_MESSAGE
+from symai.providers._http.headers import _UNSAFE_API_KEY_MESSAGE
 from symai.providers.cerebras.client.chat import (
     ChatCompletion,
     CreateChatCompletionRequest,
@@ -20,7 +20,7 @@ from symai.providers.cerebras.client.errors import (
     ResponseError,
     TransportError,
 )
-from symai.providers.cerebras.client.transport import APIResponse
+from symai.providers.cerebras.client.response import APIResponse
 
 RATE_LIMIT_HEADERS = {
     "x-ratelimit-limit-requests-day": "100",

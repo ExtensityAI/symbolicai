@@ -3,7 +3,7 @@ from typing import Literal
 
 from pydantic import Field
 
-from symai.providers._client.models import ModelId, StrictModel, TolerantModel
+from symai.providers._http.schema import ModelId, StrictModel, TolerantModel
 
 PATH = "/embeddings"
 

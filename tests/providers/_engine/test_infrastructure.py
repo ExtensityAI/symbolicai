@@ -2,11 +2,11 @@ from math import nan
 
 import pytest
 
-from symai.providers._client import errors as client_errors
-from symai.providers._client.transport import ResponseMetadata as ClientMetadata
 from symai.providers._engine.base import ProviderEngine
-from symai.providers._engine.gate import validate_language_model_capabilities
 from symai.providers._engine.mapping import ClientErrorMessages, raise_mapped_client_error
+from symai.providers._http import errors as client_errors
+from symai.providers._http.response import HttpMetadata
+from symai.runtime.capability import validate_language_model_capabilities
 from symai.runtime.errors import (
     AuthenticationError,
     ExecutionError,
@@ -89,7 +89,7 @@ _ERROR_MESSAGES = ClientErrorMessages(
     [
         (
             client_errors.AuthError(
-                ClientMetadata(status_code=401, request_id="auth-id", retry_after=None),
+                HttpMetadata(status_code=401, request_id="auth-id", retry_after=None),
                 "secret",
             ),
             AuthenticationError,
@@ -97,7 +97,7 @@ _ERROR_MESSAGES = ClientErrorMessages(
         ),
         (
             client_errors.RateLimitError(
-                ClientMetadata(status_code=429, request_id="rate-id", retry_after=2.5),
+                HttpMetadata(status_code=429, request_id="rate-id", retry_after=2.5),
                 "secret",
             ),
             RateLimitError,
@@ -106,7 +106,7 @@ _ERROR_MESSAGES = ClientErrorMessages(
         (
             client_errors.ResponseError(
                 "response",
-                metadata=ClientMetadata(
+                metadata=HttpMetadata(
                     status_code=200,
                     request_id="response-id",
                     retry_after=None,
@@ -123,7 +123,7 @@ _ERROR_MESSAGES = ClientErrorMessages(
         ),
         (
             client_errors.APIError(
-                ClientMetadata(status_code=500, request_id="api-id", retry_after=None),
+                HttpMetadata(status_code=500, request_id="api-id", retry_after=None),
                 "secret",
             ),
             ExecutionError,
@@ -160,7 +160,7 @@ def test_client_error_mapper_preserves_order_metadata_and_cause(
 @pytest.mark.parametrize("retry_after", [-1.0, nan])
 def test_client_error_mapper_drops_invalid_retry_after(retry_after: float) -> None:
     error = client_errors.APIError(
-        ClientMetadata(status_code=503, request_id="request-id", retry_after=retry_after),
+        HttpMetadata(status_code=503, request_id="request-id", retry_after=retry_after),
         "secret",
     )
 

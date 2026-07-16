@@ -4,7 +4,7 @@ import httpx
 import pytest
 from pydantic import SecretStr
 
-from symai.providers._client.headers import (
+from symai.providers._http.headers import (
     _UNSAFE_API_KEY_MESSAGE,
     authorization_header,
     extract_response_metadata,

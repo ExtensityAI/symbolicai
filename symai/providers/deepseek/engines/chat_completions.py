@@ -4,14 +4,13 @@ from typing import override
 
 from pydantic import ValidationError
 
-from symai.providers._client import errors as client_errors
-from symai.providers._client.transport import APIResponse
-from symai.providers._client.transport import ResponseMetadata as DeepSeekResponseMetadata
 from symai.providers._engine.base import ProviderEngine, retry_after_seconds
-from symai.providers._engine.gate import validate_language_model_capabilities
 from symai.providers._engine.mapping import ClientErrorMessages, raise_mapped_client_error
+from symai.providers._http import errors as client_errors
+from symai.providers._http.response import APIResponse, HttpMetadata
 from symai.providers.deepseek.client import chat as chat_api
 from symai.providers.deepseek.client.client import Client
+from symai.runtime.capability import validate_language_model_capabilities
 from symai.runtime.errors import ErrorMetadata, InvalidResponseError
 from symai.runtime.models import (
     AssistantOutputMessage,
@@ -209,7 +208,7 @@ class ChatCompletionsEngine(ProviderEngine[Client, LanguageModelSpec]):
 
     def _parse_response(
         self,
-        response: APIResponse[chat_api.ChatCompletion, DeepSeekResponseMetadata],
+        response: APIResponse[chat_api.ChatCompletion, HttpMetadata],
     ) -> LanguageModelResponse:
         raw = response.data
         error_metadata = self._error_metadata(response.metadata)
@@ -265,7 +264,7 @@ class ChatCompletionsEngine(ProviderEngine[Client, LanguageModelSpec]):
 
     def _response_metadata(
         self,
-        response: APIResponse[chat_api.ChatCompletion, DeepSeekResponseMetadata],
+        response: APIResponse[chat_api.ChatCompletion, HttpMetadata],
     ) -> ResponseMetadata:
         raw = response.data
         return ResponseMetadata(

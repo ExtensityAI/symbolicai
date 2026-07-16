@@ -4,7 +4,7 @@ from typing import Annotated, Literal
 
 from pydantic import ConfigDict, Field, JsonValue
 
-from symai.providers._client.models import ModelId, StrictModel, TolerantModel
+from symai.providers._http.schema import ModelId, StrictModel, TolerantModel
 
 PATH = "/responses"
 

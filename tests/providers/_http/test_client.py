@@ -4,7 +4,7 @@ import httpx
 import pytest
 from pydantic import SecretStr
 
-from symai.providers._client.client import BaseClient
+from symai.providers._http.client import BaseClient
 from symai.providers.cerebras.client.client import Client as CerebrasClient
 from symai.providers.deepseek.client.client import Client as DeepSeekClient
 from symai.providers.openai.client.client import Client as OpenAIClient

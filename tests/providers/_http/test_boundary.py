@@ -24,7 +24,7 @@ def _client_tier_modules() -> list[str]:
     """
     providers = PACKAGE / "providers"
     packages = [
-        providers / "_client",
+        providers / "_http",
         *sorted(
             path / "client"
             for path in providers.iterdir()
@@ -66,7 +66,7 @@ def permitted(name):
         return True
     if parts[:1] == ["symai"] and len(parts) == 1:
         return True
-    if parts[:3] == ["symai", "providers", "_client"]:
+    if parts[:3] == ["symai", "providers", "_http"]:
         return True
 
     return len(parts) >= 4 and parts[:2] == ["symai", "providers"] and parts[3] == "client"

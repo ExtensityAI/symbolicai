@@ -3,14 +3,13 @@ from typing import cast, override
 
 from pydantic import ValidationError
 
-from symai.providers._client import errors as client_errors
 from symai.providers._engine.base import ProviderEngine, retry_after_seconds
-from symai.providers._engine.gate import validate_language_model_capabilities
 from symai.providers._engine.mapping import ClientErrorMessages, raise_mapped_client_error
+from symai.providers._http import errors as client_errors
 from symai.providers.cerebras.client import chat as chat_api
 from symai.providers.cerebras.client.client import Client
-from symai.providers.cerebras.client.transport import APIResponse
-from symai.providers.cerebras.client.transport import ResponseMetadata as CerebrasResponseMetadata
+from symai.providers.cerebras.client.response import APIResponse, HttpMetadata
+from symai.runtime.capability import validate_language_model_capabilities
 from symai.runtime.errors import ErrorMetadata, InvalidResponseError
 from symai.runtime.models import (
     AssistantOutputMessage,
@@ -222,7 +221,7 @@ class ChatCompletionsEngine(ProviderEngine[Client, LanguageModelSpec]):
 
     def _parse_response(
         self,
-        response: APIResponse[chat_api.ChatCompletion, CerebrasResponseMetadata],
+        response: APIResponse[chat_api.ChatCompletion, HttpMetadata],
     ) -> LanguageModelResponse:
         raw = response.data
         error_metadata = self._error_metadata(response.metadata)
@@ -278,7 +277,7 @@ class ChatCompletionsEngine(ProviderEngine[Client, LanguageModelSpec]):
 
     def _response_metadata(
         self,
-        response: APIResponse[chat_api.ChatCompletion, CerebrasResponseMetadata],
+        response: APIResponse[chat_api.ChatCompletion, HttpMetadata],
     ) -> ResponseMetadata:
         raw = response.data
         usage = self._usage(raw.usage)
@@ -299,7 +298,7 @@ class ChatCompletionsEngine(ProviderEngine[Client, LanguageModelSpec]):
 
     @staticmethod
     def _rate_limit(
-        metadata: CerebrasResponseMetadata,
+        metadata: HttpMetadata,
     ) -> RateLimitMetadata | None:
         rate_limit = metadata.rate_limit
         values = (

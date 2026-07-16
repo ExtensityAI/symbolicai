@@ -17,7 +17,7 @@ Guarded traps:
 The client layer's purity — a faithful API binding that never imports ``symai.runtime`` —
 is guarded in ``tests/providers/test_public_facades.py`` (which forbids a superset of
 module prefixes) and, for transitive imports an AST scan cannot see, in
-``tests/providers/_client/test_boundary.py``.
+``tests/providers/_http/test_boundary.py``.
 """
 
 from __future__ import annotations
@@ -90,7 +90,7 @@ def test_every_language_engine_routes_through_the_shared_capability_gate() -> No
         path for path in ENGINE_FILES if path.name not in {"__init__.py", "embedding.py"}
     ]
     assert language_engines, "no language engine modules discovered"
-    gate_source = (PACKAGE / "providers" / "_engine" / "gate.py").read_text(encoding="utf-8")
+    gate_source = (PACKAGE / "runtime" / "capability.py").read_text(encoding="utf-8")
     assert "ImageContent" in gate_source
     missing = [
         str(path.relative_to(PACKAGE))

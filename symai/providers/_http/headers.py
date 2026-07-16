@@ -1,7 +1,7 @@
 import httpx
 from pydantic import SecretStr
 
-from symai.providers._client.transport import ResponseMetadata
+from symai.providers._http.response import HttpMetadata
 
 _UNSAFE_API_KEY_MESSAGE = (
     "api_key must be nonempty and free of surrounding whitespace and control characters"
@@ -61,8 +61,8 @@ def parse_optional_int(value: str | None) -> int | None:
         return None
 
 
-def extract_response_metadata(response: httpx.Response) -> ResponseMetadata:
-    return ResponseMetadata(
+def extract_response_metadata(response: httpx.Response) -> HttpMetadata:
+    return HttpMetadata(
         status_code=response.status_code,
         request_id=response.headers.get("x-request-id"),
         retry_after=parse_optional_float(response.headers.get("retry-after")),

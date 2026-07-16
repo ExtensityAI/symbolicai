@@ -6,14 +6,14 @@ from typing import Self
 import httpx
 from pydantic import BaseModel, SecretStr, ValidationError
 
-from symai.providers._client import errors
-from symai.providers._client.headers import authorization_header
-from symai.providers._client.settings import HttpProviderSettings
-from symai.providers._client.transport import APIResponse, ResponseMetadata
+from symai.providers._http import errors
+from symai.providers._http.headers import authorization_header
+from symai.providers._http.response import APIResponse, HttpMetadata
+from symai.providers._http.settings import HttpProviderSettings
 
 
 @dataclass(frozen=True, slots=True)
-class ClientConfig[MetadataT: ResponseMetadata]:
+class ClientConfig[MetadataT: HttpMetadata]:
     base_url: str
     provider_name: str
     extract_response_metadata: Callable[[httpx.Response], MetadataT]
@@ -24,7 +24,7 @@ class ClientConfig[MetadataT: ResponseMetadata]:
     transport_error: type[errors.TransportError]
 
 
-class BaseClient[MetadataT: ResponseMetadata]:
+class BaseClient[MetadataT: HttpMetadata]:
     """Synchronous owner of an HTTP provider connection pool.
 
     `MetadataT` is the provider's response-metadata type. Parameterizing it keeps a
@@ -117,7 +117,7 @@ class BaseClient[MetadataT: ResponseMetadata]:
     def _raise_for_status(
         self,
         response: httpx.Response,
-        metadata: ResponseMetadata,
+        metadata: HttpMetadata,
     ) -> None:
         config = self.config
         if response.status_code == httpx.codes.UNAUTHORIZED:
@@ -132,7 +132,7 @@ class BaseClient[MetadataT: ResponseMetadata]:
     def _parse_response[T: BaseModel](
         self,
         response: httpx.Response,
-        metadata: ResponseMetadata,
+        metadata: HttpMetadata,
         model: type[T],
     ) -> T:
         config = self.config

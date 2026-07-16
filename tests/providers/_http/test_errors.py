@@ -2,9 +2,9 @@ import json
 
 import pytest
 
-from symai.providers._client import errors as client_errors
+from symai.providers._http import errors as client_errors
 from symai.providers.cerebras.client import errors as cerebras_errors
-from symai.providers.cerebras.client.transport import RateLimitState, ResponseMetadata
+from symai.providers.cerebras.client.response import HttpMetadata, RateLimitState
 
 
 def _metadata(
@@ -12,8 +12,8 @@ def _metadata(
     status_code: int = 500,
     request_id: str | None = "req-1",
     retry_after: float | None = None,
-) -> ResponseMetadata:
-    return ResponseMetadata(
+) -> HttpMetadata:
+    return HttpMetadata(
         status_code=status_code,
         request_id=request_id,
         retry_after=retry_after,

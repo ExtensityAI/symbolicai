@@ -6,7 +6,7 @@ import httpx
 import pytest
 from pydantic import SecretStr, ValidationError
 
-from symai.providers._client.transport import ResponseMetadata as OpenAIResponseMetadata
+from symai.providers._http.response import HttpMetadata
 from symai.providers.openai.client import errors as openai_errors
 from symai.providers.openai.client.client import Client
 from symai.providers.openai.client.responses import CreateResponseRequest
@@ -356,14 +356,14 @@ def test_unknown_model_is_rejected_at_construction() -> None:
     [
         (
             openai_errors.AuthError(
-                OpenAIResponseMetadata(status_code=401, request_id="auth-id", retry_after=None),
+                HttpMetadata(status_code=401, request_id="auth-id", retry_after=None),
                 "secret body",
             ),
             AuthenticationError,
         ),
         (
             openai_errors.RateLimitError(
-                OpenAIResponseMetadata(status_code=429, request_id="rate-id", retry_after=2.0),
+                HttpMetadata(status_code=429, request_id="rate-id", retry_after=2.0),
                 "secret body",
             ),
             RateLimitError,
@@ -375,7 +375,7 @@ def test_unknown_model_is_rejected_at_construction() -> None:
         (
             openai_errors.ResponseError(
                 "invalid response",
-                metadata=OpenAIResponseMetadata(
+                metadata=HttpMetadata(
                     status_code=200,
                     request_id="response-id",
                     retry_after=None,
@@ -386,7 +386,7 @@ def test_unknown_model_is_rejected_at_construction() -> None:
         ),
         (
             openai_errors.APIError(
-                OpenAIResponseMetadata(status_code=500, request_id="api-id", retry_after=None),
+                HttpMetadata(status_code=500, request_id="api-id", retry_after=None),
                 "secret body",
             ),
             ExecutionError,
@@ -645,7 +645,7 @@ def test_invalid_provider_metadata_is_normalized() -> None:
 
 def test_nonfinite_provider_retry_after_does_not_mask_rate_limit_error() -> None:
     provider_error = openai_errors.RateLimitError(
-        OpenAIResponseMetadata(status_code=429, request_id="rate-id", retry_after=float("inf")),
+        HttpMetadata(status_code=429, request_id="rate-id", retry_after=float("inf")),
         "secret body",
     )
 

@@ -1,7 +1,7 @@
 import json
 from dataclasses import dataclass
 
-from symai.providers._client.transport import ResponseMetadata
+from symai.providers._http.response import HttpMetadata
 
 # Provider error bodies are unbounded and may echo request content back at us. Keep a
 # short diagnostic slice of the body, bound every extracted field, and refuse to parse
@@ -103,7 +103,7 @@ class ResponseError(ClientError):
         self,
         message: str,
         *,
-        metadata: ResponseMetadata,
+        metadata: HttpMetadata,
         body: str,
     ) -> None:
         self.metadata = metadata
@@ -119,7 +119,7 @@ class APIError(ClientError):
 
     def __init__(
         self,
-        metadata: ResponseMetadata,
+        metadata: HttpMetadata,
         body: str,
         message: str | None = None,
     ) -> None:

@@ -1,6 +1,6 @@
 from collections.abc import Callable, Mapping
 
-from symai.providers._client.settings import HttpProviderSettings
+from symai.providers._http.settings import HttpProviderSettings
 from symai.runtime.engines import EmbeddingEngine, LanguageModelEngine
 from symai.runtime.errors import UnsupportedModelError
 

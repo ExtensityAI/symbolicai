@@ -1,26 +1,26 @@
 import pytest
 from pydantic import ValidationError
 
-from symai.providers._client.transport import APIResponse, ResponseMetadata
-from symai.providers.cerebras.client.transport import (
+from symai.providers._http.response import APIResponse, HttpMetadata
+from symai.providers.cerebras.client.response import (
     APIResponse as CerebrasAPIResponse,
 )
-from symai.providers.cerebras.client.transport import (
-    RateLimitState,
+from symai.providers.cerebras.client.response import (
+    HttpMetadata as CerebrasHttpMetadata,
 )
-from symai.providers.cerebras.client.transport import (
-    ResponseMetadata as CerebrasResponseMetadata,
+from symai.providers.cerebras.client.response import (
+    RateLimitState,
 )
 
 
 def test_shared_response_envelope_is_strict_and_immutable():
-    metadata = ResponseMetadata(status_code=200, request_id="req-1", retry_after=None)
+    metadata = HttpMetadata(status_code=200, request_id="req-1", retry_after=None)
     response = APIResponse(data="ok", metadata=metadata)
 
     assert response.data == "ok"
     assert response.metadata is metadata
     with pytest.raises(ValidationError):
-        ResponseMetadata.model_validate(
+        HttpMetadata.model_validate(
             {
                 "status_code": 200,
                 "request_id": None,
@@ -33,7 +33,7 @@ def test_shared_response_envelope_is_strict_and_immutable():
 
 
 def test_cerebras_metadata_adds_rate_limit_state_to_shared_metadata():
-    metadata = CerebrasResponseMetadata(
+    metadata = CerebrasHttpMetadata(
         status_code=200,
         request_id=None,
         retry_after=None,
@@ -41,7 +41,7 @@ def test_cerebras_metadata_adds_rate_limit_state_to_shared_metadata():
     )
     response = CerebrasAPIResponse(data="ok", metadata=metadata)
 
-    assert isinstance(metadata, ResponseMetadata)
+    assert isinstance(metadata, HttpMetadata)
     assert CerebrasAPIResponse is APIResponse
     assert response.metadata is metadata
     assert metadata.rate_limit.remaining_tokens_minute is None

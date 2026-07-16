@@ -1,8 +1,8 @@
 """Typed HTTP response envelopes and rate-limit metadata returned by Cerebras."""
 
-from symai.providers._client import transport as _transport
-from symai.providers._client.models import StrictModel
-from symai.providers._client.transport import ResponseMetadata as BaseResponseMetadata
+from symai.providers._http import response as _transport
+from symai.providers._http.response import HttpMetadata as BaseHttpMetadata
+from symai.providers._http.schema import StrictModel
 
 
 class RateLimitState(StrictModel):
@@ -14,7 +14,7 @@ class RateLimitState(StrictModel):
     reset_tokens_minute: float | None = None
 
 
-class ResponseMetadata(BaseResponseMetadata):
+class HttpMetadata(BaseHttpMetadata):
     rate_limit: RateLimitState
 
 

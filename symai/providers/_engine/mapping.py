@@ -2,8 +2,8 @@ from dataclasses import dataclass
 from http import HTTPStatus
 from typing import Never
 
-from symai.providers._client import errors as client_errors
 from symai.providers._engine.base import retry_after_seconds
+from symai.providers._http import errors as client_errors
 from symai.runtime.errors import (
     AuthenticationError,
     ErrorMetadata,

@@ -17,7 +17,7 @@ import pytest
 from pydantic import SecretStr, ValidationError
 
 from symai.loading import load_runtime
-from symai.providers._client.settings import HttpProviderSettings
+from symai.providers._http.settings import HttpProviderSettings
 from symai.runtime.config import EngineConfig, RuntimeConfig
 from symai.runtime.models import LanguageModelRequest, TextContent, UserMessage
 

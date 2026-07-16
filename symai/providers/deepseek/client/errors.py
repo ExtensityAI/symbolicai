@@ -1,4 +1,4 @@
-from symai.providers._client import errors as client_errors
+from symai.providers._http import errors as client_errors
 
 
 class Error(client_errors.ClientError):

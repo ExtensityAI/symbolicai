@@ -3,11 +3,10 @@ from typing import cast, override
 
 from pydantic import ValidationError
 
-from symai.providers._client import errors as client_errors
-from symai.providers._client.transport import APIResponse
-from symai.providers._client.transport import ResponseMetadata as OpenAIResponseMetadata
 from symai.providers._engine.base import ProviderEngine, retry_after_seconds
 from symai.providers._engine.mapping import ClientErrorMessages, raise_mapped_client_error
+from symai.providers._http import errors as client_errors
+from symai.providers._http.response import APIResponse, HttpMetadata
 from symai.providers.openai.client import embeddings as embeddings_api
 from symai.providers.openai.client.client import Client
 from symai.runtime.errors import InvalidResponseError, UnsupportedFeatureError
@@ -97,7 +96,7 @@ class EmbeddingEngine(ProviderEngine[Client, EmbeddingModelSpec]):
 
     def _parse_response(
         self,
-        response: APIResponse[embeddings_api.EmbeddingList, OpenAIResponseMetadata],
+        response: APIResponse[embeddings_api.EmbeddingList, HttpMetadata],
         *,
         expected_count: int,
         expected_dimensions: int,

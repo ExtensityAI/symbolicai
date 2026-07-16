@@ -1,12 +1,12 @@
 import symai.providers.deepseek.client.chat as chat
 import symai.providers.deepseek.client.errors as errors
-from symai.providers._client.client import BaseClient, ClientConfig
-from symai.providers._client.headers import extract_response_metadata
-from symai.providers._client.transport import APIResponse, ResponseMetadata
+from symai.providers._http.client import BaseClient, ClientConfig
+from symai.providers._http.headers import extract_response_metadata
+from symai.providers._http.response import APIResponse, HttpMetadata
 
 BASE_URL = "https://api.deepseek.com"
 
-CLIENT_CONFIG = ClientConfig[ResponseMetadata](
+CLIENT_CONFIG = ClientConfig[HttpMetadata](
     base_url=BASE_URL,
     provider_name="DeepSeek",
     extract_response_metadata=extract_response_metadata,
@@ -18,7 +18,7 @@ CLIENT_CONFIG = ClientConfig[ResponseMetadata](
 )
 
 
-class Client(BaseClient[ResponseMetadata]):
+class Client(BaseClient[HttpMetadata]):
     """Synchronous owner of a DeepSeek HTTP connection pool."""
 
     config = CLIENT_CONFIG
@@ -26,7 +26,7 @@ class Client(BaseClient[ResponseMetadata]):
     def create_chat_completion(
         self,
         request: chat.CreateChatCompletionRequest,
-    ) -> APIResponse[chat.ChatCompletion, ResponseMetadata]:
+    ) -> APIResponse[chat.ChatCompletion, HttpMetadata]:
         """Execute one non-streaming chat completion request."""
 
         return self._post(chat.PATH, request, chat.ChatCompletion)

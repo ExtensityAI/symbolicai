@@ -1,8 +1,8 @@
 import pytest
 from pydantic import SecretStr, ValidationError
 
-from symai.providers._client.models import StrictModel
-from symai.providers._client.settings import HttpProviderSettings
+from symai.providers._http.schema import StrictModel
+from symai.providers._http.settings import HttpProviderSettings
 
 
 def test_http_provider_settings_are_a_runtime_blind_strict_model():

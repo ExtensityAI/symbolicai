@@ -6,9 +6,9 @@ import httpx
 import pytest
 from pydantic import SecretStr
 
-from symai.providers._client import errors as _client_errors
-from symai.providers._client import transport as _client_transport
 from symai.providers._engine import mapping
+from symai.providers._http import errors as _client_errors
+from symai.providers._http import response as _http_transport
 from symai.providers.cerebras.client.client import Client as CerebrasClient
 from symai.providers.cerebras.engines.chat_completions import (
     ChatCompletionsEngine as CerebrasChatCompletionsEngine,
@@ -249,7 +249,7 @@ def test_non_success_statuses_map_to_distinct_runtime_errors(
     status_code: int,
     expected: type[Exception],
 ) -> None:
-    metadata = _client_transport.ResponseMetadata(
+    metadata = _http_transport.HttpMetadata(
         status_code=status_code, request_id="req-1", retry_after=None
     )
     error = _client_errors.APIError(metadata, json.dumps({"error": {"code": "c", "param": "p"}}))
@@ -282,7 +282,7 @@ def test_retryability_marks_capacity_and_provider_health_only(
     status_code: int,
     retryable: bool,
 ) -> None:
-    metadata = _client_transport.ResponseMetadata(
+    metadata = _http_transport.HttpMetadata(
         status_code=status_code, request_id=None, retry_after=None
     )
     error = _client_errors.APIError(metadata, "{}")

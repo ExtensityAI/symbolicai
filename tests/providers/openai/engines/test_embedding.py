@@ -6,7 +6,7 @@ import httpx
 import pytest
 from pydantic import SecretStr, ValidationError
 
-from symai.providers._client.transport import ResponseMetadata as OpenAIResponseMetadata
+from symai.providers._http.response import HttpMetadata
 from symai.providers.openai.client import errors as openai_errors
 from symai.providers.openai.client.client import Client
 from symai.providers.openai.client.embeddings import CreateEmbeddingRequest
@@ -264,14 +264,14 @@ def test_inconsistent_usage_is_omitted(prompt_tokens: int, total_tokens: int) ->
     [
         (
             openai_errors.AuthError(
-                OpenAIResponseMetadata(status_code=401, request_id="auth-id", retry_after=None),
+                HttpMetadata(status_code=401, request_id="auth-id", retry_after=None),
                 "secret body",
             ),
             AuthenticationError,
         ),
         (
             openai_errors.RateLimitError(
-                OpenAIResponseMetadata(status_code=429, request_id="rate-id", retry_after=2.0),
+                HttpMetadata(status_code=429, request_id="rate-id", retry_after=2.0),
                 "secret body",
             ),
             RateLimitError,
@@ -280,7 +280,7 @@ def test_inconsistent_usage_is_omitted(prompt_tokens: int, total_tokens: int) ->
         (
             openai_errors.ResponseError(
                 "invalid response",
-                metadata=OpenAIResponseMetadata(
+                metadata=HttpMetadata(
                     status_code=200,
                     request_id="response-id",
                     retry_after=None,
@@ -291,7 +291,7 @@ def test_inconsistent_usage_is_omitted(prompt_tokens: int, total_tokens: int) ->
         ),
         (
             openai_errors.APIError(
-                OpenAIResponseMetadata(status_code=500, request_id="api-id", retry_after=None),
+                HttpMetadata(status_code=500, request_id="api-id", retry_after=None),
                 "secret body",
             ),
             ExecutionError,
