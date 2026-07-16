@@ -296,6 +296,29 @@ Function and semantic operations receive a bound engine handle obtained from the
 
 Runtime owns named configured engine instances. Two instances may use the same provider/model with different credentials and transports. `runtime.language_model(name)` and `runtime.embedding(name)` return a bound handle (`LanguageModel` / `EmbeddingModel`) that callers pass to operations and Function without knowing provider details. The low-level `runtime.execute(request, engine=<name>)` path remains as an escape hatch.
 
+Configuration uses `RuntimeConfig` mappings from application-owned names to `EngineConfig` values:
+
+```python
+RuntimeConfig(
+    language_models={
+        "tenant-a": EngineConfig(
+            implementation="openai:responses",
+            settings={"model": "gpt-5.4", "api_key": key_a},
+        ),
+        "tenant-b": EngineConfig(
+            implementation="openai:responses",
+            settings={"model": "gpt-5.4", "api_key": key_b},
+        ),
+    },
+    embeddings={...},
+)
+```
+
+There are no configured default-engine fields. Omitting the name in `runtime.language_model()` or
+`runtime.embedding()` resolves only when exactly one engine provides that capability; zero engines
+raise `UnsupportedCapabilityError`, and multiple engines raise `AmbiguousEngineError`. A supplied name
+is resolved within the requested capability.
+
 The synchronous Runtime has one owner thread. Async execution, if needed, will use a separately designed `AsyncRuntime` rather than weakening the synchronous lifecycle contract.
 
 ---

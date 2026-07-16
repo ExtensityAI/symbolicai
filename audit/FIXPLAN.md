@@ -119,7 +119,7 @@ Prefer an output state model whose invariant permits:
 
 ### API-key boundary
 
-Validate credential header safety at the shared client/header construction boundary, not only in `ProviderEngineConfig`, because direct client users otherwise bypass the check. Reject control characters and unsafe whitespace without including the raw key in a validation error.
+Validate credential header safety at the shared client/header construction boundary, not only during Runtime configuration loading, because direct client users otherwise bypass the check. Reject control characters and unsafe whitespace without including the raw key in a validation error.
 
 **Addresses:** SEC-01.
 
@@ -131,65 +131,71 @@ Validate credential header safety at the shared client/header construction bound
 
 ### Configuration
 
-Replace scalar capability slots with immutable named instance collections:
+Use immutable mappings from application-owned names to provider-neutral engine configuration:
 
 ```python
 RuntimeConfig(
-    language_models=(
-        NamedEngineConfig(
-            name="tenant-a",
-            provider=Provider.OPENAI,
-            model="gpt-5.4",
-            api_key=key_a,
+    language_models={
+        "tenant-a": EngineConfig(
+            implementation="openai:responses",
+            settings={
+                "model": "gpt-5.4",
+                "api_key": key_a,
+            },
         ),
-        NamedEngineConfig(
-            name="tenant-b",
-            provider=Provider.OPENAI,
-            model="gpt-5.4",
-            api_key=key_b,
+        "tenant-b": EngineConfig(
+            implementation="openai:responses",
+            settings={
+                "model": "gpt-5.4",
+                "api_key": key_b,
+            },
         ),
-    ),
-    embeddings=(...),
+    },
+    embeddings={...},
 )
 ```
 
 Validate before allocation:
 
 - at least one configured instance;
-- nonempty globally unique names;
-- provider/capability/model support;
+- nonempty names unique within each capability mapping;
+- valid implementation IDs and provider settings;
 - a sole configured instance of a capability resolves without a name;
+- multiple instances require an explicit name;
+- no configured `default_language_model` or `default_embedding`;
 - no silent normalization or overwrite of duplicate names.
 
 Keep names opaque, case-sensitive application identifiers unless a real interoperability requirement justifies a stricter syntax.
 
 ### Selection
 
-Add keyword-only engine selection to typed execution overloads:
+Acquire capability-specific bound handles for normal execution:
 
 ```python
-runtime.execute(language_request, engine="tenant-b")
-runtime.execute(embedding_request, engine="embed-primary")
+language_model = runtime.language_model("tenant-b")
+embedding_model = runtime.embedding("embed-primary")
 ```
 
 Resolution rules:
 
-1. An explicit name must exist and match the request capability.
-2. Otherwise use the sole matching engine.
-3. Otherwise raise an ambiguity error listing safe engine names.
-4. If no engine provides the request capability, preserve `UnsupportedCapabilityError`.
+1. A supplied name must exist within the requested capability.
+2. An omitted name resolves only when exactly one engine provides that capability.
+3. Multiple matching engines raise an ambiguity error listing safe engine names.
+4. No matching engine raises `UnsupportedCapabilityError`.
 
+Operations and `Function` receive these handles. Keep
+`runtime.execute(request, engine="tenant-b")` as the low-level escape hatch for dynamic routing.
 Use distinct structured errors for unknown name, wrong capability, and ambiguity. Never expose credentials.
 
 ### Ownership and transport
 
 Construct one `httpx.Client` per named instance. Preserve each instance's independent key, timeout, retry, pool, and teardown. Do not cache or deduplicate clients by provider/model.
 
-Internally Runtime owns a read-only name-to-tagged-handle map and a reverse construction order. It may expose immutable instance metadata later, but never raw handles or clients.
+Internally Runtime owns a read-only name-to-engine map and reverse construction order. It returns frozen bound selectors, never raw engines or clients.
 
 ### Explicit lifecycle
 
-Remove `_CURRENT_RUNTIME` and `current_runtime()`. `with Runtime` controls lifecycle only; consumers receive Runtime explicitly.
+Remove `_CURRENT_RUNTIME` and `current_runtime()`. `with Runtime` controls lifecycle only; consumers receive bound engine handles explicitly.
 
 Record the owner thread when entry succeeds. Reject foreign-thread `execute`, active `close`, or `__exit__` before touching state or handles. Once affinity is enforced, synchronous same-Runtime overlap is illegal and the `Condition`, `_in_flight`, `CLOSING` drain, and `EngineHandle` lock can be removed.
 
