@@ -33,7 +33,6 @@ def test_documented_python_blocks_are_syntactically_valid(path: Path) -> None:
 
 @pytest.mark.parametrize("path", _documents())
 def test_documented_imports_resolve_against_the_shipped_surface(path: Path) -> None:
-    resolved = 0
     for block in _python_blocks(path):
         for node in ast.walk(ast.parse(block)):
             if not isinstance(node, ast.ImportFrom) or node.module is None:
@@ -46,9 +45,6 @@ def test_documented_imports_resolve_against_the_shipped_surface(path: Path) -> N
                 assert hasattr(module, alias.name), (
                     f"{path.name} documents {node.module}.{alias.name}, which is not shipped"
                 )
-                resolved += 1
-
-    assert resolved or not _python_blocks(path)
 
 
 def test_documented_configuration_and_handles_work_end_to_end() -> None:

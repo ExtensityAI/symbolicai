@@ -1,35 +1,3 @@
-exclude = [
-    ".codex",
-    ".symai",
-    ".bzr",
-    ".direnv",
-    ".eggs",
-    ".git",
-    ".git-rewrite",
-    ".hg",
-    ".ipynb_checkpoints",
-    ".mypy_cache",
-    ".nox",
-    ".pants.d",
-    ".pyenv",
-    ".pytest_cache",
-    ".pytype",
-    ".ruff_cache",
-    ".svn",
-    ".tox",
-    ".venv",
-    ".vscode",
-    "__pypackages__",
-    "_build",
-    "buck-out",
-    "build",
-    "dist",
-    "node_modules",
-    "site-packages",
-    "venv",
-    "scripts",
-]
-
 line-length = 100
 indent-width = 4
 target-version = "py312"
@@ -69,7 +37,8 @@ dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
 # module identity, which a top-level import would establish before the test runs.
 # Test doubles implement engine protocols, so they must accept arguments they ignore
 # (ARG002) and may raise inline messages (EM101) without the msg-variable indirection.
-# TC001 is not applicable: this project does not use TYPE_CHECKING guards.
+# TC001 would push first-party imports into TYPE_CHECKING blocks, which this project
+# avoids: a deferred import hides a real dependency and cannot be exercised at runtime.
 "tests/*" = ["PLC0415", "ARG002", "EM101", "TC001"]
 
 [lint.flake8-tidy-imports]

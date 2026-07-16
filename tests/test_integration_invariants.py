@@ -74,8 +74,14 @@ def test_image_content_model_exists() -> None:
     assert models.ImageContent.model_fields["type"].default == "image"
 
 
-def test_every_language_engine_wires_image_content() -> None:
-    """Each language engine must preserve the shared multimodal capability gate."""
+def test_every_language_engine_routes_through_the_shared_capability_gate() -> None:
+    """The gate is the only place vision, reasoning, and sampling support are enforced.
+
+    An engine that checked those itself would drift from the model spec it advertises,
+    which is the defect recorded as CX-02. Whether each engine then *handles* image
+    content correctly is behaviour, covered by the per-engine tests; this pins only that
+    no engine bypasses the shared gate.
+    """
     language_engines = [
         path for path in ENGINE_FILES if path.name not in {"__init__.py", "embedding.py"}
     ]
@@ -85,10 +91,9 @@ def test_every_language_engine_wires_image_content() -> None:
     missing = [
         str(path.relative_to(PACKAGE))
         for path in language_engines
-        if "ImageContent" not in path.read_text(encoding="utf-8")
-        and "validate_language_model_capabilities" not in path.read_text(encoding="utf-8")
+        if "validate_language_model_capabilities" not in path.read_text(encoding="utf-8")
     ]
-    assert not missing, f"language engines dropped the image/multimodal path: {missing}"
+    assert not missing, f"language engines bypass the shared capability gate: {missing}"
 
 
 # --- Invariant 2: the client layer is a provider-pure API binding ---------------------
