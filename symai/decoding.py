@@ -88,9 +88,15 @@ def decode_output[T](
     replaces. Output selection, limiting, and every other decoder exception always
     propagate, so a decoder bug is never silently converted into `default`.
 
+    `limit` keeps the first `limit` entries of an ordered collection — a list, a tuple, or
+    a dict. Anything else, including a set and any scalar, is returned unchanged rather
+    than limited: an unordered collection has no deterministic first `limit` elements, and
+    a limit that silently depended on set iteration order would not be reproducible.
+
     Raises:
         DecodeError: if the decoder rejected the output and no `default` was given.
         IndexError: if `output_index` is absent from the response.
+        ValueError: if `limit` is not greater than zero.
     """
     text = response.output_text(output_index)
     try:

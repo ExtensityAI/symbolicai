@@ -181,9 +181,13 @@ Zero impact today (no DeepSeek field is aliased), but the moment an aliased fiel
 **Severity: High** · `symai/ops/primitives.py:1800-1805,1914-1919`; `operations.py:571-572` (`limit_value` list branch) · status: `repro-script`, `self`
 Both route through `_execute_symbol(..., literal=True)` which defaults `limit=1` (`primitives.py:119`); the model returns a list literal, so `parse_literal_or_text_output` → `limit_value(list, 1)` slices to `[:1]` (`operations.py:571-572`). `Symbol([...]).map('...')`/`.rank()` return a **1-element** list unless the caller explicitly passes `limit=None`, contradicting the operations' own intent ("Transform each element…" `map_request` prompt `operations.py:283`; "Order the list of objects…" `rank_request` prompt `operations.py:347`). Silent regression vs `main` (where the full list was returned). No test exercises the default-limit path. Reproduced: `limit_value(['a','b','c','d'], 1) == ['a']`.
 
+**Resolution: closed.** The defect was the `limit=1` default, not limiting itself. `decode_output` now defaults `limit=None` (`symai/decoding.py:80`), and `_execute_language` (`symai/ops/primitives.py:23-30`) passes no limit at all, so `text.map` and `rank.rank` return the full collection. Neither operation exposes a `limit` parameter any more. Pinned by `tests/test_symbol_runtime_cutover.py::test_language_operation_contract[map]` and `[rank]`. Mutation-verified: reintroducing `decode_output(..., limit=1)` in `_execute_language` fails both tests. Note the guard is structural (the test recorder's signature admits no `limit`) rather than a semantic assertion that a collection survives untruncated — it catches the regression, but incidentally.
+
 ### BUG-10 — `set` return type unconditionally raises `TypeError`, even with a default supplied
 **Severity: High** · `symai/operations.py:471,577-579`; entry points default `limit=1` (`components.py:26,51`, `primitives.py:119`) · status: `repro-script`, `self`
 `parse_typed_value` explicitly supports `set`, but `limit_value` raises `TypeError('Cannot deterministically limit an unordered set')` for any set, and it runs **outside** the try/except that honours `default`. So `Function('extract tags', return_type=set)('text')` or `Symbol('x').query('give a set', return_type=set)` always raises — even for a valid set literal, even with `default=set()`. Only non-obvious workaround: `limit=None`. Reproduced: `limit_value({1,2,3}, 1)` raises.
+
+**Resolution: closed.** `_limit_value` (`symai/decoding.py:123-134`) has no `set` branch: it truncates lists, tuples, and dicts, and returns anything else unchanged, so an unordered collection is never limited and never raises. Limiting also now runs on the decoded value inside `decode_output`, so it can no longer bypass `default`. Verified: `decode_output(response, TypeAdapter(set[int]).validate_json, default=set())` returns `set()` without raising. Pinned by `tests/test_decoding.py::test_collection_limiting_leaves_unordered_collections_unchanged` and `::test_explicit_default_catches_only_decoder_failure_and_is_limited`. The exemption is documented on `decode_output` rather than left implicit.
 
 ### BUG-11 — Recursive literal coercion re-parses string elements of `map`/`rank`/`setitem` output
 **Severity: Low** (reported Medium) · `symai/operations.py:519-533,590-604` · status: `repro-script`, `self`
@@ -196,6 +200,8 @@ Both route through `_execute_symbol(..., literal=True)` which defaults `limit=1`
 ### BUG-13 — Equal Symbols can have different hashes, and mutation changes a Symbol's hash
 **Severity: High** · `symai/symbol.py:356-363`; equality at `symai/ops/primitives.py:269-296` · status: `repro-script`, `self`
 `Symbol.__eq__` compares held values, while `__hash__` hashes `str(self.value)`. Equal dictionaries with different insertion order compare equal but stringify differently, so their hashes differ. Item mutation also changes the string and therefore the hash after insertion into a set/dict. Both violate Python's hash contract. Reproduced with two equal dictionaries yielding unequal hashes and with `Symbol([1])` changing hash after `symbol[0] = 2`. The approved redesign makes the shallow-immutable wrapper unhashable.
+
+**Resolution: closed.** `Symbol` is unhashable and immutable: `__hash__ = None`, `__slots__ = ("_value",)`, and `__setattr__`/`__delattr__` raise (`symai/symbol.py:12-26`). Both reproductions are now impossible — `hash(Symbol(1))` raises `TypeError: unhashable type: 'Symbol'`, and the mutation half cannot be reached because state cannot be reassigned. Pinned by `tests/test_symbol.py::test_symbol_is_unhashable_even_when_its_value_is_hashable` and `::test_symbol_wrapper_state_is_immutable_and_cannot_be_extended` (`symbol.py` at 100% coverage).
 
 ### BUG-14 — Native item operations erase Python's actionable exception types
 **Severity: Medium** · `symai/ops/primitives.py:1371-1376,1405-1411,1437-1443` · status: `repro-script`, `self`
@@ -371,6 +377,8 @@ Adding a model to a client `MODEL_SPECS` auto-flows into the engine, but capabil
 **Severity: High** · `symai/ops/primitives.py:2052,2276-2335,2337,2381,2430,2459+` · status: `measured`
 `similarity()`, `distance()`, all 12 kernel handlers (`_kernel_gaussian` `:2276` … `_kernel_mmd` `:2334`), `calculate_mmd()`, `zip()`, and `save`/`load` persistence are entirely untested — a large, math-heavy, easy-to-get-wrong surface of the user-facing type.
 
+**Resolution: closed for the surface that still exists.** The embedding math moved to `symai/ops/embed.py` and is now covered by 21 tests (`tests/test_symbol_runtime_cutover.py::test_similarity_metrics`, `::test_distance_metrics`, `::test_kernel_functions`, `::test_rbf_mmd_is_zero_for_identical_samples_and_bounded`, `::test_cosine_similarity_rejects_a_true_zero_vector`, and others); measured coverage is 85%, and every uncovered line is a `raise` in a validation branch. `zip()` and `save`/`load` no longer exist, so there is nothing left to cover — see PERSIST-01 and SEC-03. The kernel surface is deliberately narrowed from 12 handlers to `linear|rbf|polynomial` plus a separate bounded `mmd` (`SYMBOL_REDESIGN.md` §5).
+
 ### TST-02 — Semantic LLM-fallback of ~45 operator dunders is untested; only `+` is exercised
 **Severity: Medium** · `symai/ops/primitives.py:179-1259` · status: `repro-read`
 Each comparison/arithmetic dunder hardcodes a distinct operator token + request builder in its fallback path (e.g. `__gt__` → `compare_request(self, ">", other)`); a copy-paste error in any of ~45 would be invisible.
@@ -395,9 +403,13 @@ Aggregate is weighted by near-100% runtime/clients; `ops/primitives.py` (2,511 l
 **Severity: High** · `CMDS.md:46` · status: `repro-script`, `self`
 Every test command uses `--engine-api=mock|live`, which is not a registered pytest option (no `conftest.py`/`pytest_addoption` anywhere). Reproduced: `uv run pytest tests/engines --engine-api=mock` → `error: unrecognized arguments: --engine-api=mock`. `CMDS.md` is **new on this branch**.
 
+**Resolution (FIXPLAN §12): closed by deleting `CMDS.md`.** Re-reproduced against the redesigned head before removal: `--engine-api` is still registered nowhere (no `conftest.py` exists in the repo at all), and `tests/engines/` had itself been deleted, leaving only a `__pycache__` husk. Every command in the file was broken, so §12's "remove stale console/config/testing instructions rather than preserving nonfunctional shims" applies rather than a rewrite. The `api_keys.log` the file instructed readers to read does not exist and `*.log` is gitignored, so no credential was exposed.
+
 ### DOC-02 — `CMDS.md` "Engine request API" points at deleted files and a nonexistent method flow
 **Severity: Medium** · `CMDS.md:87` · status: `self`
 References `backend/mixin/deepseek.py`, `engine_deepseekX_reasoning.py`, `tests/data/*`, and a `prepare→build_request→call_request` flow — all removed in the cutover.
+
+**Resolution: closed by the same deletion as DOC-01.**
 
 ### DOC-03 — `CMDS.md` instructs editing a `symai.config.json` the library no longer reads
 **Severity: Medium** · `CMDS.md:9,49` · status: `self`
@@ -411,9 +423,13 @@ Tells the user to configure `.venv/.symai/symai.config.json`; config-file loadin
 **Severity: High** · `pyproject.toml:11` · status: `self`
 HEAD is `1.18.0`, identical to `main`, yet exposes a mutually incompatible surface (`main`'s `__all__` had `Symbol`/`Expression`/`Function`/`Conversation`; HEAD exports only runtime types). A `pip install -U` is a silent, un-versioned breaking change; the wheel is effectively unpublishable at this version.
 
+**Resolution (FIXPLAN §12): closed at `2.0.0`.** The version was held until the Runtime, Function/decoder, and Symbol cutovers were verified complete against `SYMBOL_REDESIGN.md` §11, as §12 requires. `symai.__version__` now derives from installed package metadata instead of restating the number, so `pyproject.toml` is the single source and the two cannot drift. Pinned by `tests/test_packaging.py::test_the_release_is_a_new_major_version` and `::test_version_metadata_agrees_across_every_exposed_source`.
+
 ### PKG-02 — Legacy imports fail without migration guidance
 **Severity: Medium** · `symai/__init__.py` · status: `repro-script`, `self`
 `from symai import Symbol` now raises `ImportError: cannot import name 'Symbol'` (verified) while the package still reports the old version and ships no migration note. A clean major-version cutover does not require a runtime forwarding shim, but it does require an explicit public import contract and migration guide so removed names and replacements are discoverable.
+
+**Resolution: closed by `docs/source/MIGRATION.md` plus the `2.0.0` version.** The guide maps every retained 1.x `Symbol` method to its `ops.*` function, lists the methods removed outright, and covers the configuration, `Function`/decoder, and error changes (`SYMBOL_REDESIGN.md` §10). The version no longer misreports the surface. No forwarding shim was added, per §10.
 
 ### PKG-03 — `symai.__version__` / `symai.SYMAI_VERSION` removed → `AttributeError`
 **Severity: Medium** · `symai/__init__.py` · status: `self`
@@ -465,9 +481,15 @@ The original audit treated one client per capability as a wasted-pool issue. The
 **Severity: High** · `symai/ops/primitives.py:2477-2492` · status: `repro-script`, `self`
 `save()` checks collisions against the path before adding `.pkl`. If `item.pkl` exists but `item` does not, `Symbol(...).save(\"item\", replace=False, serialize=True)` opens `item.pkl` with `\"wb\"` and overwrites it. Reproduced in a temporary directory: pre-existing bytes changed despite `replace=False`. The write is also non-atomic, so interruption can leave a corrupt artifact. The approved redesign removes built-in Symbol persistence rather than preserving this contract.
 
+**Resolution: closed by removal, not repair.** `save()` is gone with the rest of the god-object (`SYMBOL_REDESIGN.md` §8); `symai/ops/primitives.py` is now 30 lines of helpers. There is no file-writing path in `symai/` for a Symbol to collide on. Guarded by `tests/test_symbol_runtime_cutover.py::test_old_mixin_context_and_symbol_surfaces_are_absent`, which asserts `PersistencePrimitives` is absent and `Symbol` has no `save` attribute.
+
 ### SEC-03 — `Symbol.load()` executes arbitrary pickle payloads
 **Severity: High** · `symai/ops/primitives.py:2497-2508` · status: `repro-read`
 `load(path)` passes caller-selected bytes directly to `pickle.load()` without a trusted-input-only name or warning. Loading an attacker-controlled pickle executes arbitrary Python code. Moving the method to another namespace would not make it safe. Built-in persistence is removed; any future durable format requires a separate versioned, validated, non-executable codec design.
+
+**Resolution: closed by removal.** `load()` is gone, and the arbitrary-code-execution primitive it depended on is absent library-wide: `symai/` contains no `pickle`, `dill`, `marshal`, `shelve`, or `joblib` import, and no `eval(`/`exec(`/`literal_eval`/`__import__` (the only dynamic import left is `importlib.metadata.version` for `__version__`). The surviving `load_*` names are engine and configuration loaders and touch no serialized bytes. Guarded behaviourally by `tests/test_symbol_runtime_cutover.py::test_old_mixin_context_and_symbol_surfaces_are_absent`.
+
+**Residual risk:** the guard is behavioural (`Symbol` has no `load`), not static. No test forbids `import pickle` appearing anywhere in `symai/`, so a future module could reintroduce the primitive without failing the suite. Any durable format still requires a versioned, validated, non-executable codec.
 
 ---
 
