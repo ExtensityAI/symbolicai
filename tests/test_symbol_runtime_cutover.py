@@ -187,7 +187,7 @@ REMOTE_CASES = (
     ),
     RemoteCase(
         "combine",
-        lambda model, source, other: text.combine(model, source, other),
+        text.combine,
         language_request(
             "Add the two data types in a logical way:\n",
             "source + other =>",
@@ -231,7 +231,7 @@ REMOTE_CASES = (
     ),
     RemoteCase(
         "equals",
-        lambda model, source, other: compare.equals(model, source, other),
+        compare.equals,
         language_request(
             "Make a fuzzy equality comparison. Are the following objects contextually the same?\n",
             "source == other =>",
@@ -241,7 +241,7 @@ REMOTE_CASES = (
     ),
     RemoteCase(
         "contains",
-        lambda model, source, other: compare.contains(model, source, other),
+        compare.contains,
         language_request(
             "Is the information in 'A' semantically contained in 'B'?\n",
             "other in source =>",
@@ -568,7 +568,7 @@ def test_kernel_options_are_mode_specific() -> None:
 
     with pytest.raises(ValueError, match="gamma"):
         embed.kernel(left, right, kind="rbf")
-    with pytest.raises(ValueError, match="degree.*coef0"):
+    with pytest.raises(ValueError, match=r"degree.*coef0"):
         embed.kernel(left, right, kind="polynomial", degree=2)
     with pytest.raises(ValueError, match="not valid"):
         embed.kernel(left, right, kind="linear", gamma=1.0)
@@ -614,7 +614,7 @@ def test_numeric_helpers_propagate_useful_shape_and_numeric_errors(
     call: Callable[[], object],
 ) -> None:
     with pytest.raises(
-        (TypeError, ValueError), match="numeric|shape|one-dimensional|two-dimensional|non-empty"
+        (TypeError, ValueError), match=r"numeric|shape|one-dimensional|two-dimensional|non-empty"
     ):
         call()
 
@@ -667,7 +667,7 @@ def test_remote_signatures_take_bound_handles_without_string_selection() -> None
 
     for operation in remote_functions:
         signature = inspect.signature(operation)
-        assert tuple(signature.parameters)[0] == "model"
+        assert next(iter(signature.parameters)) == "model"
         assert "engine" not in signature.parameters
         assert "provider" not in signature.parameters
         assert "runtime" not in signature.parameters

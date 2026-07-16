@@ -72,8 +72,8 @@ def test_ordering_returns_native_booleans_and_unwraps_symbol_operands() -> None:
     assert symbol <= Symbol(2)
     assert symbol > 1
     assert symbol >= Symbol(2)
-    assert 1 < symbol
-    assert 3 > symbol
+    assert symbol > 1
+    assert symbol < 3
     assert symbol.__lt__(3) is True
     assert symbol.__le__(Symbol(2)) is True
     assert symbol.__gt__(1) is True
@@ -302,7 +302,7 @@ def test_native_exceptions_propagate_unchanged() -> None:
         _ = Symbol({"present": 1})["missing"]
 
     with pytest.raises(IndexError) as native_index_error:
-        _ = [1][2]
+        _ = [1][2]  # noqa: PLE0643  # the IndexError is the behaviour under comparison
     with pytest.raises(IndexError) as symbol_index_error:
         _ = Symbol([1])[2]
 

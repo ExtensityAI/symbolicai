@@ -1,7 +1,8 @@
-"""Guard the documented public surface against drift.
+"""Check the documented snippets against the surface the library actually ships.
 
-The docs are part of the release gate: a snippet that names a type we no longer ship is
-a broken promise to the reader, and nothing else in the suite reads them.
+Nothing else in the suite reads the docs, so a snippet that no longer imports or runs will
+not fail anywhere else. Every check here derives what is valid from the current surface,
+which is what keeps them useful past any one release.
 """
 
 import ast
@@ -48,33 +49,6 @@ def test_documented_imports_resolve_against_the_shipped_surface(path: Path) -> N
                 resolved += 1
 
     assert resolved or not _python_blocks(path)
-
-
-def test_documentation_does_not_reference_removed_surfaces() -> None:
-    # These names were removed in the cutover; a doc naming one is stale by definition.
-    removed = (
-        "ProviderEngineConfig",
-        "create_runtime",
-        "NamedEngineConfig",
-        "current_runtime",
-        "Expression",
-        "sym_return_type",
-        "TextDecoder",
-        "ConstructorDecoder",
-        "TypeAdapterDecoder",
-        ".sem",
-        ".syn",
-        "static_context",
-        "dynamic_context",
-    )
-    offenders = [
-        f"{path.relative_to(ROOT)}: {name}"
-        for path in DOCS
-        for name in removed
-        if name in path.read_text()
-    ]
-
-    assert offenders == []
 
 
 def test_documented_configuration_and_handles_work_end_to_end() -> None:

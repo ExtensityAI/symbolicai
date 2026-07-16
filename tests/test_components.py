@@ -1,6 +1,6 @@
+import inspect
 from collections.abc import Callable, Sequence
 from importlib.util import find_spec
-import inspect
 from typing import get_type_hints
 
 import pytest

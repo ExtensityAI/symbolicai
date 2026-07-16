@@ -65,6 +65,12 @@ dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
 # ops.text intentionally exposes builtin-named operations (`filter`, `map`) as its public surface;
 # ops `__all__` tuples follow the design (SYMBOL_REDESIGN §5) order, not alphabetical.
 "symai/ops/*.py" = ["A001", "RUF022"]
+# Tests import inside functions on purpose: guard tests assert on import side effects and
+# module identity, which a top-level import would establish before the test runs.
+# Test doubles implement engine protocols, so they must accept arguments they ignore
+# (ARG002) and may raise inline messages (EM101) without the msg-variable indirection.
+# TC001 is not applicable: this project does not use TYPE_CHECKING guards.
+"tests/*" = ["PLC0415", "ARG002", "EM101", "TC001"]
 
 [lint.flake8-tidy-imports]
 ban-relative-imports = "all"

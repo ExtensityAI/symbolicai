@@ -6,7 +6,6 @@ from pydantic import BaseModel, ConfigDict
 from symai.loading import load_runtime as load_builtin_runtime
 from symai.runtime.config import EngineConfig, RuntimeConfig
 from symai.runtime.loading import load_runtime
-from symai.runtime.observability import ExecutionRecord
 from symai.runtime.models import (
     AssistantOutputMessage,
     EmbeddingRequest,
@@ -20,6 +19,7 @@ from symai.runtime.models import (
     TextContent,
     UserMessage,
 )
+from symai.runtime.observability import ExecutionRecord
 
 
 class LocalSettings(BaseModel):

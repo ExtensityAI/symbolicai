@@ -20,6 +20,56 @@ jobs:
           enable-cache: true
       - run: uv python install 3.12
       - run: uv sync --locked --dev
-      - run: uv run ruff check symai
+      - run: uv run ruff check symai tests
+      - run: uv run ruff format --check symai tests
       - run: uv run pyright
       - run: uv run pytest -q
+
+  packaging:
+    # The deterministic suite runs against the checkout, so it cannot catch a wheel that
+    # ships the wrong files or a dependency that only the dev environment provides.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+      - run: uv python install 3.12
+      - run: uv build --wheel
+      - name: Install the wheel into a clean environment
+        run: |
+          uv venv /tmp/clean
+          uv pip install --python /tmp/clean/bin/python dist/*.whl
+      - name: Import and exercise the shipped surface
+        # Run from a directory without the checkout, so this can only import the wheel.
+        working-directory: /tmp
+        run: |
+          /tmp/clean/bin/python - <<'PY'
+          from pydantic import SecretStr
+
+          import symai
+          from symai.loading import load_runtime
+          from symai.runtime.config import EngineConfig, RuntimeConfig
+
+          assert symai.__version__, "version metadata is not exposed"
+
+          config = RuntimeConfig(
+              language_models={
+                  "chat": EngineConfig(
+                      implementation="openai:responses",
+                      settings={"api_key": SecretStr("ci"), "model": "gpt-5.4"},
+                  )
+              },
+              embeddings={
+                  "vectors": EngineConfig(
+                      implementation="openai:embeddings",
+                      settings={"api_key": SecretStr("ci"), "model": "text-embedding-3-small"},
+                  )
+              },
+          )
+          with load_runtime(config) as runtime:
+              runtime.language_model("chat")
+              runtime.embedding("vectors")
+
+          print(f"clean-environment install verified: symbolicai {symai.__version__}")
+          PY
