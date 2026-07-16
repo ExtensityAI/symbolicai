@@ -1,12 +1,14 @@
 import json
 from collections.abc import Callable
 from dataclasses import dataclass
+from typing import Self
 
 import httpx
 from pydantic import BaseModel, SecretStr, ValidationError
 
 from symai.providers._client import errors
 from symai.providers._client.headers import authorization_header
+from symai.providers._client.settings import HttpProviderSettings
 from symai.providers._client.transport import APIResponse, ResponseMetadata
 
 
@@ -63,6 +65,24 @@ class BaseClient[MetadataT: ResponseMetadata]:
         self._http_client = http_client
         self._headers = {"authorization": authorization}
         self._closed = False
+
+    @classmethod
+    def from_settings(cls, settings: HttpProviderSettings) -> Self:
+        """Build a client from the settings type it defines.
+
+        Composing a timeout out of a request and connect budget is HTTP detail, so it
+        lives with the transport that understands it. An engine abstracts over its client
+        and must not know a transport exists at all — an integration that speaks to a
+        local binary rather than an API has no timeout to compose.
+        """
+        return cls(
+            api_key=settings.api_key,
+            timeout=httpx.Timeout(
+                settings.request_timeout,
+                connect=settings.connect_timeout,
+            ),
+            connect_retries=settings.connect_retries,
+        )
 
     def close(self) -> None:
         if self._closed:
