@@ -195,7 +195,7 @@ class ResponsesEngine(ProviderEngine[Client, responses_api.Model, LanguageModelS
         self, response: APIResponse[responses_api.Response, OpenAIResponseMetadata]
     ) -> LanguageModelResponse:
         raw = response.data
-        error_metadata = self._execution_metadata(response)
+        error_metadata = self._error_metadata(response.metadata)
         try:
             metadata = self._response_metadata(response)
         except ValidationError as error:
@@ -352,19 +352,3 @@ class ResponsesEngine(ProviderEngine[Client, responses_api.Model, LanguageModelS
             )
         except ValidationError:
             return None
-
-    def _execution_metadata(
-        self,
-        response: APIResponse[responses_api.Response, OpenAIResponseMetadata],
-    ) -> ErrorMetadata:
-        return self._error_metadata(response.metadata)
-
-    def _error_metadata(self, metadata: OpenAIResponseMetadata) -> ErrorMetadata:
-        request_id = metadata.request_id
-        retry_after = retry_after_seconds(metadata.retry_after)
-        return ErrorMetadata(
-            provider=self.provider,
-            model=self.model,
-            request_id=request_id,
-            retry_after=retry_after,
-        )

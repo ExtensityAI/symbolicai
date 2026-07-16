@@ -372,11 +372,3 @@ class ChatCompletionsEngine(ProviderEngine[Client, chat_api.Model, LanguageModel
             )
         except ValidationError:
             return None
-
-    def _error_metadata(self, metadata: CerebrasResponseMetadata) -> ErrorMetadata:
-        return ErrorMetadata(
-            provider=self.provider,
-            model=self.model,
-            request_id=metadata.request_id,
-            retry_after=retry_after_seconds(metadata.retry_after),
-        )

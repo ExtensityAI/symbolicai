@@ -2,7 +2,13 @@ from collections.abc import Mapping
 from math import isfinite
 from typing import Never, Protocol, cast
 
-from symai.runtime.errors import UnsupportedFeatureError, UnsupportedModelError
+from symai.providers._client.transport import ResponseMetadata
+from symai.runtime.errors import (
+    ErrorMetadata,
+    UnsupportedFeatureError,
+    UnsupportedModelError,
+)
+from symai.runtime.models import ProviderId
 
 
 class _Closeable(Protocol):
@@ -15,6 +21,10 @@ def retry_after_seconds(value: float | None) -> float | None:
 
 
 class ProviderEngine[ClientT: _Closeable, ModelT: str, ModelSpecT]:
+    # Set by each engine. Declared here because `_error_metadata` stamps it onto every
+    # error the engine raises.
+    provider: ProviderId
+
     def __init__(
         self,
         *,
@@ -55,6 +65,20 @@ class ProviderEngine[ClientT: _Closeable, ModelT: str, ModelSpecT]:
     @property
     def model_spec(self) -> ModelSpecT:
         return self._model_spec
+
+    def _error_metadata(self, metadata: ResponseMetadata) -> ErrorMetadata:
+        """Identify the failing engine without disclosing anything the provider sent.
+
+        Every provider derives this the same way, and a provider that specializes its
+        response metadata (Cerebras adds rate-limit state) subclasses the shared type, so
+        it is accepted here too.
+        """
+        return ErrorMetadata(
+            provider=self.provider,
+            model=self.model,
+            request_id=metadata.request_id,
+            retry_after=retry_after_seconds(metadata.retry_after),
+        )
 
     @staticmethod
     def _unsupported(message: str) -> Never:
