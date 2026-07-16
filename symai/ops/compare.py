@@ -8,7 +8,7 @@ from symai.ops.primitives import _execute_language
 from symai.symbol import Symbol
 
 if TYPE_CHECKING:
-    from symai.runtime.runtime import Runtime
+    from symai.runtime.runtime import LanguageModel
 
 __all__ = ("equals", "contains", "is_instance_of")
 
@@ -114,11 +114,9 @@ _BOOLEAN_DECODER = ConstructorDecoder(bool)
 
 
 def equals[LeftT, RightT](
-    runtime: Runtime,
+    model: LanguageModel,
     left: Symbol[LeftT],
     right: Symbol[RightT],
-    *,
-    engine: str | None = None,
 ) -> Symbol[bool]:
     left_value = _symbol_value(left, "left")
     right_value = _symbol_value(right, "right")
@@ -127,20 +125,14 @@ def equals[LeftT, RightT](
         examples=_EQUALS_EXAMPLES,
     )
     return _execute_language(
-        runtime,
-        function,
-        (f"{left_value!s} == {right_value!s} =>",),
-        _BOOLEAN_DECODER,
-        engine=engine,
+        model, function, (f"{left_value!s} == {right_value!s} =>",), _BOOLEAN_DECODER
     )
 
 
 def contains[ContainerT, ElementT](
-    runtime: Runtime,
+    model: LanguageModel,
     container: Symbol[ContainerT],
     element: Symbol[ElementT],
-    *,
-    engine: str | None = None,
 ) -> Symbol[bool]:
     container_value = _symbol_value(container, "container")
     element_value = _symbol_value(element, "element")
@@ -149,20 +141,14 @@ def contains[ContainerT, ElementT](
         examples=_CONTAINS_EXAMPLES,
     )
     return _execute_language(
-        runtime,
-        function,
-        (f"{element_value!s} in {container_value!s} =>",),
-        _BOOLEAN_DECODER,
-        engine=engine,
+        model, function, (f"{element_value!s} in {container_value!s} =>",), _BOOLEAN_DECODER
     )
 
 
 def is_instance_of[T](
-    runtime: Runtime,
+    model: LanguageModel,
     source: Symbol[T],
     type_description: str,
-    *,
-    engine: str | None = None,
 ) -> Symbol[bool]:
     value = _symbol_value(source, "source")
     if not isinstance(type_description, str):
@@ -174,11 +160,7 @@ def is_instance_of[T](
         examples=_IS_INSTANCE_OF_EXAMPLES,
     )
     return _execute_language(
-        runtime,
-        function,
-        (f"{value!s} isinstanceof {type_description} =>",),
-        _BOOLEAN_DECODER,
-        engine=engine,
+        model, function, (f"{value!s} isinstanceof {type_description} =>",), _BOOLEAN_DECODER
     )
 
 

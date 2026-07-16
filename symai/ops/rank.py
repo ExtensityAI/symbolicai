@@ -8,7 +8,7 @@ from symai.ops.primitives import _execute_language
 from symai.symbol import Symbol
 
 if TYPE_CHECKING:
-    from symai.runtime.runtime import Runtime
+    from symai.runtime.runtime import LanguageModel
 
 __all__ = ("rank",)
 
@@ -44,12 +44,10 @@ _RANK_EXAMPLES = (
 
 
 def rank[T](
-    runtime: Runtime,
+    model: LanguageModel,
     source: Symbol[T],
     measure: str,
     order: Literal["asc", "desc"] = "desc",
-    *,
-    engine: str | None = None,
 ) -> Symbol[str]:
     if not isinstance(source, Symbol):
         msg = "source must be a Symbol"
@@ -66,9 +64,8 @@ def rank[T](
         examples=_RANK_EXAMPLES,
     )
     return _execute_language(
-        runtime,
+        model,
         function,
         (f"order: '{order}' measure: '{measure}' list: {source.value!s} =>",),
         TextDecoder(),
-        engine=engine,
     )

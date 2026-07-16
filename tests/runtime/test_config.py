@@ -35,13 +35,10 @@ def test_implementation_id_normalizes_case_and_accepts_external_ids() -> None:
 def test_runtime_config_copies_and_freezes_envelope_mappings_only() -> None:
     opaque_value = {"context": [4096]}
     settings = {"model_path": "/models/example.gguf", "options": opaque_value}
-    language_models = {
-        "local": EngineConfig(implementation="local:gguf", settings=settings)
-    }
+    language_models = {"local": EngineConfig(implementation="local:gguf", settings=settings)}
 
     config = RuntimeConfig(
         language_models=language_models,
-        default_language_model="local",
     )
     settings["model_path"] = "/models/changed.gguf"
     language_models.clear()
@@ -116,14 +113,14 @@ def test_provider_settings_are_not_runtime_config_fields(field: str, value: obje
         {"language_models": {"": {"implementation": "x:y", "settings": {}}}},
         {
             "language_models": {"lm": {"implementation": "x:y", "settings": {}}},
-            "default_language_model": "missing",
+            "default_language_model": "lm",
         },
         {
             "embeddings": {"vector": {"implementation": "x:y", "settings": {}}},
-            "default_language_model": "vector",
+            "default_embedding": "vector",
         },
     ),
 )
-def test_runtime_config_rejects_invalid_aliases_and_defaults(payload: object) -> None:
+def test_runtime_config_rejects_invalid_aliases_and_removed_defaults(payload: object) -> None:
     with pytest.raises(ValidationError):
         RuntimeConfig.model_validate(payload)

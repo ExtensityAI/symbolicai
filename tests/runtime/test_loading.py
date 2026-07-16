@@ -79,9 +79,7 @@ class RecordingEngine(LocalEngine):
 
 
 def _request() -> LanguageModelRequest:
-    return LanguageModelRequest(
-        messages=(UserMessage(content=(TextContent(text="hello"),)),)
-    )
+    return LanguageModelRequest(messages=(UserMessage(content=(TextContent(text="hello"),)),))
 
 
 def test_credential_free_external_loader_constructs_and_executes() -> None:
@@ -99,7 +97,6 @@ def test_credential_free_external_loader_constructs_and_executes() -> None:
                 settings={"model_path": "/models/tiny.gguf", "context_size": 4096},
             )
         },
-        default_language_model="offline",
     )
 
     runtime = load_runtime(
@@ -218,8 +215,6 @@ def test_same_implementation_id_can_load_once_per_operation() -> None:
                 settings={},
             )
         },
-        default_language_model="chat",
-        default_embedding="vector",
     )
 
     runtime = load_runtime(

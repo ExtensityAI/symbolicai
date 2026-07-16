@@ -169,35 +169,17 @@ def test_same_alias_is_allowed_once_in_each_operation_map() -> None:
     assert embedding.requests == [EMBEDDING_REQUEST]
 
 
-@pytest.mark.parametrize(
-    ("kwargs", "message"),
-    [
-        (
-            {
-                "language_models": {"chat": LanguageEngine()},
-                "default_language_model": "missing",
-            },
-            "(?i)default language-model",
-        ),
-        (
-            {
-                "embeddings": {"vectors": EmbeddingEngine()},
-                "default_embedding": "missing",
-            },
-            "(?i)default embedding",
-        ),
-    ],
-)
-def test_invalid_default_is_rejected_before_ownership_transfer(
-    kwargs: dict[str, object],
-    message: str,
-) -> None:
-    engine = next(iter(cast("dict[str, object]", next(iter(kwargs.values()))).values()))
+@pytest.mark.parametrize("field", ["default_language_model", "default_embedding"])
+def test_runtime_rejects_removed_default_fields(field: str) -> None:
+    engine = LanguageEngine()
 
-    with pytest.raises(ValueError, match=message):
-        Runtime(**kwargs)  # pyright: ignore[reportArgumentType]
+    with pytest.raises(TypeError, match=field):
+        Runtime(
+            language_models={"chat": engine},
+            **{field: "chat"},  # pyright: ignore[reportArgumentType]
+        )
 
-    assert cast("LanguageEngine | EmbeddingEngine", engine).close_count == 0
+    assert engine.close_count == 0
 
 
 @pytest.mark.parametrize("across_operations", [False, True])
@@ -236,13 +218,10 @@ def test_runtime_snapshots_input_mappings() -> None:
     assert replacement.close_count == 0
 
 
-def test_explicit_selection_overrides_configured_default() -> None:
+def test_explicit_selection_uses_requested_engine() -> None:
     first = LanguageEngine("first")
     second = LanguageEngine("second")
-    runtime = Runtime(
-        language_models={"first": first, "second": second},
-        default_language_model="first",
-    )
+    runtime = Runtime(language_models={"first": first, "second": second})
 
     with runtime:
         assert runtime.execute(LANGUAGE_REQUEST, engine="second") is LANGUAGE_RESPONSE
@@ -261,22 +240,52 @@ def test_unique_engine_is_selected_implicitly() -> None:
     assert engine.requests == [LANGUAGE_REQUEST]
 
 
-def test_configured_defaults_are_operation_local() -> None:
-    language = {"first": LanguageEngine("first"), "second": LanguageEngine("second")}
-    embeddings = {"first": EmbeddingEngine("first"), "second": EmbeddingEngine("second")}
+def test_bound_handles_select_capability_and_engine_eagerly() -> None:
+    language = LanguageEngine("language")
+    embedding = EmbeddingEngine("embedding")
     runtime = Runtime(
-        language_models=language,
-        embeddings=embeddings,
-        default_language_model="second",
-        default_embedding="first",
+        language_models={"shared": language},
+        embeddings={"shared": embedding},
     )
 
-    with runtime:
-        assert runtime.execute(LANGUAGE_REQUEST) is LANGUAGE_RESPONSE
-        assert runtime.execute(EMBEDDING_REQUEST) is EMBEDDING_RESPONSE
+    language_model = runtime.language_model("shared")
+    embedding_model = runtime.embedding("shared")
 
-    assert language["second"].requests == [LANGUAGE_REQUEST]
-    assert embeddings["first"].requests == [EMBEDDING_REQUEST]
+    with runtime:
+        assert language_model.execute(LANGUAGE_REQUEST) is LANGUAGE_RESPONSE
+        assert embedding_model.execute(EMBEDDING_REQUEST) is EMBEDDING_RESPONSE
+
+    assert language.requests == [LANGUAGE_REQUEST]
+    assert embedding.requests == [EMBEDDING_REQUEST]
+
+
+def test_bound_handle_acquisition_uses_sole_engine_and_rejects_ambiguity() -> None:
+    sole = Runtime(language_models={"chat": LanguageEngine()})
+    multiple = Runtime(
+        language_models={"zeta": LanguageEngine(), "alpha": LanguageEngine()},
+    )
+
+    sole.language_model()
+    with pytest.raises(AmbiguousEngineError) as caught:
+        multiple.language_model()
+
+    assert caught.value.engine_names == ("alpha", "zeta")
+    sole.close()
+    multiple.close()
+
+
+def test_bound_handle_acquisition_rejects_unknown_and_wrong_capability() -> None:
+    runtime = Runtime(
+        language_models={"chat": LanguageEngine()},
+        embeddings={"vectors": EmbeddingEngine()},
+    )
+
+    with pytest.raises(UnknownEngineError):
+        runtime.language_model("missing")
+    with pytest.raises(EngineCapabilityError):
+        runtime.language_model("vectors")
+
+    runtime.close()
 
 
 def test_implicit_selection_rejects_ambiguity() -> None:

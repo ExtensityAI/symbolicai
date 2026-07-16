@@ -8,7 +8,7 @@ from symai.ops.primitives import _execute_language
 from symai.symbol import Symbol
 
 if TYPE_CHECKING:
-    from symai.runtime.runtime import Runtime
+    from symai.runtime.runtime import LanguageModel
 
 __all__ = (
     "summarize",
@@ -229,49 +229,31 @@ _EXTRACT_EXAMPLES = (
 
 
 def summarize[T](
-    runtime: Runtime,
+    model: LanguageModel,
     source: Symbol[T],
-    *,
-    engine: str | None = None,
 ) -> Symbol[str]:
     value = _symbol_value(source, "source")
     function = Function("Summarize the content of the following text:\n")
-    return _execute_language(
-        runtime,
-        function,
-        (f"Text: {value!s}\n",),
-        TextDecoder(),
-        engine=engine,
-    )
+    return _execute_language(model, function, (f"Text: {value!s}\n",), TextDecoder())
 
 
 def translate[T](
-    runtime: Runtime,
+    model: LanguageModel,
     source: Symbol[T],
     language: str,
-    *,
-    engine: str | None = None,
 ) -> Symbol[str]:
     value = _symbol_value(source, "source")
     _require_text(language, "language")
     function = Function(
         f"Your task is to translate and **only** translate the text into {language}:\n"
     )
-    return _execute_language(
-        runtime,
-        function,
-        (str(value),),
-        TextDecoder(),
-        engine=engine,
-    )
+    return _execute_language(model, function, (str(value),), TextDecoder())
 
 
 def modify[T](
-    runtime: Runtime,
+    model: LanguageModel,
     source: Symbol[T],
     changes: str,
-    *,
-    engine: str | None = None,
 ) -> Symbol[str]:
     value = _symbol_value(source, "source")
     _require_text(changes, "changes")
@@ -280,20 +262,14 @@ def modify[T](
         examples=_MODIFY_EXAMPLES,
     )
     return _execute_language(
-        runtime,
-        function,
-        (f"text '{value!s}' modify '{changes}' =>",),
-        TextDecoder(),
-        engine=engine,
+        model, function, (f"text '{value!s}' modify '{changes}' =>",), TextDecoder()
     )
 
 
 def filter[T](
-    runtime: Runtime,
+    model: LanguageModel,
     source: Symbol[T],
     criteria: str,
-    *,
-    engine: str | None = None,
 ) -> Symbol[str]:
     value = _symbol_value(source, "source")
     _require_text(criteria, "criteria")
@@ -302,20 +278,14 @@ def filter[T](
         "Leave matching sentences unchanged:\n"
     )
     return _execute_language(
-        runtime,
-        function,
-        (f"text '{value!s}' criteria '{criteria}' =>",),
-        TextDecoder(),
-        engine=engine,
+        model, function, (f"text '{value!s}' criteria '{criteria}' =>",), TextDecoder()
     )
 
 
 def map[T](
-    runtime: Runtime,
+    model: LanguageModel,
     source: Symbol[T],
     instruction: str,
-    *,
-    engine: str | None = None,
 ) -> Symbol[str]:
     value = _symbol_value(source, "source")
     _require_text(instruction, "instruction")
@@ -325,20 +295,14 @@ def map[T](
         examples=_MAP_EXAMPLES,
     )
     return _execute_language(
-        runtime,
-        function,
-        (f"text '{value!s}' {instruction} =>",),
-        TextDecoder(),
-        engine=engine,
+        model, function, (f"text '{value!s}' {instruction} =>",), TextDecoder()
     )
 
 
 def convert[T](
-    runtime: Runtime,
+    model: LanguageModel,
     source: Symbol[T],
     format: str,
-    *,
-    engine: str | None = None,
 ) -> Symbol[str]:
     value = _symbol_value(source, "source")
     _require_text(format, "format")
@@ -347,20 +311,14 @@ def convert[T](
         examples=_FORMAT_EXAMPLES,
     )
     return _execute_language(
-        runtime,
-        function,
-        (f"text {value!s} format '{format}' =>",),
-        TextDecoder(),
-        engine=engine,
+        model, function, (f"text {value!s} format '{format}' =>",), TextDecoder()
     )
 
 
 def style[T](
-    runtime: Runtime,
+    model: LanguageModel,
     source: Symbol[T],
     description: str,
-    *,
-    engine: str | None = None,
 ) -> Symbol[str]:
     value = _symbol_value(source, "source")
     _require_text(description, "description")
@@ -369,11 +327,7 @@ def style[T](
         "Do not remove or invent content.\n"
     )
     return _execute_language(
-        runtime,
-        function,
-        (f"[FORMAT]: {description}\n[DATA]:\n{value!s}\n",),
-        TextDecoder(),
-        engine=engine,
+        model, function, (f"[FORMAT]: {description}\n[DATA]:\n{value!s}\n",), TextDecoder()
     )
 
 
@@ -394,12 +348,10 @@ def template[T](
 
 
 def replace[T](
-    runtime: Runtime,
+    model: LanguageModel,
     source: Symbol[T],
     old: str,
     new: str,
-    *,
-    engine: str | None = None,
 ) -> Symbol[str]:
     value = _symbol_value(source, "source")
     _require_text(old, "old")
@@ -409,20 +361,14 @@ def replace[T](
         examples=_REPLACE_EXAMPLES,
     )
     return _execute_language(
-        runtime,
-        function,
-        (f"text '{value!s}' replace '{old}' with '{new}' =>",),
-        TextDecoder(),
-        engine=engine,
+        model, function, (f"text '{value!s}' replace '{old}' with '{new}' =>",), TextDecoder()
     )
 
 
 def include[T](
-    runtime: Runtime,
+    model: LanguageModel,
     source: Symbol[T],
     information: str,
-    *,
-    engine: str | None = None,
 ) -> Symbol[str]:
     value = _symbol_value(source, "source")
     _require_text(information, "information")
@@ -431,20 +377,14 @@ def include[T](
         examples=_INCLUDE_EXAMPLES,
     )
     return _execute_language(
-        runtime,
-        function,
-        (f"text '{value!s}' include '{information}' =>",),
-        TextDecoder(),
-        engine=engine,
+        model, function, (f"text '{value!s}' include '{information}' =>",), TextDecoder()
     )
 
 
 def combine[LeftT, RightT](
-    runtime: Runtime,
+    model: LanguageModel,
     left: Symbol[LeftT],
     right: Symbol[RightT],
-    *,
-    engine: str | None = None,
 ) -> Symbol[str]:
     left_value = _symbol_value(left, "left")
     right_value = _symbol_value(right, "right")
@@ -453,20 +393,14 @@ def combine[LeftT, RightT](
         examples=_COMBINE_EXAMPLES,
     )
     return _execute_language(
-        runtime,
-        function,
-        (f"{left_value!s} + {right_value!s} =>",),
-        TextDecoder(),
-        engine=engine,
+        model, function, (f"{left_value!s} + {right_value!s} =>",), TextDecoder()
     )
 
 
 def extract[T](
-    runtime: Runtime,
+    model: LanguageModel,
     source: Symbol[T],
     pattern: str,
-    *,
-    engine: str | None = None,
 ) -> Symbol[str]:
     value = _symbol_value(source, "source")
     _require_text(pattern, "pattern")
@@ -475,11 +409,7 @@ def extract[T](
         examples=_EXTRACT_EXAMPLES,
     )
     return _execute_language(
-        runtime,
-        function,
-        (f"from '{value!s}' extract '{pattern}' =>",),
-        TextDecoder(),
-        engine=engine,
+        model, function, (f"from '{value!s}' extract '{pattern}' =>",), TextDecoder()
     )
 
 

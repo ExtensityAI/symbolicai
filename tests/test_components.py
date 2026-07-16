@@ -59,12 +59,8 @@ class RecordingLanguageEngine:
         pass
 
 
-def runtime_for(
-    engines: dict[str, RecordingLanguageEngine],
-    *,
-    default: str | None,
-) -> Runtime:
-    return Runtime(language_models=engines, default_language_model=default)
+def runtime_for(engines: dict[str, RecordingLanguageEngine]) -> Runtime:
+    return Runtime(language_models=engines)
 
 
 def user_text(request: LanguageModelRequest) -> str:
@@ -86,13 +82,7 @@ def test_request_builds_normalized_request_without_execution() -> None:
 
     assert request == LanguageModelRequest(
         messages=(
-            SystemMessage(
-                content=(
-                    TextContent(
-                        text="Answer precisely.\n2 + 2 => 4"
-                    ),
-                )
-            ),
+            SystemMessage(content=(TextContent(text="Answer precisely.\n2 + 2 => 4"),)),
             UserMessage(content=(TextContent(text="3 + 4"),)),
         ),
         sampling=SamplingConfig(max_tokens=64, stop=("END",)),
@@ -123,8 +113,8 @@ def test_call_returns_exact_normalized_response_and_forwards_engine() -> None:
     selected = RecordingLanguageEngine(lambda _request: expected)
     function = Function("Answer.")
 
-    with runtime_for({"unused": unused, "tenant-a": selected}, default="unused") as runtime:
-        actual = function(runtime, "question", engine="tenant-a")
+    with runtime_for({"unused": unused, "tenant-a": selected}) as runtime:
+        actual = function(runtime.language_model("tenant-a"), "question")
 
     assert actual is expected
     assert actual.metadata is METADATA
@@ -146,11 +136,10 @@ def test_execute_many_is_sequential_and_preserves_nested_input_order() -> None:
     engine = RecordingLanguageEngine(execute)
     function = Function("Echo.")
 
-    with runtime_for({"ordered": engine}, default="ordered") as runtime:
+    with runtime_for({"ordered": engine}) as runtime:
         results = function.execute_many(
-            runtime,
+            runtime.language_model(),
             (("first", 1), ("second", 2), ("third", 3)),
-            engine="ordered",
         )
 
     assert events == ["first 1", "second 2", "third 3"]
@@ -170,7 +159,9 @@ def test_function_has_one_non_generic_execution_surface() -> None:
         "static_context",
         "sym_return_type",
     }.intersection(init_parameters)
-    assert not {"preview", "return_metadata", "output_index"}.intersection(call_parameters)
+    assert not {"engine", "preview", "return_metadata", "output_index"}.intersection(
+        call_parameters
+    )
     assert not hasattr(Function, "batch")
     assert get_type_hints(Function.request)["return"] is LanguageModelRequest
     assert get_type_hints(Function.__call__)["return"] is LanguageModelResponse

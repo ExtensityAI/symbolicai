@@ -45,8 +45,6 @@ class EngineConfig(FrozenModel):
 class RuntimeConfig(FrozenModel):
     language_models: Mapping[str, EngineConfig] = Field(default_factory=dict)
     embeddings: Mapping[str, EngineConfig] = Field(default_factory=dict)
-    default_language_model: str | None = None
-    default_embedding: str | None = None
 
     @field_validator("language_models", "embeddings", mode="after")
     @classmethod
@@ -57,19 +55,13 @@ class RuntimeConfig(FrozenModel):
         return MappingProxyType(dict(engines))
 
     @model_validator(mode="after")
-    def validate_aliases_and_defaults(self) -> Self:
+    def validate_aliases(self) -> Self:
         if not self.language_models and not self.embeddings:
             msg = "Runtime configuration requires at least one engine"
             raise ValueError(msg)
 
         self._validate_aliases("language model", self.language_models)
         self._validate_aliases("embedding", self.embeddings)
-        self._validate_default(
-            "language model",
-            self.default_language_model,
-            self.language_models,
-        )
-        self._validate_default("embedding", self.default_embedding, self.embeddings)
         return self
 
     @staticmethod
@@ -81,20 +73,3 @@ class RuntimeConfig(FrozenModel):
             if alias != alias.strip():
                 msg = f"{operation.capitalize()} engine alias must not contain outer whitespace"
                 raise ValueError(msg)
-
-    @staticmethod
-    def _validate_default(
-        operation: str,
-        default: str | None,
-        engines: Mapping[str, EngineConfig],
-    ) -> None:
-        if default is None:
-            return
-        if not default or default != default.strip():
-            msg = f"Default {operation} engine alias is invalid: {default!r}"
-            raise ValueError(msg)
-        if default in engines:
-            return
-
-        msg = f"Default {operation} engine alias is not configured: {default!r}"
-        raise ValueError(msg)

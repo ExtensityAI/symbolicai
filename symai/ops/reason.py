@@ -8,7 +8,7 @@ from symai.ops.primitives import _execute_language
 from symai.symbol import Symbol
 
 if TYPE_CHECKING:
-    from symai.runtime.runtime import Runtime
+    from symai.runtime.runtime import LanguageModel
 
 __all__ = ("query", "interpret", "logic")
 
@@ -97,51 +97,35 @@ _LOGIC_EXAMPLES = (
 
 
 def query[T](
-    runtime: Runtime,
+    model: LanguageModel,
     source: Symbol[T],
     question: str,
-    *,
-    engine: str | None = None,
 ) -> Symbol[str]:
     value = _symbol_value(source, "source")
     _require_text(question, "question")
     function = Function("Answer the question using only the provided data:\n")
     return _execute_language(
-        runtime,
-        function,
-        (f"Data:\n{value!s}\nQuestion: {question}\nAnswer:",),
-        TextDecoder(),
-        engine=engine,
+        model, function, (f"Data:\n{value!s}\nQuestion: {question}\nAnswer:",), TextDecoder()
     )
 
 
 def interpret[T](
-    runtime: Runtime,
+    model: LanguageModel,
     source: Symbol[T],
-    *,
-    engine: str | None = None,
 ) -> Symbol[str]:
     value = _symbol_value(source, "source")
     function = Function(
         "Evaluate the symbolic expression and return only the result:\n",
         examples=_INTERPRET_EXAMPLES,
     )
-    return _execute_language(
-        runtime,
-        function,
-        (f"{value!s} =>",),
-        TextDecoder(),
-        engine=engine,
-    )
+    return _execute_language(model, function, (f"{value!s} =>",), TextDecoder())
 
 
 def logic[LeftT, RightT](
-    runtime: Runtime,
+    model: LanguageModel,
     left: Symbol[LeftT],
     operator: str,
     right: Symbol[RightT],
-    *,
-    engine: str | None = None,
 ) -> Symbol[str]:
     left_value = _symbol_value(left, "left")
     right_value = _symbol_value(right, "right")
@@ -151,11 +135,7 @@ def logic[LeftT, RightT](
         examples=_LOGIC_EXAMPLES,
     )
     return _execute_language(
-        runtime,
-        function,
-        (f"expr {left_value!s} {operator} {right_value!s} =>",),
-        TextDecoder(),
-        engine=engine,
+        model, function, (f"expr {left_value!s} {operator} {right_value!s} =>",), TextDecoder()
     )
 
 

@@ -3,7 +3,7 @@ from dataclasses import dataclass
 
 from symai.operations import language_request
 from symai.runtime.models import LanguageModelRequest, LanguageModelResponse
-from symai.runtime.runtime import Runtime
+from symai.runtime.runtime import LanguageModel
 
 
 @dataclass(frozen=True, slots=True, init=False)
@@ -41,20 +41,17 @@ class Function:
 
     def __call__(
         self,
-        runtime: Runtime,
+        model: LanguageModel,
         *values: object,
-        engine: str | None = None,
     ) -> LanguageModelResponse:
-        """Execute through the explicit runtime and return its normalized response."""
+        """Execute through a bound language-model handle."""
 
-        return runtime.execute(self.request(*values), engine=engine)
+        return model.execute(self.request(*values))
 
     def execute_many(
         self,
-        runtime: Runtime,
+        model: LanguageModel,
         inputs: Sequence[Sequence[object]],
-        *,
-        engine: str | None = None,
     ) -> tuple[LanguageModelResponse, ...]:
         """Execute nested inputs sequentially while preserving their order."""
 
@@ -66,8 +63,7 @@ class Function:
                 msg = "each input must be a sequence of values, not one string"
                 raise TypeError(msg)
 
-        return tuple(self(runtime, *values, engine=engine) for values in inputs)
-
+        return tuple(self(model, *values) for values in inputs)
 
 
 def _normalize_examples(

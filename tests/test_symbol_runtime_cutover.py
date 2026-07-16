@@ -25,7 +25,7 @@ from symai.runtime.models import (
     ResponseMetadata,
     TextContent,
 )
-from symai.runtime.runtime import Runtime
+from symai.runtime.runtime import EmbeddingModel, LanguageModel, Runtime
 from symai.symbol import Symbol
 
 METADATA = ResponseMetadata(
@@ -81,7 +81,6 @@ def language_runtime(
 ) -> Runtime:
     return Runtime(
         language_models={"selected": selected, "other": other},
-        default_language_model="other",
     )
 
 
@@ -91,16 +90,13 @@ def embedding_runtime(
 ) -> Runtime:
     return Runtime(
         embeddings={"selected": selected, "other": other},
-        default_embedding="other",
     )
-
-
 
 
 @dataclass(frozen=True, slots=True)
 class RemoteCase:
     name: str
-    invoke: Callable[[Runtime, Symbol[str], Symbol[str]], Symbol[object]]
+    invoke: Callable[[LanguageModel, Symbol[str], Symbol[str]], Symbol[object]]
     request: LanguageModelRequest
     boolean: bool = False
 
@@ -108,9 +104,7 @@ class RemoteCase:
 REMOTE_CASES = (
     RemoteCase(
         "summarize",
-        lambda runtime, source, _other: text.summarize(
-            runtime, source, engine="selected"
-        ),
+        lambda model, source, _other: text.summarize(model, source),
         language_request(
             "Summarize the content of the following text:\n",
             "Text: source\n",
@@ -118,9 +112,7 @@ REMOTE_CASES = (
     ),
     RemoteCase(
         "translate",
-        lambda runtime, source, _other: text.translate(
-            runtime, source, "French", engine="selected"
-        ),
+        lambda model, source, _other: text.translate(model, source, "French"),
         language_request(
             "Your task is to translate and **only** translate the text into French:\n",
             "source",
@@ -128,9 +120,7 @@ REMOTE_CASES = (
     ),
     RemoteCase(
         "modify",
-        lambda runtime, source, _other: text.modify(
-            runtime, source, "make concise", engine="selected"
-        ),
+        lambda model, source, _other: text.modify(model, source, "make concise"),
         language_request(
             "Modify the text to match the criteria:\n",
             "text 'source' modify 'make concise' =>",
@@ -139,9 +129,7 @@ REMOTE_CASES = (
     ),
     RemoteCase(
         "filter",
-        lambda runtime, source, _other: text.filter(
-            runtime, source, "facts", engine="selected"
-        ),
+        lambda model, source, _other: text.filter(model, source, "facts"),
         language_request(
             "Filter the text to retain only information matching the criteria. "
             "Leave matching sentences unchanged:\n",
@@ -150,9 +138,7 @@ REMOTE_CASES = (
     ),
     RemoteCase(
         "map",
-        lambda runtime, source, _other: text.map(
-            runtime, source, "uppercase names", engine="selected"
-        ),
+        lambda model, source, _other: text.map(model, source, "uppercase names"),
         language_request(
             "Transform each element in the input based on the instruction. "
             "Preserve container type and elements that don't match the instruction:\n",
@@ -162,9 +148,7 @@ REMOTE_CASES = (
     ),
     RemoteCase(
         "convert",
-        lambda runtime, source, _other: text.convert(
-            runtime, source, "JSON", engine="selected"
-        ),
+        lambda model, source, _other: text.convert(model, source, "JSON"),
         language_request(
             "Translate the following text into JSON format.\n",
             "text source format 'JSON' =>",
@@ -173,9 +157,7 @@ REMOTE_CASES = (
     ),
     RemoteCase(
         "style",
-        lambda runtime, source, _other: text.style(
-            runtime, source, "a compact table", engine="selected"
-        ),
+        lambda model, source, _other: text.style(model, source, "a compact table"),
         language_request(
             "Style the data based on best practices and the requested description. "
             "Do not remove or invent content.\n",
@@ -184,9 +166,7 @@ REMOTE_CASES = (
     ),
     RemoteCase(
         "replace",
-        lambda runtime, source, _other: text.replace(
-            runtime, source, "old", "new", engine="selected"
-        ),
+        lambda model, source, _other: text.replace(model, source, "old", "new"),
         language_request(
             "Replace text parts by string pattern.\n",
             "text 'source' replace 'old' with 'new' =>",
@@ -195,9 +175,7 @@ REMOTE_CASES = (
     ),
     RemoteCase(
         "include",
-        lambda runtime, source, _other: text.include(
-            runtime, source, "a caveat", engine="selected"
-        ),
+        lambda model, source, _other: text.include(model, source, "a caveat"),
         language_request(
             "Include information based on description.\n",
             "text 'source' include 'a caveat' =>",
@@ -206,9 +184,7 @@ REMOTE_CASES = (
     ),
     RemoteCase(
         "combine",
-        lambda runtime, source, other: text.combine(
-            runtime, source, other, engine="selected"
-        ),
+        lambda model, source, other: text.combine(model, source, other),
         language_request(
             "Add the two data types in a logical way:\n",
             "source + other =>",
@@ -217,9 +193,7 @@ REMOTE_CASES = (
     ),
     RemoteCase(
         "extract",
-        lambda runtime, source, _other: text.extract(
-            runtime, source, "dates", engine="selected"
-        ),
+        lambda model, source, _other: text.extract(model, source, "dates"),
         language_request(
             "Extract a pattern from text:\n",
             "from 'source' extract 'dates' =>",
@@ -228,9 +202,7 @@ REMOTE_CASES = (
     ),
     RemoteCase(
         "query",
-        lambda runtime, source, _other: reason.query(
-            runtime, source, "What is the thesis?", engine="selected"
-        ),
+        lambda model, source, _other: reason.query(model, source, "What is the thesis?"),
         language_request(
             "Answer the question using only the provided data:\n",
             "Data:\nsource\nQuestion: What is the thesis?\nAnswer:",
@@ -238,9 +210,7 @@ REMOTE_CASES = (
     ),
     RemoteCase(
         "interpret",
-        lambda runtime, source, _other: reason.interpret(
-            runtime, source, engine="selected"
-        ),
+        lambda model, source, _other: reason.interpret(model, source),
         language_request(
             "Evaluate the symbolic expression and return only the result:\n",
             "source =>",
@@ -249,9 +219,7 @@ REMOTE_CASES = (
     ),
     RemoteCase(
         "logic",
-        lambda runtime, source, other: reason.logic(
-            runtime, source, "AND", other, engine="selected"
-        ),
+        lambda model, source, other: reason.logic(model, source, "AND", other),
         language_request(
             "Evaluate the logic expression:\n",
             "expr source AND other =>",
@@ -260,9 +228,7 @@ REMOTE_CASES = (
     ),
     RemoteCase(
         "equals",
-        lambda runtime, source, other: compare.equals(
-            runtime, source, other, engine="selected"
-        ),
+        lambda model, source, other: compare.equals(model, source, other),
         language_request(
             "Make a fuzzy equality comparison. Are the following objects contextually the same?\n",
             "source == other =>",
@@ -272,9 +238,7 @@ REMOTE_CASES = (
     ),
     RemoteCase(
         "contains",
-        lambda runtime, source, other: compare.contains(
-            runtime, source, other, engine="selected"
-        ),
+        lambda model, source, other: compare.contains(model, source, other),
         language_request(
             "Is the information in 'A' semantically contained in 'B'?\n",
             "other in source =>",
@@ -284,8 +248,8 @@ REMOTE_CASES = (
     ),
     RemoteCase(
         "is_instance_of",
-        lambda runtime, source, _other: compare.is_instance_of(
-            runtime, source, "a programming language", engine="selected"
+        lambda model, source, _other: compare.is_instance_of(
+            model, source, "a programming language"
         ),
         language_request(
             "Is 'A' semantically an instance of the described type 'B'?\n",
@@ -296,13 +260,7 @@ REMOTE_CASES = (
     ),
     RemoteCase(
         "rank",
-        lambda runtime, source, _other: rank.rank(
-            runtime,
-            source,
-            "quality",
-            order="asc",
-            engine="selected",
-        ),
+        lambda model, source, _other: rank.rank(model, source, "quality", order="asc"),
         language_request(
             "Rank the objects by the requested measure and order:\n",
             "order: 'asc' measure: 'quality' list: source =>",
@@ -336,11 +294,10 @@ def test_rank_rejects_unknown_order_before_execution() -> None:
 
     with runtime, pytest.raises(ValueError, match="Unsupported rank order"):
         rank.rank(
-            runtime,
+            runtime.language_model("selected"),
             Symbol(["a", "b"]),
             "quality",
             order="sideways",  # pyright: ignore[reportArgumentType]
-            engine="selected",
         )
 
     assert engine.requests == []
@@ -359,7 +316,6 @@ def test_language_operation_contract(
     independent_engine = RecordingLanguageEngine(language_response("independent"))
     independent = Runtime(
         language_models={"independent": independent_engine},
-        default_language_model="independent",
     )
     source = Symbol("source")
     other_symbol = Symbol("other")
@@ -372,12 +328,11 @@ def test_language_operation_contract(
 
     def record_function_call(
         function: Function,
-        runtime: Runtime,
+        model: LanguageModel,
         *values: object,
-        engine: str | None = None,
     ) -> LanguageModelResponse:
         function_calls.append(function)
-        return original_function_call(function, runtime, *values, engine=engine)
+        return original_function_call(function, model, *values)
 
     def record_decode(response: LanguageModelResponse, decoder: object) -> object:
         decoders.append(decoder)
@@ -387,13 +342,12 @@ def test_language_operation_contract(
         wraps.append(value)
         return original_symbol(value)
 
-
     monkeypatch.setattr(Function, "__call__", record_function_call)
     monkeypatch.setattr(primitives, "decode_output", record_decode)
     monkeypatch.setattr(primitives, "Symbol", record_wrap)
 
     with explicit, independent:
-        result = case.invoke(explicit, source, other_symbol)
+        result = case.invoke(explicit.language_model("selected"), source, other_symbol)
 
     assert result.value is True if case.boolean else result.value == "decoded"
     assert result is not source
@@ -406,9 +360,7 @@ def test_language_operation_contract(
     assert len(function_calls) == 1
     assert len(decoders) == 1
     assert len(wraps) == 1
-    assert isinstance(
-        decoders[0], ConstructorDecoder if case.boolean else TextDecoder
-    )
+    assert isinstance(decoders[0], ConstructorDecoder if case.boolean else TextDecoder)
     if case.boolean:
         assert decoders[0].constructor is bool  # type: ignore[union-attr]
     assert selected.response.metadata is METADATA
@@ -433,17 +385,15 @@ def test_embedding_is_explicit_ordered_and_executes_once_without_function(
     def fail_function(*_args: object, **_kwargs: object) -> LanguageModelResponse:
         raise AssertionError("Embedding must not execute through Function")
 
-
     monkeypatch.setattr(Function, "__call__", fail_function)
 
     runtime = embedding_runtime(selected, other)
     with runtime:
         result = embed.embed(
-            runtime,
+            runtime.embedding("selected"),
             source,
             dimensions=2,
             user="tenant-user",
-            engine="selected",
         )
 
     assert result.value == [[1.0, 2.0], [3.0, 4.0]]
@@ -478,10 +428,10 @@ def test_embedding_rejects_response_indices_outside_the_input_index_set(
     )
     response = EmbeddingResponse.model_construct(vectors=vectors, metadata=METADATA)
     engine = RecordingEmbeddingEngine(response)
-    runtime = Runtime(embeddings={"selected": engine}, default_embedding="selected")
+    runtime = Runtime(embeddings={"selected": engine})
 
     with runtime, pytest.raises(ValueError, match="indices"):
-        embed.embed(runtime, Symbol(inputs))
+        embed.embed(runtime.embedding(), Symbol(inputs))
 
     assert engine.requests == [embedding_request(inputs)]
 
@@ -494,10 +444,10 @@ def test_embedding_rejects_empty_or_non_text_symbol_values(value: object) -> Non
             metadata=METADATA,
         )
     )
-    runtime = Runtime(embeddings={"selected": engine}, default_embedding="selected")
+    runtime = Runtime(embeddings={"selected": engine})
 
     with runtime, pytest.raises((TypeError, ValueError), match="non-empty text"):
-        embed.embed(runtime, Symbol(value))
+        embed.embed(runtime.embedding(), Symbol(value))
 
     assert engine.requests == []
 
@@ -655,7 +605,9 @@ def test_numeric_helpers_reject_unsupported_modes(
 def test_numeric_helpers_propagate_useful_shape_and_numeric_errors(
     call: Callable[[], object],
 ) -> None:
-    with pytest.raises((TypeError, ValueError), match="numeric|shape|one-dimensional|two-dimensional|non-empty"):
+    with pytest.raises(
+        (TypeError, ValueError), match="numeric|shape|one-dimensional|two-dimensional|non-empty"
+    ):
         call()
 
 
@@ -682,7 +634,7 @@ def test_public_namespaces_and_functions_are_exact() -> None:
     assert embed.__all__ == ("embed", "similarity", "distance", "mmd", "kernel")
 
 
-def test_remote_signatures_have_only_explicit_engine_selection() -> None:
+def test_remote_signatures_take_bound_handles_without_string_selection() -> None:
     remote_functions = [
         text.summarize,
         text.translate,
@@ -707,10 +659,10 @@ def test_remote_signatures_have_only_explicit_engine_selection() -> None:
 
     for operation in remote_functions:
         signature = inspect.signature(operation)
-        assert tuple(signature.parameters)[0] == "runtime"
-        assert signature.parameters["engine"].kind is inspect.Parameter.KEYWORD_ONLY
+        assert tuple(signature.parameters)[0] == "model"
+        assert "engine" not in signature.parameters
         assert "provider" not in signature.parameters
-        assert "model" not in signature.parameters
+        assert "runtime" not in signature.parameters
         assert not any(
             parameter.kind is inspect.Parameter.VAR_KEYWORD
             for parameter in signature.parameters.values()
@@ -724,13 +676,14 @@ def test_remote_signatures_have_only_explicit_engine_selection() -> None:
 
 def test_raw_primary_operands_are_rejected() -> None:
     language = RecordingLanguageEngine(language_response("unused"))
-    runtime = Runtime(language_models={"language": language}, default_language_model="language")
+    runtime = Runtime(language_models={"language": language})
 
     with runtime:
+        model = runtime.language_model()
         with pytest.raises(TypeError, match="Symbol"):
-            text.summarize(runtime, "raw")  # type: ignore[arg-type]
+            text.summarize(model, "raw")  # type: ignore[arg-type]
         with pytest.raises(TypeError, match="Symbol"):
-            compare.equals(runtime, Symbol("one"), "raw")  # type: ignore[arg-type]
+            compare.equals(model, Symbol("one"), "raw")  # type: ignore[arg-type]
 
     with pytest.raises(TypeError, match="Symbol"):
         embed.similarity(Symbol([1.0]), [1.0])  # type: ignore[arg-type]

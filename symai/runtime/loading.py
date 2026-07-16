@@ -45,8 +45,6 @@ def load_runtime(
         return Runtime(
             language_models=language_models,
             embeddings=embeddings,
-            default_language_model=config.default_language_model,
-            default_embedding=config.default_embedding,
         )
     except BaseException as error:
         cleanup_failures: list[BaseException] = []
@@ -105,8 +103,5 @@ def _validate_references[LoaderT](
         if implementation in loaders:
             continue
 
-        msg = (
-            f"No {operation} loader for implementation {implementation!r} "
-            f"(engine {alias!r})"
-        )
+        msg = f"No {operation} loader for implementation {implementation!r} (engine {alias!r})"
         raise ValueError(msg)

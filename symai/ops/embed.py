@@ -9,7 +9,7 @@ from symai.operations import embedding_request, parse_embedding_response
 from symai.symbol import Symbol
 
 if TYPE_CHECKING:
-    from symai.runtime.runtime import Runtime
+    from symai.runtime.runtime import EmbeddingModel
 
 __all__ = ("embed", "similarity", "distance", "mmd", "kernel")
 
@@ -17,17 +17,15 @@ _MAX_MMD_PAIRWISE_VALUES = 1_000_000
 
 
 def embed(
-    runtime: Runtime,
+    model: EmbeddingModel,
     source: Symbol[str | Sequence[str]],
     *,
     dimensions: int | None = None,
     user: str | None = None,
-    engine: str | None = None,
 ) -> Symbol[list[list[float]]]:
     inputs = _text_inputs(source)
-    response = runtime.execute(
+    response = model.execute(
         embedding_request(inputs, dimensions=dimensions, user=user),
-        engine=engine,
     )
     indices = tuple(vector.index for vector in response.vectors)
     expected_indices = set(range(len(inputs)))
@@ -106,10 +104,7 @@ def mmd(
 
     sample_count = lhs.shape[0] + rhs.shape[0]
     if sample_count * sample_count > _MAX_MMD_PAIRWISE_VALUES:
-        msg = (
-            "MMD pairwise work is bounded to "
-            f"{_MAX_MMD_PAIRWISE_VALUES} values"
-        )
+        msg = f"MMD pairwise work is bounded to {_MAX_MMD_PAIRWISE_VALUES} values"
         raise ValueError(msg)
 
     xx = _rbf_matrix(lhs, lhs, gamma)
