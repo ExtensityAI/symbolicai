@@ -18,8 +18,8 @@ def authorization_header(api_key: SecretStr) -> str:
 
     Raises:
         TypeError: if `api_key` is not a SecretStr.
-        ValueError: if the credential is empty, surrounded by whitespace, or contains
-            control characters.
+        ValueError: if the credential is empty, surrounded by whitespace, or contains any
+            character that is not visible ASCII.
     """
     if not isinstance(api_key, SecretStr):
         raise TypeError(_PLAINTEXT_API_KEY_MESSAGE)
@@ -29,7 +29,11 @@ def authorization_header(api_key: SecretStr) -> str:
     if not invalid:
         for character in value:
             code_point = ord(character)
-            if code_point < 0x20 or code_point == 0x7F:
+            # A header value is visible ASCII on the wire. Anything else — a control
+            # character, or a non-ASCII character from a mis-decoded key — must fail here:
+            # httpx would otherwise raise UnicodeEncodeError while encoding the header,
+            # carrying the credential in the exception's arguments.
+            if code_point < 0x20 or code_point >= 0x7F:
                 invalid = True
                 break
 

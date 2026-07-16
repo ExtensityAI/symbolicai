@@ -49,6 +49,9 @@ def _serialize_authorization_failure(api_key: str):
         "secret\u2003",
         "ValueError\n",
         "TypeError\n",
+        "secret\u00ffvalue",
+        "secret\u20acvalue",
+        "\u00ff",
     ],
     ids=[
         "empty",
@@ -66,6 +69,9 @@ def _serialize_authorization_failure(api_key: str):
         "trailing-unicode-space",
         "value-error-traceback-text",
         "type-error-traceback-text",
+        "latin-1-mojibake",
+        "non-ascii-symbol",
+        "non-ascii-only",
     ],
 )
 def test_authorization_header_rejects_unsafe_api_key_without_disclosure(api_key: str):

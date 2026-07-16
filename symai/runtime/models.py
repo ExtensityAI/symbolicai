@@ -15,7 +15,12 @@ from pydantic import (
 
 
 class FrozenModel(BaseModel):
-    model_config = ConfigDict(frozen=True, strict=True, extra="forbid")
+    # `hide_input_in_errors` keeps a rejected value out of the ValidationError. These models
+    # carry prompts and provider payloads, and a validation error names the offending field
+    # — so without this, passing a prompt where a container was expected writes the prompt
+    # into any log that records the exception. The field, location, and rule are still
+    # reported; only the value is withheld.
+    model_config = ConfigDict(frozen=True, strict=True, extra="forbid", hide_input_in_errors=True)
 
 
 def _normalize_provider_id(value: object) -> str:

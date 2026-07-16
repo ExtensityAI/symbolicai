@@ -42,6 +42,33 @@ finding was reproduced; the originally-reported severity is noted when it change
 
 > The decisive observed ship-blocker is the OpenAI model-echo check: documented resolved model identifiers do not equal the configured aliases. DeepSeek has the same fragile equality code, but its exact live echo behavior was not observed and must not be claimed with OpenAI-level certainty.
 
+## Closure status of Critical and High findings
+
+FIXPLAN §12 gates release on every Critical and release-relevant High being closed or explicitly withdrawn with evidence. Each finding below carries a **Resolution** note citing the current code and the test that pins it. The register's `file:line` anchors still point at the pre-redesign tree and were **not** rewritten: they record where each finding was found, and the Resolution notes say where it now lives.
+
+Every finding was re-verified against the redesigned code rather than assumed fixed by the rewrite. Two closures below are *behaviour* fixes found during that pass, not bookkeeping: SEC-01 was still live through two vectors its original write-up did not name.
+
+All 30 Critical and High findings (1 Critical + 29 High):
+
+| Outcome | Count | Findings |
+|---|---:|---|
+| Closed, with evidence | 25 | BUG-05/API-01 *(the only Critical)*, BUG-01, BUG-06, BUG-07, BUG-09, BUG-10, BUG-13, SEC-01, SEC-03, SOC-01, SOC-02, CX-01, CX-02, CON-01, CON-02, FP-08, EXT-01, EXT-05, TST-01, PERSIST-01, CLI-02, API-02, API-05, DOC-01, PKG-01 |
+| Partially closed | 1 | SOC-03 (see below) |
+| Withdrawn / reframed by spec | 1 | UX-01 (FIXPLAN §9 — automatic POST retry is a correctness hazard, not a missing feature) |
+| Accepted product decision | 2 | FP-02, FP-03 (FIXPLAN §2 / §13 capability-scope deferral) |
+| **Open — needs a ruling** | **1** | **FP-04** (token counting / context truncation: no spec rules on it) |
+
+Closed by deleting the defective surface rather than repairing it: PERSIST-01, SEC-03, CLI-02, BUG-13.
+
+**SOC-03 is partial.** The three language-model engines now share `_engine/base.py`, `_engine/mapping.py`, and `_engine/gate.py`, and duplication measurably fell (openai↔cerebras 188→125 identical lines, openai↔deepseek 164→119). But Cerebras↔DeepSeek stayed at **59%** — 188 identical lines across 13 runs of ≥4 lines. `_parse_response`, `_output`, `_response_metadata`, and `_error_metadata` (byte-identical modulo a type annotation) are still copied, because the shared OpenAI-compatible chat module FIXPLAN §10 names was never built. §10's acceptance — "adding an OpenAI-compatible provider supplies a small schema/policy delta" — is therefore not met at the engine layer: a third such provider means re-copying ~190 lines.
+
+Medium findings closed during this sequence and annotated in place: PERF-01, DOC-02, PKG-02.
+
+**Release-gate items that remain, independent of the findings above:**
+
+- **No provider canary exists.** §12 requires a bounded live canary per provider on a scheduled/manual path with secrets, plus retained provider-doc URLs and access dates. CI runs lint/pyright/pytest/wheel only — no `schedule`, no `workflow_dispatch` with secrets — and no provider-doc citations are retained in the repo. API-02 and API-05 now encode the claimed live behaviour and their *code* defects are fixed, but whether the shipped model tables are externally correct is settleable only by a canary. §12 is explicit that a skipped environment-guarded test is not sufficient evidence.
+- **Residual risks recorded on individual findings:** SEC-01 (`ValidationError.errors()`/`.json()` still return the input on request), SEC-03 (the pickle guard is behavioural, not static), BUG-01 (interrupt between cleanup iterations), BUG-07 (no Cerebras engine-level content-filter test), API-02 (per-model effort table unpinned), EXT-05 (different-keys case verified by script, not pinned), SOC-03 (Cerebras↔DeepSeek engines remain ~59% duplicated; FIXPLAN §10's shared OpenAI-compatible chat mechanics were not delivered).
+
 ---
 
 ## A. Correctness & runtime lifecycle
@@ -49,6 +76,10 @@ finding was reproduced; the originally-reported severity is noted when it change
 ### BUG-01 — Interrupted `close()` wedges the runtime permanently and leaks the httpx client
 **Severity: High** · `symai/runtime/runtime.py:145-172` · status: `repro-script`, `self`
 `close()` sets `_state = CLOSING` (`:154`) then blocks in `wait_for(_in_flight == 0)` (`:155`) with no timeout; `_state = CLOSED` is only assigned in the `finally` at `:167`, reached *after* the wait returns. If a `BaseException` (Ctrl-C `KeyboardInterrupt`) interrupts the wait while another thread is mid-`execute()`, it unwinds out of `close()` with state stuck at `CLOSING`, handles never detached, and `httpx.Client.close()` never run (connection leak). Every subsequent `close()` then takes the `CLOSING` branch (`:150-151`) and blocks on `wait_for(_state is CLOSED)` forever — permanent deadlock. Reproduced end-to-end: first interrupted `close()` leaves `state=closing, cleanup=[]`; second `close()` never returns. Reachability: concurrent `execute` + interrupt during a multi-second in-flight call (the exact scenario the `_in_flight`/`Condition` machinery exists for), then the common catch-`KeyboardInterrupt`-and-shut-down pattern.
+
+**Resolution: closed by deleting the machinery that enabled it.** `_RuntimeState` is now CREATED/ACTIVE/CLOSED — the `CLOSING` state, the `Condition`, `_in_flight`, and the unbounded `wait_for` are all gone (`symai/runtime/runtime.py:347-368`). State moves to CLOSED and the engine maps are detached *under the lock, before* any external cleanup runs, so no interrupt can leave the runtime wedged; the cleanup loop catches `BaseException` per engine and aggregates into a `BaseExceptionGroup`. Both reproduced symptoms — the permanent `CLOSING` wedge and the second-`close()` deadlock — are structurally unreachable. Pinned by `tests/runtime/test_runtime.py::test_runtime_attempts_all_closes_and_groups_failures` (drives a real `KeyboardInterrupt`), `::test_owner_thread_close_is_idempotent`, `::test_runtime_closes_each_engine_once_in_reverse_acceptance_order`.
+
+**Residual (not reproduced):** a SIGINT landing *between* loop iterations at `runtime.py:360-364` would skip the remaining engines, leaking those transports with no retry path since state is already CLOSED. The window is a couple of bytecodes, versus the old multi-second blocking wait.
 
 ### BUG-02 — `current_runtime()` is invisible to worker threads / `ThreadPoolExecutor`
 **Severity: Low** (reported Medium) · `symai/runtime/runtime.py:73,191-196` · status: `repro-script`
@@ -66,6 +97,17 @@ If a runtime is entered in one context and exited in another (enter in one async
 **Severity: High** · `symai/runtime/models.py:428` + every client's `f"Bearer {api_key}"` · status: `repro-script`, `self`
 `api_key: SecretStr = Field(min_length=1)` is the only validation. A key with a trailing newline/space/control char (the extremely common `open('key.txt').read()` / `subprocess.check_output(...).decode()`) is accepted, then interpolated raw into the `Authorization` header. `httpcore` rejects the malformed header with `httpx.LocalProtocolError: Illegal header value b'Bearer sk-…\n'` — the plaintext key is in the exception **message**, which is chained up into `TransportError`. httpx redacts the header only in the request *repr*, not in this exception string, so `logger.exception(...)` / Sentry / any traceback capture writes the raw key to logs. Reproduced independently: the formatted traceback contained `REALSECRETKEY`.
 
+**Resolution: closed, after re-reproducing it against the redesigned code.** The named vector is fixed: `authorization_header` (`symai/providers/_client/headers.py:12-45`) is the single chokepoint (`client.py:43`) and rejects an unsafe credential before httpx, with a constant message that every invalid key trips identically.
+
+Verification found the same defect class alive through **two other vectors**, both now closed:
+
+1. **Wrongly typed key echoed by pydantic.** `api_key` is a `SecretStr`, but `SecretStr` only redacts a *constructed* value's `repr` — a wrongly typed key (`bytes` from `open(p, "rb").read()` or `subprocess.check_output(...)` without `.decode()`) is rejected *before* construction, and pydantic quoted the raw value: `Input should be a valid string [input_value=b'sk-REALSECRETKEY']`, written to logs by `logger.exception`. Fixed with `hide_input_in_errors=True` on `StrictModel`/`TolerantModel` (`_client/models.py:12-17`) and `FrozenModel` (`runtime/models.py:17-23`), which also covers prompts and provider payloads — a prompt passed where a container was expected was echoed the same way.
+2. **Non-ASCII key.** The character check rejected C0 and DEL but not code points ≥ 0x7F, so a mis-decoded key passed, reached httpx header encoding, and raised a raw `UnicodeEncodeError` carrying the credential in `args`/`repr` and escaping `_post` unwrapped (it is not an `httpx.RequestError`, so it never became `TransportError`). A header value is visible ASCII, so the check is now `code_point < 0x20 or code_point >= 0x7F`.
+
+FIXPLAN §4's acceptance — "no credential-derived exception **text** or arguments" — holds: message, `args`, and traceback are all clean. Pinned by `tests/test_no_sensitive_value_echo.py` (8 tests) and `tests/providers/_client/test_headers.py::test_authorization_header_rejects_unsafe_api_key_without_disclosure` (now covering non-ASCII).
+
+**Residual risk:** `ValidationError.errors()` and `.json()` default to `include_input=True` and still return the raw value. That is opt-in — no logging or traceback path reaches it — but any caller serializing a ValidationError from a credential-bearing model must pass `include_input=False`. Pinned and documented by `::test_structured_error_accessors_still_carry_the_input_by_request`.
+
 ---
 
 ## B. Engine-adapter correctness
@@ -74,13 +116,21 @@ If a runtime is entered in one context and exited in another (enter in one async
 **Severity: Critical** · `symai/backend/engines/language_model/openai.py:283`; analogous equality at `deepseek.py:294` · status: `repro-script`, `docs`
 The OpenAI engine does `if raw.model != self.model: raise InvalidResponseError`. `self.model` is the configured alias (`gpt-4.1`, `gpt-5.5`), while OpenAI documentation shows responses identifying resolved dated snapshots (for example `o4-mini-2025-04-16`). A successful response can therefore be discarded solely because the provider reports the concrete model it served. DeepSeek uses the same exact-equality assumption, but its documentation is ambiguous and no live response was observed; for DeepSeek this is a confirmed fragility, not a demonstrated total outage. Arbitrary prefix matching is not a safe correction because sibling model names can share prefixes.
 
+**Resolution: closed — this was the register's only Critical.** The equality check is gone from all three language-model engines and the embedding engine. The two facts are now recorded separately rather than conflated: `ResponseMetadata.requested_model` and `.response_model` (`symai/runtime/models.py:249-250`), set at `openai/engines/responses.py:319-329`, `cerebras/engines/chat_completions.py:286-298`, `deepseek/engines/chat_completions.py:271-278`. Verified end-to-end over `MockTransport`: `gpt-4.1` → `gpt-4.1-2025-04-14` and the Cerebras/DeepSeek dated echoes all normalize. Per FIXPLAN §4 no `startswith()` was substituted — adversarially confirmed that a prefix-sharing sibling (`gpt-oss-120b-EVIL-different-model`) is recorded distinctly rather than treated as identity proof. Pinned by `tests/providers/openai/engines/test_responses.py::test_dated_response_model_preserves_requested_and_returned_identity` and the matching Cerebras/DeepSeek tests.
+
 ### BUG-06 — OpenAI embedding engine rejects `text-embedding-ada-002` for the same reason
 **Severity: High** · `symai/backend/engines/embedding/openai.py:130` · status: `repro-script`
 Same exact-string model check. OpenAI's embeddings endpoint echoes the resolved id, and `text-embedding-ada-002` classically resolves to `text-embedding-ada-002-v2`, so every ada-002 embedding response is rejected. `text-embedding-3-small/large` echo verbatim and are unaffected — so this hits one of three catalog models, hence High rather than Critical.
 
+**Resolution: closed.** Same fix as BUG-05: the echo check is gone (`openai/engines/embedding.py:137-138`) and `text-embedding-ada-002` remains in the catalog (`openai/client/embeddings.py:24`). Verified: `text-embedding-ada-002` → `text-embedding-ada-002-v2` normalizes. Pinned by `tests/providers/openai/engines/test_embedding.py::test_response_model_identity_is_preserved_without_prefix_matching`.
+
 ### BUG-07 — Cerebras & DeepSeek engines crash on legitimate null-content responses (content filter / refusal)
 **Severity: High** · `symai/backend/engines/language_model/cerebras.py:322-329`; `deepseek.py:332-345` · status: `repro-script`, `self`
 `_output` builds `content=(TextContent(text=message.content),) if message.content is not None else ()` and never extracts a refusal. When the provider returns `content: null` (the normal shape for a content-filtered/refused/empty completion), the output has empty content, no reasoning, no refusal, so `LanguageModelOutput.validate_content_reasoning_or_refusal` (`models.py:363-367`) raises → re-raised as `InvalidResponseError`. Confirmed: `ResponseMessage.content` is typed `str | None` and the model carries **no `refusal` field**, so refusal text and `finish_reason=content_filter` are silently lost and indistinguishable from a transport failure.
+
+**Resolution: closed.** The output invariant now permits empty content exactly when a terminal filter/refusal explains it (`symai/runtime/models.py:262-278`), and both engines reach it. Verified end-to-end for **both** providers: `content_filter` + `content: null` normalizes to `finish_reason=CONTENT_FILTER, content=(), text=''` with no crash and no invented text; `stop` + null content still fails closed, as FIXPLAN §4 requires. Pinned by `tests/providers/deepseek/engines/test_chat_completions.py::test_content_filtered_null_output_is_preserved_without_invented_text` and `tests/runtime/test_models.py::test_language_output_allows_empty_only_for_terminal_content_filter`.
+
+**Coverage gap:** there is no Cerebras *engine-level* content-filter test — the path works (verified by script) but Cerebras relies on the generic invariant test, so a Cerebras-specific regression (dropping `content_filter` from its `_FINISH_REASONS`) would only be caught indirectly.
 
 ### BUG-08 — OpenAI engine rejects reasoning responses truncated during thinking, or with multiple phase messages
 **Severity: Medium** · `symai/backend/engines/language_model/openai.py:297-301` · status: `repro-script`
@@ -96,6 +146,10 @@ Same exact-string model check. OpenAI's embeddings endpoint echoes the resolved 
 **Severity: High** · `symai/clients/openai/responses.py:63` (`_REASONING = ReasoningSpec(tuple(ReasoningEffort))`) · status: `docs`
 The client grants **all seven** efforts to every reasoning model. Live: `gpt-5.5`/`gpt-5.4` accept `{none,low,medium,high,xhigh}` only (no `minimal`/`max`); `o3`/`o3-pro` accept `{low,medium,high}` only. A caller who sets `minimal`/`max` (any model) or `none`/`xhigh` (o3) passes local validation and gets an API **400**. Default path (`medium`/`high`) is safe. Source: OpenAI model pages.
 
+**Resolution: closed in code; the shipped table is not pinned by a test.** The effort tables now match the finding's documented live behaviour exactly — `_GPT_5_REASONING` = {none, low, medium, high, xhigh}, `_O_SERIES_REASONING` = {low, medium, high} (`openai/client/responses.py:62-88`) — enforced by the shared spec-driven gate (`_engine/gate.py:42-48`). Verified: `gpt-5.4` rejects `minimal`/`max`; `o3` rejects `none`/`minimal`/`xhigh`/`max`.
+
+**Gaps:** (1) the gate *mechanism* is tested (`tests/providers/_engine/test_infrastructure.py::test_capability_gate_rejects_unsupported_reasoning_value`) but the per-model table is not — mutating `_GPT_5_REASONING` does not fail the suite, and `o3`/`o3-pro` are never instantiated in any engine test. (2) Whether the table is *externally correct* is settleable only by a live canary, which does not exist (see the release-gate note below).
+
 ### API-03 — OpenAI response required-with-no-default fields are latent parse-failures
 **Severity: Low** · `symai/clients/openai/responses.py:419-460` (`background`, `store`, `truncation`, `metadata`) · status: `docs`
 These are echoed request-config fields declared with no default. If the API ever omits one (or a future revision drops it) the whole `Response` fails to parse and a good completion becomes `InvalidResponseError`. `usage`/`error`/`incomplete_details` are correctly modelled required-but-nullable. Latent, not a confirmed break.
@@ -107,6 +161,8 @@ All ten OpenAI IDs (`gpt-5.5`, `gpt-5.5-pro`, `gpt-5.4`, `gpt-5.4-pro`, `gpt-5.4
 ### API-05 — Cerebras advertises & forwards vision/image for text-only models
 **Severity: High** · `symai/backend/engines/language_model/cerebras.py:67,75,174-220` · status: `docs`
 The engine hardcodes `vision=True` + IMAGE content for all three Cerebras models, but `gpt-oss-120b` and `zai-glm-4.7` are text-only. An image request passes local validation and 400s at the API. The Cerebras client `ModelSpec` has no vision field, so vision is an engine constant rather than a catalog fact (see EXT-04).
+
+**Resolution: closed.** Vision is now a per-model catalog fact rather than an engine constant: `cerebras/client/chat.py:88-129` marks `gpt-oss-120b`=False, `zai-glm-4.7`=False, `gemma-4-31b`=True; the engine reads `spec.vision` (`chat_completions.py:61,70`) and the shared gate enforces it (`gate.py:20-26`). Verified: the two text-only models reject image content before any HTTP call. Pinned by `tests/providers/cerebras/engines/test_chat_completions.py::test_vision_support_follows_the_model_spec`, parametrized over all three models. External correctness of the matrix remains canary-only.
 
 ### API-06 — Cerebras `clear_thinking` sent to models other than `zai-glm-4.7`
 **Severity: Medium** · `symai/backend/engines/language_model/cerebras.py` · status: `docs`
@@ -148,6 +204,8 @@ DeepSeek documents `finish_reason='tool_calls'`, but no tool request/output cont
 ### CLI-02 — `list_input_items` reuses the request-only `InputMessage` strict model and cannot decode real items
 **Severity: High** (when reached) · `symai/clients/openai/responses.py:416,455-460` · status: `repro-script`
 `InputItemList.data` is `InputItem = InputMessage | OutputMessage | …`; `InputMessage` is a `StrictModel` for *building* requests (`extra="forbid"`, `strict=True`, no `id` field). Real returned items carry `id` + structured `content` arrays, so decoding fails for essentially every item — the method is non-functional for the common case. No internal caller today (only affects direct users of this binding).
+
+**Resolution: moot — the endpoint was deleted.** `list_input_items` and `InputItemList` were removed in `574c58f`; the client now exposes only `create_response` and `create_embeddings` (`openai/client/_client.py:27,37`), and nothing replaced them. Absence pinned by `tests/providers/openai/client/test_client.py::test_response_client_exposes_only_used_endpoints`.
 
 ### CLI-03 — `Response.text.format` submodels are strict; additive fields break structured-output responses
 **Severity: Medium** · `symai/clients/openai/responses.py:181-196,210` · status: `repro-script`
@@ -215,9 +273,13 @@ Both route through `_execute_symbol(..., literal=True)` which defaults `limit=1`
 **Severity: High** · `symai/runtime/factory.py:8-10` · status: `repro-read`
 Stated layering is clients → backend/engines → runtime, but `factory.py` (in the runtime core) imports `symai.backend.engine_handle` and every `symai.backend.engines.*` adapter, while those adapters import back up into `symai.runtime.*`. The composition root belongs in its own top-level package, not inside the layer it wires.
 
+**Resolution: closed.** The composition root moved out of the runtime core to top-level `symai/loading.py:44-57`. An AST import-graph scan finds **zero** `runtime → providers` edges; `symai/runtime/loading.py` is provider-agnostic, taking loader entries as parameters and naming no provider. Pinned by `tests/providers/test_public_facades.py::test_provider_client_packages_do_not_import_symbolic_runtime_layers`.
+
 ### SOC-02 — `factory.py` eagerly imports every provider's client + engine, so `import symai` compiles all provider schemas
 **Severity: High** · `symai/runtime/factory.py:10`; `symai/__init__.py` · status: `measured`
 `__init__` → `factory` → unconditional import of all three LM engines, the embedding engine, and all three client packages, each dragging its full pydantic schema tree. Cost is O(providers) even when the app configures one. Measured `import symai` ≈ 82 ms; it grows with every provider added — the opposite of the lazy-load goal.
+
+**Resolution: closed.** Measured in a subprocess: `import symai` now loads **1** module (`symai` itself, ~55 µs) and **0** provider/client/engine modules — no pydantic, httpx, or numpy — because `symai/__init__.py` is a lazy `__getattr__` and nothing else. `import symai.loading` pulls in **0** provider implementation modules. Configuring only OpenAI loads 10 openai modules and **0** cerebras/deepseek: import cost is O(configured), not O(providers). Was ~82 ms; now ~0 ms attributable. Pinned by `tests/test_import_boundaries.py::test_loading_modules_do_not_import_provider_clients_or_engines`.
 
 ### SOC-03 — Three language-model engine adapters are ~66% duplicated
 **Severity: High** · `symai/backend/engines/language_model/{openai,cerebras,deepseek}.py` · status: `repro-read`, `self`
@@ -247,9 +309,15 @@ Beyond `engines/`, `backend/` holds only `engine_handle.py` — a runtime/compos
 **Severity: High** · `symai/runtime/models.py:102-175` · status: `repro-read`
 A recursive frozen pydantic JSON AST (+ forward-ref alias + three `model_rebuild` calls + `_parse_json_value`/`_json_value_to_builtin`) exists for exactly one use: carrying a JSON-Schema into `JsonSchemaResponseFormat` (`models.py:244`), which the adapters immediately turn back into a builtin dict via `.to_builtin()` (`openai.py:246`, and identically `cerebras.py:264`). It also forces callers to convert their schema into this AST instead of passing a dict, and depends on pydantic's **private** `model_rebuild(_types_namespace=…)` (`:141-143`). A plain `dict[str, JsonValue]` (pydantic already ships a `JsonValue`) gives the same guarantee.
 
+**Resolution: closed.** The bespoke AST is deleted; the field is now simply `JsonSchemaResponseFormat.json_schema: JsonValue` (`symai/runtime/models.py:166`), and engines pass the dict straight through (`openai/engines/responses.py:161`). No `to_builtin`, `_parse_json_value`, or `model_rebuild` remains. Pinned by `tests/runtime/test_models.py::test_model_feature_metadata_contains_only_authoritative_capabilities`, which asserts `JsonEntry`/`JsonArray`/`JsonObject` are absent from the module.
+
 ### CX-02 — `LanguageModelSpec` capability matrix is mostly populated-but-never-read; enforcement is parallel hardcoded checks
 **Severity: High** · `symai/runtime/models.py:400-411` · status: `repro-read`
 Enforcement reads 7 of the 11 spec fields (`response_tokens`, `reasoning_fields` `openai.py:162,257`, `reasoning_efforts`, `reasoning_summaries` `openai.py:182`, `reasoning_formats`, `sampling_fields`, `vision`); the other **4 are dead** — exactly the set in CON-01. The problem is not that most of the matrix is unread but that the gating that *does* happen is imperative `if`-ladders in each `_validate_request` rather than being *driven* by the spec, so the declared matrix and the enforced rules are a hand-synchronized invariant the type system can't enforce — and they already disagree (DeepSeek spec advertises TEMPERATURE/TOP_P at `deepseek.py:64-65,88`; `_validate_request` rejects them — CON-01 / API-11).
+
+**Resolution: closed.** Enforcement is a single shared spec-driven gate — `validate_language_model_capabilities` (`symai/providers/_engine/gate.py:13-96`) — called by all three language-model engines (`openai/engines/responses.py:130`, `cerebras/…:162`, `deepseek/…:174`), replacing the parallel hardcoded checks. The specific disagreement cited is gone: `_DEEPSEEK_SAMPLING_FIELDS` advertises TEMPERATURE/TOP_P and `_validate_request` no longer rejects them. Pinned by five `tests/providers/_engine/test_infrastructure.py::test_capability_gate_rejects_*` tests, plus `tests/test_integration_invariants.py::test_every_language_engine_wires_image_content` which forces every engine through the gate.
+
+**Minor gap:** `reasoning_summaries` and `reasoning_formats` have no dedicated gate test — both were proved load-bearing by probe, but are covered only transitively via the shared `_validate_reasoning_value` helper.
 
 ### CX-03 — Five StrEnums exist mainly to populate spec tuples whose members are never membership-tested
 **Severity: Medium** · `symai/runtime/models.py:27,34,39,68,76` (`MessageRole`, `ContentType`, `ResponseFormatType`, `ReasoningField`, `SamplingField`) · status: `repro-read`
@@ -269,9 +337,13 @@ They type the capability-matrix tuples, but almost no code tests an individual m
 **Severity: High** · `symai/runtime/models.py:400-417` · status: `repro-read`
 `message_roles` (`:403`), `content_types` (`:404`), `response_formats` (`:405`), `context_tokens` (`:401`), and `EmbeddingModelSpec.context_tokens` are pure dead weight — every engine computes and stores them; nothing reads them. `context_tokens` is never checked against prompt size (no token counting exists — FP-04). A normalized contract whose fields are enforced nowhere is a lie in the type system.
 
+**Resolution: closed.** The four dead fields (`message_roles`, `content_types`, `response_formats`, `context_tokens`) and `EmbeddingModelSpec.context_tokens` were deleted (`symai/runtime/models.py:325-336`). Every surviving field was probed by flipping it and confirming the gate's decision flips: `response_tokens`, `reasoning_fields`, `reasoning_efforts`, `reasoning_summaries`, `reasoning_formats`, `sampling_fields`, `vision` — **7/7 written-and-read, 0 written-and-dead**; `EmbeddingModelSpec.dimensions` is read at `openai/engines/embedding.py:81,91,94`. Pinned by `tests/runtime/test_models.py::test_model_feature_metadata_contains_only_authoritative_capabilities`.
+
 ### CON-02 — `logprobs`/`top_logprobs` are sent to providers but the normalized response has nowhere to hold the answer
 **Severity: High** · `symai/runtime/models.py:281-282,357-361` · status: `repro-script`
 `SamplingConfig.logprobs`/`top_logprobs` are live request fields (Cerebras forwards both `cerebras.py:152,169`; DeepSeek both `deepseek.py:184-185`; OpenAI `top_logprobs` `openai.py:147`). Providers compute and return per-token logprobs (and may bill differently), but `LanguageModelOutput` has **no logprobs field** and the `_output` builders never read `choice.logprobs`. The contract can *request* logprobs but cannot *express* the result — a request/response coherence hole that the public type system advertises as supported.
+
+**Resolution: closed by removing the request side, not by adding a response holder.** Nothing sends `logprobs`/`top_logprobs` at any layer: `SamplingConfig` and `SamplingField` have no such field (`runtime/models.py:190-197`), OpenAI's `CreateResponseRequest` has none (`client/responses.py:263-287`), and Cerebras actively rejects them (`cerebras/client/chat.py:177,200-208`). The inbound client models still carry `logprobs`, which is correct faithful-binding behaviour for a response schema. Pinned by `tests/providers/cerebras/client/test_chat.py::test_removed_logprob_request_fields_are_rejected`, the DeepSeek equivalent, and `tests/providers/openai/engines/test_responses.py:255`.
 
 ### CON-03 — Response contract models N outputs and engines dedup/sort them, but no request can ever ask for more than one
 **Severity: Medium** · `symai/runtime/models.py:376-377`; `cerebras.py:287-298`, `deepseek.py:303-314` · status: `repro-read`
@@ -291,13 +363,25 @@ The normalized request/output contract has no tools or tool-call payload by desi
 **Severity: High** · `symai/runtime/runtime.py:45` · status: `repro-read`
 `main` shipped Pinecone/Qdrant/vectordb engines + `extended/vectordb.py` + RAG servers. Gone, and the two-slot `Runtime` (EXT-02) has no place to host an index capability.
 
+**Resolution: accepted product decision (scope deferral), not a defect.** Removal confirmed (no pinecone/qdrant/vectordb/retrieval references remain) and the capability set is deliberately closed: `type EngineCapability = Literal["language_model", "embedding"]` (`symai/runtime/errors.py:8`). Ruled by FIXPLAN §2 Scope ("Only language-model and embedding capabilities are designed here") and §13 bullet 5 ("future third-capability hazards do not justify a generic runtime before a third capability is approved"). Deferred, not rejected: a later third capability is explicitly contemplated.
+
 ### FP-03 — Search / scrape / OCR / speech-to-text / TTS / file-reader engines removed with no capability slot
 **Severity: High** · `symai/runtime/factory.py:71` · status: `repro-read`
 `main` had search (OpenAI/Gemini/Perplexity/SerpAPI/Parallel/Firecrawl), scrape, OCR (Mistral), Whisper STT, OpenAI TTS, and a file/PDF reader — each behind an `Interface`. None can be expressed by the current two capabilities.
 
+**Resolution: accepted product decision (scope deferral), not a defect.** Removal confirmed (no search/scrape/OCR/speech/TTS references remain). Same FIXPLAN §2 / §13 bullet 5 ruling as FP-02.
+
 ### FP-04 — Client-side token counting & automatic context-window truncation removed
 **Severity: High** · `symai/runtime/models.py:400` (`context_tokens` carried but unused) · status: `repro-read`
 `main` carried a tokenizer + `compute_required/remaining/truncation`. Gone; `context_tokens` is declared (CON-01) but never checked, so an over-long prompt now fails at the provider instead of being truncated or rejected locally.
+
+**Status: OPEN — no spec rules on it. Needs an explicit product decision.**
+
+The capability is confirmed gone: no tokenizer, `tiktoken`, context-window arithmetic, or truncation logic remains in `symai/`. Unlike FP-02 and FP-03, **no document rules on this one** — FIXPLAN (including §13), `audit/README.md`'s explicit non-goals, and `SYMBOL_REDESIGN.md` are all silent on token counting, tokenizers, context windows, and truncation. It is *not* covered by the FP-02/FP-03 capability-scope deferral, because token counting belongs to the language-model path, which is in scope for this sequence.
+
+The remediation anchor is now actively closed against: `context_tokens` was deleted from both model specs and pinned out by `tests/runtime/test_models.py::test_model_feature_metadata_contains_only_authoritative_capabilities`, so restoring local context-window validation would require reversing a committed test. `docs/source/MIGRATION.md` lists `tokens`/`tokenizer` under "Removed with no replacement", but that is a migration note covering the Symbol-level counting API only — it says nothing about automatic truncation and is not a ruling.
+
+The decision to record is whether 2.x deliberately delegates context management to the caller (provider-side length errors surface as typed errors) or owes a local pre-flight check.
 
 ### FP-05 — Streaming responses removed; client and runtime are single-shot only
 **Severity: Medium** · `symai/clients/openai/client.py:65` · status: `repro-read`
@@ -316,6 +400,8 @@ No `stream` field on any request model; Cerebras' `extra="allow"` would let `str
 Basic JSON-schema passthrough survives (`JsonSchemaResponseFormat` → structured-output request; `parse_typed_value` does `model_validate_json`), but `main`'s `strategy.py`/`LLMDataModel` validate-then-remedy loop is gone; a malformed model output now raises rather than self-correcting.
 
 Design-by-Contract — `@contract` / `Contract[In, Out]`: typed `LLMDataModel` I/O, `pre`/`act`/`post`, LLM **semantic validation**, and the **self-healing remediation loop** — is the most-used SymbolicAI capability and an explicit product requirement. The engine-redesign is not a SymbolicAI successor until it is rebuilt on the explicit-runtime architecture: the engine is passed as a bound handle, remediation cost is captured via the observer seam, and structured-output requests are kept. Port design and plan: [`../docs/fullreport/r7-contracts.md`](../docs/fullreport/r7-contracts.md), [`../docs/fullreport/r8-contracts-plan.md`](../docs/fullreport/r8-contracts-plan.md); canonical impl on `dev`: `symai/strategy.py`, `docs/source/FEATURES/contracts.md`, `tests/contract/`.
+
+**Resolution: closed — genuinely rebuilt and verified end-to-end.** The pillar lives in `symai/contract/{contract,decorator,models,remedy,validation}.py`. Verified with a scripted engine returning bad → bad → good output: the remedy loop converged (`succeeded=True, attempts=3`), captured the validation errors, sent `JsonSchemaResponseFormat(strict=True)` on the first request, and included the failing value in the remedy prompt. An exhausted budget fails cleanly (`succeeded=False, stage=type`), `__call__` raises `ContractViolation`, and `post_remedy=False` degrades to single-shot. `pre`/`act`/`post`, LLM semantic validation, bound-handle passing, and the observer seam are all present. 29/29 contract tests pass.
 
 ### FP-09 — Conversation / chat / memory composition removed; only stateless `Function`/`Symbol` remain
 **Severity: Medium** · `symai/components.py:15` · status: `repro-read`
@@ -353,6 +439,8 @@ Design-by-Contract — `@contract` / `Contract[In, Out]`: typed `LLMDataModel` I
 **Severity: High** · `symai/runtime/factory.py:71`; `symai/runtime/models.py` (`Provider` enum) · status: `repro-read`
 `_FACTORIES` is a module-private frozen `MappingProxyType` with a bespoke `_create_<provider>_<capability>` closure per entry, and `Provider` is a closed StrEnum in the contract core. A new provider means editing the enum, adding a closure, adding a map entry, writing a client package + engine module, and updating a test that pins the exact matrix — no single registration point.
 
+**Resolution: closed — proved by running a real out-of-tree provider with zero core edits.** An `acme-labs` provider defined entirely outside `symai/` loaded and executed: no `Provider` enum entry (`ProviderId` is an open validated string, `models.py:33`), no factory-map edit (loaders are passed to `load_runtime`, `symai/loading.py:60-76`), and no base class to inherit (`LanguageModelEngine` is a structural `Protocol`, `runtime/engines.py:11`). Two same-model/different-key instances stayed distinct; preflight rejected a bad setting with nothing allocated. Adding an *in-tree* provider is now one registration site (`BUILTIN_LANGUAGE_MODEL_LOADERS`) plus the provider package. Pinned by `tests/runtime/test_loading.py::test_credential_free_external_loader_constructs_and_executes`.
+
 ### EXT-02 — Future capability additions could be misrouted by a binary `else`
 **Severity: Low** · `symai/runtime/factory.py:104-129`; `symai/runtime/runtime.py:45-59` · status: `repro-read`
 Capabilities are intentionally limited to language models and embeddings. Within that closed set the resolver emits only valid values, so no current request is misrouted. The `else` assignment would silently treat a future third capability as embedding if someone widened `_Capability` without redesigning the slots. This is a future edit hazard, not evidence that a generic N-capability Runtime is currently required.
@@ -368,6 +456,10 @@ Adding a model to a client `MODEL_SPECS` auto-flows into the engine, but capabil
 ### EXT-05 — Runtime cannot hold two independently keyed instances of the same model
 **Severity: High** · `symai/runtime/models.py:432-442`; `symai/runtime/factory.py:93-109`; `symai/runtime/runtime.py:45-59` · status: `repro-read`
 `RuntimeConfig`, `create_runtime`, and `Runtime` each have one scalar language-model slot and one scalar embedding slot. Two OpenAI `gpt-5.4` engines with different API keys or transport settings cannot coexist in one Runtime. Provider/model cannot serve as instance identity because those values intentionally collide, and credentials must never participate in identity. The required seam is an immutable named configured-instance collection; each name resolves to a separately owned handle/client.
+
+**Resolution: closed.** Engines are held in name→engine maps (`symai/runtime/runtime.py:111-143`, `runtime/config.py:61-81`, `runtime/loading.py:24-75`). Verified live: two `openai:responses`/`gpt-4.1` instances with different keys produce distinct engines, distinct clients, distinct `httpx.Client` objects, and distinct auth headers; each is selected by name and closed exactly once; an omitted name raises `AmbiguousEngineError`. Pinned by `tests/providers/test_engine_ownership.py::test_runtime_accepts_same_provider_and_model_with_distinct_owned_clients`.
+
+**Coverage caveat:** the pinning test uses same-provider/same-model but not *different keys*, and constructs engines directly rather than through `load_runtime`. FIXPLAN §5's full acceptance was verified by script but is not pinned by a committed test.
 
 ---
 
@@ -450,6 +542,10 @@ The cap was inherited from `main` where `torch<2.10.0` forced an old numpy. Torc
 ### UX-01 — No retry/backoff for 429 or 5xx anywhere
 **Severity: High** · `symai/runtime/factory.py:159` (`httpx.HTTPTransport(retries=connect_retries)`) · status: `repro-read`
 Connection-establishment retries only — never response retries. `RateLimitError.metadata.retry_after` is parsed and surfaced but nothing consumes it. A regression vs `main` (FP-14) and a burden pushed entirely to callers with no helper.
+
+**Resolution: withdrawn/reframed by FIXPLAN §9, and complied with.** §9 ("Retry policy") explicitly addresses UX-01 "after correcting their policy framing": *"Do not add generic automatic retries for POST requests… Until that contract exists, surface retry metadata to applications."* Automatic retry of a non-idempotent POST is a correctness hazard, not a missing feature. The library therefore never retries, and instead classifies retryability and surfaces `retry_after`/`request_id` (`symai/providers/_engine/mapping.py:23-32,109`), documented at `symai/runtime/errors.py:15-16` and `docs/source/RUNTIME.md:145`. Pinned by `tests/providers/cerebras/client/test_client.py::test_client_remains_open_and_never_retries` and `tests/providers/test_engine_ownership.py::test_retryability_marks_capacity_and_provider_health_only`.
+
+**Related and still open:** UX-02 — `parse_optional_float` (`headers.py:42-48`) returns `None` for an RFC 9110 HTTP-date `Retry-After`, degrading the only backoff signal handed to callers. Medium, tracked separately.
 
 ### UX-02 — `Retry-After` parser only accepts delta-seconds; the RFC-allowed HTTP-date form is dropped to `None`
 **Severity: Low** (reported Medium) · `symai/clients/_headers.py:5` · status: `repro-script`, `self`
