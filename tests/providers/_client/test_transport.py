@@ -11,23 +11,6 @@ from symai.providers.cerebras.client.transport import (
 from symai.providers.cerebras.client.transport import (
     ResponseMetadata as CerebrasResponseMetadata,
 )
-from symai.providers.deepseek.client.transport import (
-    APIResponse as DeepSeekAPIResponse,
-)
-from symai.providers.deepseek.client.transport import (
-    ResponseMetadata as DeepSeekResponseMetadata,
-)
-from symai.providers.openai.client.transport import APIResponse as OpenAIAPIResponse
-from symai.providers.openai.client.transport import (
-    ResponseMetadata as OpenAIResponseMetadata,
-)
-
-
-def test_openai_and_deepseek_reexport_shared_transport_types():
-    assert OpenAIAPIResponse is APIResponse
-    assert DeepSeekAPIResponse is APIResponse
-    assert OpenAIResponseMetadata is ResponseMetadata
-    assert DeepSeekResponseMetadata is ResponseMetadata
 
 
 def test_shared_response_envelope_is_strict_and_immutable():

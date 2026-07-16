@@ -3,18 +3,10 @@ from pydantic import SecretStr, ValidationError
 
 from symai.providers._client.models import StrictModel
 from symai.providers._client.settings import HttpProviderSettings
-from symai.providers.cerebras.settings import ChatCompletionsSettings as CerebrasSettings
-from symai.providers.deepseek.settings import ChatCompletionsSettings as DeepSeekSettings
-from symai.providers.openai.settings import EmbeddingSettings, ResponsesSettings
 
 
-@pytest.mark.parametrize(
-    "settings_type",
-    [CerebrasSettings, DeepSeekSettings, EmbeddingSettings, ResponsesSettings],
-)
-def test_provider_settings_use_runtime_blind_shared_http_settings(settings_type):
-    assert issubclass(settings_type, HttpProviderSettings)
-    assert issubclass(settings_type, StrictModel)
+def test_http_provider_settings_are_a_runtime_blind_strict_model():
+    assert issubclass(HttpProviderSettings, StrictModel)
 
 
 def test_http_provider_settings_preserve_defaults_and_strict_validation():
@@ -27,3 +19,11 @@ def test_http_provider_settings_preserve_defaults_and_strict_validation():
         HttpProviderSettings.model_validate(
             {"api_key": "key", "model": "model", "connect_retries": "1"}
         )
+
+
+def test_http_provider_settings_reject_unknown_fields():
+    payload = {"api_key": SecretStr("key"), "model": "model"}
+
+    assert HttpProviderSettings.model_validate(payload).model == "model"
+    with pytest.raises(ValidationError):
+        HttpProviderSettings.model_validate({**payload, "model_path": "/models/local.gguf"})

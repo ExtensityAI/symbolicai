@@ -5,13 +5,13 @@ from typing import override
 from pydantic import ValidationError
 
 from symai.providers._client import errors as client_errors
+from symai.providers._client.transport import APIResponse
+from symai.providers._client.transport import ResponseMetadata as DeepSeekResponseMetadata
 from symai.providers._engine.base import ProviderEngine, retry_after_seconds
 from symai.providers._engine.gate import validate_language_model_capabilities
 from symai.providers._engine.mapping import ClientErrorMessages, raise_mapped_client_error
 from symai.providers.deepseek.client import Client
 from symai.providers.deepseek.client import chat as chat_api
-from symai.providers.deepseek.client.transport import APIResponse
-from symai.providers.deepseek.client.transport import ResponseMetadata as DeepSeekResponseMetadata
 from symai.runtime.errors import ErrorMetadata, InvalidResponseError
 from symai.runtime.models import (
     AssistantOutputMessage,
@@ -69,6 +69,9 @@ MODEL_SPECS = MappingProxyType(
     {model: _normalized_model_spec(spec) for model, spec in chat_api.MODEL_SPECS.items()}
 )
 
+# Shared with the loader, which rejects an unsupported model before allocating transport.
+UNSUPPORTED_MODEL_MESSAGE = "Unsupported DeepSeek language model: {model}"
+
 _FINISH_REASONS = MappingProxyType(
     {
         "stop": FinishReason.STOP,
@@ -96,7 +99,7 @@ class ChatCompletionsEngine(ProviderEngine[Client, chat_api.Model, LanguageModel
             client=client,
             model=model,
             model_specs=MODEL_SPECS,
-            unsupported_model_message="Unsupported DeepSeek language model: {model}",
+            unsupported_model_message=UNSUPPORTED_MODEL_MESSAGE,
         )
 
     def execute(self, request: LanguageModelRequest) -> LanguageModelResponse:

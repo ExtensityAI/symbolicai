@@ -1,8 +1,8 @@
 import symai.providers.deepseek.client.chat as chat
 import symai.providers.deepseek.client.errors as errors
 from symai.providers._client.client import BaseClient, ClientConfig
-from symai.providers.deepseek.client.headers import extract_response_metadata
-from symai.providers.deepseek.client.transport import APIResponse, ResponseMetadata
+from symai.providers._client.headers import extract_response_metadata
+from symai.providers._client.transport import APIResponse, ResponseMetadata
 
 BASE_URL = "https://api.deepseek.com"
 

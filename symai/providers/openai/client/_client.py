@@ -2,8 +2,8 @@ import symai.providers.openai.client.embeddings as embeddings
 import symai.providers.openai.client.errors as errors
 import symai.providers.openai.client.responses as responses_api
 from symai.providers._client.client import BaseClient, ClientConfig
-from symai.providers.openai.client.headers import extract_response_metadata
-from symai.providers.openai.client.transport import APIResponse, ResponseMetadata
+from symai.providers._client.headers import extract_response_metadata
+from symai.providers._client.transport import APIResponse, ResponseMetadata
 
 BASE_URL = "https://api.openai.com/v1"
 

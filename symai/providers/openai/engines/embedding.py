@@ -4,12 +4,12 @@ from typing import cast, override
 from pydantic import ValidationError
 
 from symai.providers._client import errors as client_errors
+from symai.providers._client.transport import APIResponse
+from symai.providers._client.transport import ResponseMetadata as OpenAIResponseMetadata
 from symai.providers._engine.base import ProviderEngine, retry_after_seconds
 from symai.providers._engine.mapping import ClientErrorMessages, raise_mapped_client_error
 from symai.providers.openai.client import Client
 from symai.providers.openai.client import embeddings as embeddings_api
-from symai.providers.openai.client.transport import APIResponse
-from symai.providers.openai.client.transport import ResponseMetadata as OpenAIResponseMetadata
 from symai.runtime.errors import ErrorMetadata, InvalidResponseError, UnsupportedFeatureError
 from symai.runtime.models import (
     EmbeddingModelSpec,
@@ -32,6 +32,9 @@ MODEL_SPECS = MappingProxyType(
     }
 )
 
+# Shared with the loader, which rejects an unsupported model before allocating transport.
+UNSUPPORTED_MODEL_MESSAGE = "Unsupported OpenAI embedding model: {model}"
+
 _ERROR_MESSAGES = ClientErrorMessages(
     authentication="OpenAI rejected authentication",
     rate_limit="OpenAI rate-limited the request",
@@ -50,7 +53,7 @@ class EmbeddingEngine(ProviderEngine[Client, embeddings_api.Model, EmbeddingMode
             client=client,
             model=model,
             model_specs=MODEL_SPECS,
-            unsupported_model_message="Unsupported OpenAI embedding model: {model}",
+            unsupported_model_message=UNSUPPORTED_MODEL_MESSAGE,
         )
 
     def execute(self, request: EmbeddingRequest) -> EmbeddingResponse:
@@ -156,13 +159,10 @@ class EmbeddingEngine(ProviderEngine[Client, embeddings_api.Model, EmbeddingMode
         except ValidationError:
             return None
 
-    def _error_metadata(
-        self,
-        metadata: OpenAIResponseMetadata | None,
-    ) -> ErrorMetadata:
+    def _error_metadata(self, metadata: OpenAIResponseMetadata) -> ErrorMetadata:
         return ErrorMetadata(
             provider=self.provider,
             model=self.model,
-            request_id=metadata.request_id if metadata is not None else None,
-            retry_after=retry_after_seconds(metadata.retry_after if metadata is not None else None),
+            request_id=metadata.request_id,
+            retry_after=retry_after_seconds(metadata.retry_after),
         )

@@ -5,13 +5,13 @@ from typing import override
 from pydantic import ValidationError
 
 from symai.providers._client import errors as client_errors
+from symai.providers._client.transport import APIResponse
+from symai.providers._client.transport import ResponseMetadata as OpenAIResponseMetadata
 from symai.providers._engine.base import ProviderEngine, retry_after_seconds
 from symai.providers._engine.gate import validate_language_model_capabilities
 from symai.providers._engine.mapping import ClientErrorMessages, raise_mapped_client_error
 from symai.providers.openai.client import Client
 from symai.providers.openai.client import responses as responses_api
-from symai.providers.openai.client.transport import APIResponse
-from symai.providers.openai.client.transport import ResponseMetadata as OpenAIResponseMetadata
 from symai.runtime.errors import ErrorMetadata, InvalidResponseError
 from symai.runtime.models import (
     AssistantMessage,
@@ -67,6 +67,9 @@ MODEL_SPECS = MappingProxyType(
     {model: _normalized_model_spec(spec) for model, spec in responses_api.MODEL_SPECS.items()}
 )
 
+# Shared with the loader, which rejects an unsupported model before allocating transport.
+UNSUPPORTED_MODEL_MESSAGE = "Unsupported OpenAI language model: {model}"
+
 _ERROR_MESSAGES = ClientErrorMessages(
     authentication="OpenAI rejected authentication",
     rate_limit="OpenAI rate-limited the request",
@@ -85,7 +88,7 @@ class ResponsesEngine(ProviderEngine[Client, responses_api.Model, LanguageModelS
             client=client,
             model=model,
             model_specs=MODEL_SPECS,
-            unsupported_model_message="Unsupported OpenAI language model: {model}",
+            unsupported_model_message=UNSUPPORTED_MODEL_MESSAGE,
         )
 
     def execute(self, request: LanguageModelRequest) -> LanguageModelResponse:

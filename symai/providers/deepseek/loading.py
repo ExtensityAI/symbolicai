@@ -1,23 +1,24 @@
 from collections.abc import Mapping
 
-from symai.providers.deepseek.settings import ChatCompletionsSettings
+from symai.providers._client.settings import HttpProviderSettings
 from symai.runtime.engines import LanguageModelEngine
 from symai.runtime.errors import UnsupportedModelError
 
 
 def load_chat_completions(settings: Mapping[str, object]) -> LanguageModelEngine:
-    parsed = ChatCompletionsSettings.model_validate(dict(settings))
+    parsed = HttpProviderSettings.model_validate(dict(settings))
 
     import httpx
 
     from symai.providers.deepseek.client import Client
     from symai.providers.deepseek.engines.chat_completions import (
         MODEL_SPECS,
+        UNSUPPORTED_MODEL_MESSAGE,
         ChatCompletionsEngine,
     )
 
     if parsed.model not in MODEL_SPECS:
-        msg = f"Unsupported DeepSeek language model: {parsed.model}"
+        msg = UNSUPPORTED_MODEL_MESSAGE.format(model=parsed.model)
         raise UnsupportedModelError(msg)
 
     client = Client(

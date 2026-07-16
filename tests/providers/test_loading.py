@@ -1,44 +1,12 @@
 from collections.abc import Callable, Mapping
 
 import pytest
-from pydantic import SecretStr, ValidationError
+from pydantic import SecretStr
 
 from symai.providers.cerebras.loading import load_chat_completions as load_cerebras
-from symai.providers.cerebras.settings import ChatCompletionsSettings as CerebrasSettings
 from symai.providers.deepseek.loading import load_chat_completions as load_deepseek
-from symai.providers.deepseek.settings import ChatCompletionsSettings as DeepSeekSettings
 from symai.providers.openai.loading import load_embedding, load_responses
-from symai.providers.openai.settings import EmbeddingSettings, ResponsesSettings
 from symai.runtime.errors import UnsupportedModelError
-
-
-@pytest.mark.parametrize(
-    ("settings_type", "payload"),
-    (
-        (ResponsesSettings, {"api_key": SecretStr("key"), "model": "gpt-5.4"}),
-        (
-            EmbeddingSettings,
-            {"api_key": SecretStr("key"), "model": "text-embedding-3-small"},
-        ),
-        (
-            CerebrasSettings,
-            {"api_key": SecretStr("key"), "model": "gpt-oss-120b"},
-        ),
-        (
-            DeepSeekSettings,
-            {"api_key": SecretStr("key"), "model": "deepseek-v4-flash"},
-        ),
-    ),
-)
-def test_provider_settings_are_distinct_strict_models(
-    settings_type: type[object],
-    payload: Mapping[str, object],
-) -> None:
-    settings = settings_type.model_validate(payload)  # type: ignore[attr-defined]
-
-    assert settings.__class__ is settings_type
-    with pytest.raises(ValidationError):
-        settings_type.model_validate({**payload, "model_path": "/models/local.gguf"})  # type: ignore[attr-defined]
 
 
 @pytest.mark.parametrize(

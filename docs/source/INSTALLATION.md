@@ -8,7 +8,7 @@ SymbolicAI requires Python 3.11 or newer.
 pip install symbolicai
 ```
 
-The published package has one mandatory dependency set and no capability extras. OpenAI, Cerebras, and DeepSeek access is implemented by SymbolicAI's retained HTTP adapters; no provider SDK installation is required.
+The published package has one mandatory dependency set and no capability extras. OpenAI, Cerebras, and DeepSeek access is implemented by SymbolicAI's own HTTP adapters; no provider SDK installation is required.
 
 ## Install a repository checkout
 
@@ -31,22 +31,27 @@ import os
 
 from pydantic import SecretStr
 
-from symai import Provider, ProviderEngineConfig, RuntimeConfig, TransportConfig
+from symai.runtime.config import EngineConfig, RuntimeConfig
 
-openai = ProviderEngineConfig(
-    provider=Provider.OPENAI,
-    model="gpt-5.4",
-    api_key=SecretStr(os.environ["OPENAI_API_KEY"]),
-    transport=TransportConfig(
-        request_timeout=60.0,
-        connect_timeout=10.0,
-        connect_retries=1,
-    ),
+config = RuntimeConfig(
+    language_models={
+        "chat": EngineConfig(
+            implementation="openai:responses",
+            settings={
+                "api_key": SecretStr(os.environ["OPENAI_API_KEY"]),
+                "model": "gpt-5.4",
+                "request_timeout": 60.0,
+                "connect_timeout": 10.0,
+                "connect_retries": 1,
+            },
+        )
+    },
 )
-config = RuntimeConfig(language_model=openai)
 ```
 
-`ProviderEngineConfig` requires an explicit provider, an unqualified catalog model ID, and a non-empty API key. `TransportConfig` controls request timeout, connect timeout, and connection retries. It defaults to a 600-second request timeout, a 10-second connect timeout, and zero retries.
+Every engine's settings require an API key and an unqualified catalog model ID. The HTTP settings are optional and default to a 600-second request timeout, a 10-second connect timeout, and zero connect retries. Settings are validated for every configured engine before any transport is allocated, so a typo in one engine cannot leave another engine's HTTP client behind.
+
+Settings are strict: an unknown key is rejected rather than ignored.
 
 SymbolicAI does not load credentials, models, or transport settings from environment variables on its own. It does not create or inspect configuration files. Reading `OPENAI_API_KEY` above is application code, not package behavior.
 

@@ -75,6 +75,9 @@ MODEL_SPECS = MappingProxyType(
     {model: _normalized_model_spec(spec) for model, spec in chat_api.MODEL_SPECS.items()}
 )
 
+# Shared with the loader, which rejects an unsupported model before allocating transport.
+UNSUPPORTED_MODEL_MESSAGE = "Unsupported Cerebras language model: {model}"
+
 _FINISH_REASONS = MappingProxyType(
     {
         "stop": FinishReason.STOP,
@@ -101,7 +104,7 @@ class ChatCompletionsEngine(ProviderEngine[Client, chat_api.Model, LanguageModel
             client=client,
             model=model,
             model_specs=MODEL_SPECS,
-            unsupported_model_message="Unsupported Cerebras language model: {model}",
+            unsupported_model_message=UNSUPPORTED_MODEL_MESSAGE,
         )
 
     def execute(self, request: LanguageModelRequest) -> LanguageModelResponse:

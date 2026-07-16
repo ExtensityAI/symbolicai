@@ -25,8 +25,8 @@ This document is the single source of truth for implementation order, dependenci
 
 ### Ownership and identity
 
-- An engine instance is identified only by its configured name within a Runtime.
-- Names are globally unique within one Runtime and never contain or derive from secrets.
+- An engine instance is identified by its capability and its configured name within a Runtime.
+- Names are unique within each capability mapping and never contain or derive from secrets. The same name may identify one language model and one embedding engine, because every selection path already fixes the capability: the request type, the bound handle type, or the accessor.
 - Equal provider/model configurations remain distinct instances.
 - Each instance exclusively owns its engine handle, provider client, transport settings, credentials, and HTTP client.
 - No raw engine, client, or ownership-bearing handle escapes Runtime.

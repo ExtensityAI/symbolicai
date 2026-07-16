@@ -4,8 +4,6 @@ from symai.providers._client import errors as client_errors
 class Error(client_errors.ClientError):
     """Base class for all typed errors raised by the Cerebras client."""
 
-    provider = "cerebras"
-
 
 class APIError(client_errors.APIError, Error):
     """Raised for a non-2xx response from the Cerebras API.

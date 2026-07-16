@@ -4,8 +4,6 @@ from symai.providers._client import errors as client_errors
 class Error(client_errors.ClientError):
     """Base class for all typed errors raised by the OpenAI client."""
 
-    provider = "openai"
-
 
 class APIError(client_errors.APIError, Error):
     provider_display_name = "OpenAI"

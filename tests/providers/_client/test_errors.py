@@ -100,7 +100,6 @@ def test_api_error_retains_metadata_and_body():
     metadata = _metadata(status_code=500, request_id="req-1")
     error = cerebras_errors.APIError(metadata, "server error")
 
-    assert error.provider == "cerebras"
     assert error.metadata is metadata
     assert error.metadata.status_code == 500
     assert error.metadata.request_id == "req-1"

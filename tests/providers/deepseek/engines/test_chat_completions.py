@@ -6,11 +6,11 @@ import httpx
 import pytest
 from pydantic import JsonValue, SecretStr, ValidationError
 
+from symai.providers._client.transport import ResponseMetadata as DeepSeekResponseMetadata
 from symai.providers.deepseek import ChatCompletionsEngine
 from symai.providers.deepseek.client import Client
 from symai.providers.deepseek.client import chat as chat_api
 from symai.providers.deepseek.client import errors as deepseek_errors
-from symai.providers.deepseek.client.transport import ResponseMetadata as DeepSeekResponseMetadata
 from symai.providers.deepseek.engines.chat_completions import MODEL_SPECS, _normalized_model_spec
 from symai.runtime.errors import (
     AuthenticationError,

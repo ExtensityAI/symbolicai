@@ -289,24 +289,30 @@ def test_deleted_production_tree_and_adapter_inventory() -> None:
         "_client.py",
         "embeddings.py",
         "errors.py",
-        "headers.py",
         "responses.py",
-        "transport.py",
     }
     assert {path.name for path in (PACKAGE / "providers/openai/engines").glob("*.py")} == {
         "__init__.py",
         "embedding.py",
         "responses.py",
     }
+    # Only Cerebras specializes the shared transport/header types (rate-limit state);
+    # OpenAI and DeepSeek use symai.providers._client directly.
+    assert {path.name for path in (PACKAGE / "providers/cerebras/client").glob("*.py")} == {
+        "__init__.py",
+        "_client.py",
+        "chat.py",
+        "errors.py",
+        "headers.py",
+        "transport.py",
+    }
+    assert {path.name for path in (PACKAGE / "providers/deepseek/client").glob("*.py")} == {
+        "__init__.py",
+        "_client.py",
+        "chat.py",
+        "errors.py",
+    }
     for provider in ("cerebras", "deepseek"):
-        assert {path.name for path in (PACKAGE / f"providers/{provider}/client").glob("*.py")} == {
-            "__init__.py",
-            "_client.py",
-            "chat.py",
-            "errors.py",
-            "headers.py",
-            "transport.py",
-        }
         assert {path.name for path in (PACKAGE / f"providers/{provider}/engines").glob("*.py")} == {
             "__init__.py",
             "chat_completions.py",
