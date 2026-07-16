@@ -94,6 +94,10 @@ class FinishReason(StrEnum):
 
 FiniteFloat = Annotated[float, Field(allow_inf_nan=False)]
 NonNegativeFiniteFloat = Annotated[float, Field(ge=0, allow_inf_nan=False)]
+
+# Only meaningful for a provider reached over HTTP. Named for what it is so that a field
+# holding one is obviously optional: see `ResponseMetadata.status_code`.
+HttpStatusCode = Annotated[int, Field(ge=100, le=599)]
 PositiveFiniteFloat = Annotated[float, Field(gt=0, allow_inf_nan=False)]
 
 
@@ -245,10 +249,21 @@ class RateLimitMetadata(FrozenModel):
 
 
 class ResponseMetadata(FrozenModel):
+    """Normalized facts about a successful provider call.
+
+    Every field an integration cannot always supply is optional, because this is the
+    contract a provider is normalized *into* — requiring something only an HTTP API has
+    would make "an engine abstracts over its client" false for anything else. `status_code`
+    is the field that made it false: it was required and range-checked to 100..599, so a
+    binding driving a local binary could satisfy this model only by reporting an HTTP
+    status it never received. `ErrorMetadata.status_code` was already optional, so the
+    error path was transport-agnostic while the success path was not.
+    """
+
     provider: ProviderId
     requested_model: str = Field(min_length=1)
     response_model: str | None = Field(default=None, min_length=1)
-    status_code: int = Field(ge=100, le=599)
+    status_code: HttpStatusCode | None = None
     request_id: str | None = None
     retry_after: NonNegativeFiniteFloat | None = None
     response_id: str | None = None

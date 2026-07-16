@@ -174,16 +174,23 @@ def test_the_contract_classifies_every_layer_it_claims_to_govern() -> None:
 
 
 def test_the_client_tier_is_the_only_layer_that_speaks_http() -> None:
-    """Pins what makes the engine rule above worth enforcing.
+    """Pins what makes the import rules above worth enforcing.
 
-    The engine layer may not import the client tier because that tier is HTTP-shaped, and
-    an integration reaching a local binary has no status code to report. If `HttpMetadata`
-    ever lost `status_code`, that rule would still pass while guarding nothing — the
-    contract would look enforced and mean less. `ErrorMetadata` is the deliberate contrast:
-    its `status_code` is optional precisely so the error path stays transport-agnostic.
+    The engine layer may not import the client tier because that tier is HTTP-shaped. If
+    `HttpMetadata` ever lost `status_code`, that rule would still pass while guarding
+    nothing — the contract would look enforced and mean less.
+
+    The runtime models are the other half, and the half that was actually broken. They are
+    what a provider is normalized *into*, so requiring a field only an HTTP API can supply
+    makes "integrations are not all HTTP" decorative no matter how clean the import graph
+    is: an audit's local-binary binding satisfied the old contract only by reporting
+    `status_code=200` for a subprocess. Import rules cannot see that, which is why it
+    survived two passes that were looking one layer lower.
     """
     from symai.providers._http.response import HttpMetadata
     from symai.runtime.errors import ErrorMetadata
+    from symai.runtime.models import ResponseMetadata
 
     assert HttpMetadata.model_fields["status_code"].is_required()
+    assert not ResponseMetadata.model_fields["status_code"].is_required()
     assert not ErrorMetadata.model_fields["status_code"].is_required()
