@@ -9,11 +9,15 @@ this file fails *before* the regression ships. Every field set is pinned deliber
 changing a pin must be a conscious edit, never a side effect.
 
 Guarded traps:
-  * multimodal (image) request path is wired end-to-end through every language engine;
-  * the provider *client* layer stays a faithful API binding that never imports ``symai.runtime``;
+  * every language engine routes capability checks through the shared gate;
   * no ``TokenUsage`` / ``RateLimitMetadata`` field is dropped, and every field is producer-backed
     (including the single-provider fields that look dead from one provider's vantage point);
   * N-output / ``output_index`` is retained (spec-ratified; not collapsed to one output).
+
+The client layer's purity — a faithful API binding that never imports ``symai.runtime`` —
+is guarded in ``tests/providers/test_public_facades.py`` (which forbids a superset of
+module prefixes) and, for transitive imports an AST scan cannot see, in
+``tests/providers/_client/test_boundary.py``.
 """
 
 from __future__ import annotations
@@ -96,28 +100,7 @@ def test_every_language_engine_routes_through_the_shared_capability_gate() -> No
     assert not missing, f"language engines bypass the shared capability gate: {missing}"
 
 
-# --- Invariant 2: the client layer is a provider-pure API binding ---------------------
-
-
-def test_provider_clients_never_import_runtime() -> None:
-    """A client is a faithful HTTP/API binding; it must never know about ``symai.runtime``.
-
-    The engine (adapter) is the only crossing point between a provider client and the runtime.
-    """
-    assert CLIENT_FILES, "no provider client modules discovered"
-    offenders = {
-        str(path.relative_to(PACKAGE)): sorted(
-            m
-            for m in _absolute_imports(path)
-            if m == "symai.runtime" or m.startswith("symai.runtime.")
-        )
-        for path in CLIENT_FILES
-    }
-    leaking = {path: mods for path, mods in offenders.items() if mods}
-    assert not leaking, f"provider client modules import runtime: {leaking}"
-
-
-# --- Invariant 3: usage / rate-limit fields are pinned and producer-backed -------------
+# --- Invariant 2: usage / rate-limit fields are pinned and producer-backed -------------
 
 # Pinned deliberately. Adding or removing a field is a conscious edit, not a side effect.
 EXPECTED_TOKEN_USAGE_FIELDS = frozenset(

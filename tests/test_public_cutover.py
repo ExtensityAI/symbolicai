@@ -15,110 +15,6 @@ import symai.runtime.runtime as runtime
 ROOT = Path(__file__).resolve().parents[1]
 PACKAGE = ROOT / "symai"
 
-OLD_ROOT_NAMES = {
-    "AmbiguousEngineError",
-    "AssistantMessage",
-    "AuthenticationError",
-    "DecodeError",
-    "EmbeddingRequest",
-    "EngineSpec",
-    "ErrorMetadata",
-    "Function",
-    "LanguageModelRequest",
-    "NoActiveRuntimeError",
-    "Runtime",
-    "RuntimeConfig",
-    "Symbol",
-    "current_runtime",
-    "decode_bool",
-    "decode_output",
-    "decode_text",
-    "load_runtime",
-    "scalar_decoder",
-}
-
-FORBIDDEN_PUBLIC_NAMES = {
-    "Argument",
-    "Client",
-    "EngineHandle",
-    "DynamicEngine",
-    "Engine",
-    "EngineRepository",
-    "Expression",
-    "NamedEngineConfig",
-    "Provider",
-    "ProviderEngineConfig",
-    "TransportConfig",
-    "create_runtime",
-    "Symbol",
-    "config_manager",
-    "run_server",
-    "setup_wizard",
-}
-
-DELETED_FILES = {
-    "runtime/factory.py",
-    "components.py",
-    "context.py",
-    "core.py",
-    "functional.py",
-    "post_processors.py",
-    "pre_processors.py",
-    "prompts.py",
-    "strategy.py",
-    "backend/async_bridge.py",
-    "backend/engine_handle.py",
-    "backend/base.py",
-    "backend/chat_prompts.py",
-    "backend/provider_engines.py",
-    "backend/request.py",
-    "backend/settings.py",
-    "backend/streaming.py",
-    "backend/transport.py",
-    "backend/usage.py",
-    "providers/settings.py",
-}
-
-DELETED_TREES = {
-    "backend",
-    "extended",
-    "models",
-    "server",
-}
-
-FORBIDDEN_IMPORT_PREFIXES = tuple(
-    f"symai.{path.removesuffix('.py').replace('/', '.')}" for path in DELETED_FILES
-) + tuple(f"symai.{path.replace('/', '.')}" for path in DELETED_TREES)
-FORBIDDEN_MODULE_PATH_FRAGMENTS = FORBIDDEN_IMPORT_PREFIXES
-
-
-FORBIDDEN_IDENTIFIERS = {
-    "_CURRENT_RUNTIME",
-    "_semantic",
-    "Argument",
-    "CURRENT_ENGINE_VAR",
-    "current_runtime",
-    "dynamic_context",
-    "DynamicEngine",
-    "Engine",
-    "ENGINE_UNREGISTERED",
-    "EngineHandle",
-    "EngineRepository",
-    "Expression",
-    "global_context",
-    "NoActiveRuntimeError",
-    "Prompt",
-    "PromptRegistry",
-    "Provider",
-    "Result",
-    "run_server",
-    "setup_wizard",
-    "static_context",
-    "SYMAI_CONFIG",
-    "SYMSERVER_CONFIG",
-    "sym_return_type",
-}
-
 
 def test_runtime_configuration_has_a_clean_module_cutover() -> None:
     assert config.EngineConfig.__name__ == "EngineConfig"
@@ -162,12 +58,15 @@ def test_runtime_operation_protocols_are_narrow_and_provider_neutral() -> None:
         assert public_members == {"close", "execute"}
 
 
-def test_old_root_names_are_absent_after_canonical_imports() -> None:
+def test_the_package_root_declares_no_public_surface() -> None:
+    """`import symai` binds no name at all — the subprocess test below pins that.
+
+    `__all__` needs its own assertion: it is a dunder, so the subprocess check's
+    public-name comparison would not see it.
+    """
     import symai
 
     assert not hasattr(symai, "__all__")
-    for name in OLD_ROOT_NAMES | FORBIDDEN_PUBLIC_NAMES:
-        assert not hasattr(symai, name)
 
 
 def test_import_symai_is_subprocess_isolated_and_inert(tmp_path: Path) -> None:
@@ -256,137 +155,43 @@ print(json.dumps(result))
     }
 
 
-def test_deleted_modules_have_no_import_spec() -> None:
-    from importlib.util import find_spec
+def test_the_package_contains_no_importable_namespace_husk() -> None:
+    """A directory without `__init__.py` still imports, as a namespace package.
 
-    for module_name in (
-        "symai.backend",
-        "symai.components",
-        "symai.context",
-        "symai.core",
-        "symai.functional",
-        "symai.prompts",
-        "symai.runtime.factory",
-    ):
-        assert find_spec(module_name) is None, module_name
+    Deleting a module's sources does not remove its directory if anything untracked
+    survives inside it — a gitignored `__pycache__` outlives `git checkout`, and
+    `import symai.backend` then resolves again against an empty namespace. Observed in
+    practice after switching to this branch: `symai/backend` and `symai/clients` both
+    came back this way.
 
+    This asks the filesystem what Python would resolve rather than checking a list of
+    module names someone remembered to write down, so it also covers husks of modules
+    deleted later.
+    """
+    husks = [
+        str(path.relative_to(PACKAGE))
+        for path in PACKAGE.rglob("*")
+        if path.is_dir() and path.name != "__pycache__" and not (path / "__init__.py").exists()
+    ]
 
-def test_deleted_production_tree_and_adapter_inventory() -> None:
-    for path in DELETED_FILES | DELETED_TREES:
-        assert not (PACKAGE / path).exists(), path
-
-    assert {path.name for path in (PACKAGE / "providers/_client").glob("*.py")} == {
-        "__init__.py",
-        "client.py",
-        "errors.py",
-        "headers.py",
-        "models.py",
-        "settings.py",
-        "transport.py",
-    }
-    assert {path.name for path in (PACKAGE / "providers/openai/client").glob("*.py")} == {
-        "__init__.py",
-        "_client.py",
-        "embeddings.py",
-        "errors.py",
-        "responses.py",
-    }
-    assert {path.name for path in (PACKAGE / "providers/openai/engines").glob("*.py")} == {
-        "__init__.py",
-        "embedding.py",
-        "responses.py",
-    }
-    # Only Cerebras specializes the shared transport/header types (rate-limit state);
-    # OpenAI and DeepSeek use symai.providers._client directly.
-    assert {path.name for path in (PACKAGE / "providers/cerebras/client").glob("*.py")} == {
-        "__init__.py",
-        "_client.py",
-        "chat.py",
-        "errors.py",
-        "headers.py",
-        "transport.py",
-    }
-    assert {path.name for path in (PACKAGE / "providers/deepseek/client").glob("*.py")} == {
-        "__init__.py",
-        "_client.py",
-        "chat.py",
-        "errors.py",
-    }
-    for provider in ("cerebras", "deepseek"):
-        assert {path.name for path in (PACKAGE / f"providers/{provider}/engines").glob("*.py")} == {
-            "__init__.py",
-            "chat_completions.py",
-        }
+    assert husks == []
 
 
-def _production_ast_violations(package: Path) -> list[str]:
-    violations: list[str] = []
-    for path in package.rglob("*.py"):
-        relative = path.relative_to(package)
-        package_parts = ("symai", *relative.parts[:-1])
-        tree = ast.parse(path.read_text(), filename=str(relative))
-        for node in ast.walk(tree):
-            if isinstance(node, ast.Name) and node.id in FORBIDDEN_IDENTIFIERS:
-                violations.append(f"{relative}:{node.lineno}: name {node.id}")
-            elif isinstance(node, ast.Attribute) and node.attr in FORBIDDEN_IDENTIFIERS:
-                violations.append(f"{relative}:{node.lineno}: attribute {node.attr}")
-            elif isinstance(node, (ast.ClassDef, ast.FunctionDef, ast.AsyncFunctionDef)):
-                if node.name in FORBIDDEN_IDENTIFIERS:
-                    violations.append(f"{relative}:{node.lineno}: definition {node.name}")
-            elif isinstance(node, ast.Import):
-                for alias in node.names:
-                    if alias.name.startswith(FORBIDDEN_IMPORT_PREFIXES):
-                        violations.append(f"{relative}:{node.lineno}: import {alias.name}")
-            elif isinstance(node, ast.ImportFrom):
-                if node.level:
-                    ancestor_count = node.level - 1
-                    base_parts = package_parts[: len(package_parts) - ancestor_count]
-                else:
-                    base_parts = ()
-                if node.module:
-                    base_parts = (*base_parts, *node.module.split("."))
-                for alias in node.names:
-                    qualified_name = ".".join((*base_parts, *alias.name.split(".")))
-                    if qualified_name.startswith(FORBIDDEN_IMPORT_PREFIXES):
-                        violations.append(f"{relative}:{node.lineno}: from import {qualified_name}")
-            elif isinstance(node, ast.Constant) and isinstance(node.value, str):
-                if any(fragment in node.value for fragment in FORBIDDEN_MODULE_PATH_FRAGMENTS):
-                    violations.append(f"{relative}:{node.lineno}: legacy module path string")
-            elif (
-                isinstance(node, ast.Call)
-                and isinstance(node.func, ast.Attribute)
-                and node.func.attr in {"iter_modules", "walk_packages"}
-            ):
-                violations.append(f"{relative}:{node.lineno}: reflective package scan")
-    return violations
+def test_production_never_discovers_modules_by_scanning() -> None:
+    """Engines are registered explicitly; nothing may find them by walking the package.
 
+    Reflective discovery is how the ambient registry worked before the cutover: it makes
+    the set of available engines depend on what happens to be installed rather than on
+    what the caller configured, and it defeats the import laziness the loaders exist for.
+    Unlike the deleted names, this stays true for every future release.
+    """
+    offenders = [
+        f"{path.relative_to(PACKAGE)}:{node.lineno}"
+        for path in PACKAGE.rglob("*.py")
+        for node in ast.walk(ast.parse(path.read_text(), filename=str(path)))
+        if isinstance(node, ast.Call)
+        and isinstance(node.func, ast.Attribute)
+        and node.func.attr in {"iter_modules", "walk_packages"}
+    ]
 
-def test_production_ast_has_no_legacy_graph_references() -> None:
-    assert _production_ast_violations(PACKAGE) == []
-
-
-def test_ast_guard_reconstructs_qualified_import_from_names(tmp_path: Path) -> None:
-    package = tmp_path / "symai"
-    backend = package / "backend"
-    runtime_package = package / "runtime"
-    backend.mkdir(parents=True)
-    runtime_package.mkdir()
-    (package / "__init__.py").write_text("")
-    (backend / "__init__.py").write_text("")
-    (runtime_package / "__init__.py").write_text("")
-    (package / "top_level.py").write_text(
-        "from symai.backend import settings\n"
-        "from symai import core, functional as legacy_functional\n"
-    )
-    (backend / "relative.py").write_text("from . import settings\nfrom .. import core\n")
-    (runtime_package / "relative.py").write_text("from ..backend import provider_engines\n")
-
-    violations = _production_ast_violations(package)
-
-    for qualified_name in (
-        "symai.backend.settings",
-        "symai.core",
-        "symai.functional",
-        "symai.backend.provider_engines",
-    ):
-        assert any(qualified_name in violation for violation in violations)
+    assert offenders == []

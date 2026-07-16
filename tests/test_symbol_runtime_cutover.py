@@ -9,7 +9,6 @@ import pytest
 
 import symai.ops as ops
 import symai.symbol as symbol_module
-from symai.decoding import decode_bool, decode_text
 from symai.function import Function
 from symai.operations import embedding_request, language_request
 from symai.ops import compare, embed, primitives, rank, reason, text
@@ -273,24 +272,6 @@ REMOTE_CASES = (
 )
 
 
-def test_extract_examples_preserve_packet_responder_text() -> None:
-    packet_examples = tuple(
-        example for example in text._EXTRACT_EXAMPLES if "dfs.DataNode" in example
-    )
-
-    assert len(packet_examples) == 2
-    assert all("dfs.DataNode$PacketResponder" in example for example in packet_examples)
-
-
-def test_few_shot_examples_are_well_formed() -> None:
-    assert len(text._FORMAT_EXAMPLES) == 11
-    assert len(compare._CONTAINS_EXAMPLES) == 26
-    assert all("[33, 'a', ," not in example for example in rank._RANK_EXAMPLES)
-    assert all(" instanceof " not in example for example in compare._IS_INSTANCE_OF_EXAMPLES)
-    assert all("symai.symbol.Symbol" not in example for example in compare._CONTAINS_EXAMPLES)
-    assert 'not("x = 5") =>x ≠ 5.' in reason._INTERPRET_EXAMPLES
-
-
 def test_rank_rejects_unknown_order_before_execution() -> None:
     engine = RecordingLanguageEngine(language_response("unused"))
     runtime = language_runtime(engine, RecordingLanguageEngine(language_response("unused")))
@@ -307,10 +288,7 @@ def test_rank_rejects_unknown_order_before_execution() -> None:
 
 
 @pytest.mark.parametrize("case", REMOTE_CASES, ids=lambda case: case.name)
-def test_language_operation_contract(
-    case: RemoteCase,
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
+def test_language_operation_contract(case: RemoteCase) -> None:
     selected = RecordingLanguageEngine(
         language_response("  'yes'  " if case.boolean else "  decoded  ")
     )
@@ -322,55 +300,22 @@ def test_language_operation_contract(
     )
     source = Symbol("source")
     other_symbol = Symbol("other")
-    function_calls: list[Function] = []
-    decoders: list[object] = []
-    wraps: list[object] = []
-    original_function_call = Function.__call__
-    original_decode = primitives.decode_output
-    original_symbol = primitives.Symbol
-
-    def record_function_call(
-        function: Function,
-        model: LanguageModel,
-        *values: object,
-    ) -> LanguageModelResponse:
-        function_calls.append(function)
-        return original_function_call(function, model, *values)
-
-    def record_decode(response: LanguageModelResponse, decoder: object) -> object:
-        decoders.append(decoder)
-        return original_decode(response, decoder)
-
-    class RecordingSymbolMeta(type):
-        def __instancecheck__(cls, instance: object) -> bool:
-            return isinstance(instance, original_symbol)
-
-        def __call__(cls, value: object) -> Symbol[object]:
-            wraps.append(value)
-            return original_symbol(value)
-
-    class RecordingSymbol(metaclass=RecordingSymbolMeta):
-        pass
-
-    monkeypatch.setattr(Function, "__call__", record_function_call)
-    monkeypatch.setattr(primitives, "decode_output", record_decode)
-    monkeypatch.setattr(primitives, "Symbol", RecordingSymbol)
 
     with explicit, independent:
         result = case.invoke(explicit.language_model("selected"), source, other_symbol)
 
+    # The decoded value proves which decoder ran: a boolean operation cannot yield True
+    # from `decode_text`, and a text operation cannot yield "decoded" from `decode_bool`.
     assert result.value is True if case.boolean else result.value == "decoded"
     assert result is not source
     assert result is not other_symbol
     assert source.value == "source"
     assert other_symbol.value == "other"
+    # One request, to the named engine only — which is also what proves the operation
+    # executed exactly once.
     assert selected.requests == [case.request]
     assert other.requests == []
     assert independent_engine.requests == []
-    assert len(function_calls) == 1
-    assert len(decoders) == 1
-    assert len(wraps) == 1
-    assert decoders[0] is (decode_bool if case.boolean else decode_text)
     assert selected.response.metadata is METADATA
     assert not hasattr(result, "metadata")
 

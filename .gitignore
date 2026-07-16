@@ -165,3 +165,6 @@ CLAUDE.md
 /AGENTS.md
 docs/superpowers
 .worktrees/
+.superpowers/
+.ruff_cache/
+audit/
