@@ -9,7 +9,7 @@ import pytest
 
 import symai.ops as ops
 import symai.symbol as symbol_module
-from symai.decoding import ConstructorDecoder, TextDecoder
+from symai.decoding import decode_bool, decode_text
 from symai.function import Function
 from symai.operations import embedding_request, language_request
 from symai.ops import compare, embed, primitives, rank, reason, text
@@ -370,9 +370,7 @@ def test_language_operation_contract(
     assert len(function_calls) == 1
     assert len(decoders) == 1
     assert len(wraps) == 1
-    assert isinstance(decoders[0], ConstructorDecoder if case.boolean else TextDecoder)
-    if case.boolean:
-        assert decoders[0].constructor is bool  # type: ignore[union-attr]
+    assert decoders[0] is (decode_bool if case.boolean else decode_text)
     assert selected.response.metadata is METADATA
     assert not hasattr(result, "metadata")
 

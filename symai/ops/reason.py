@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from symai.decoding import TextDecoder
+from symai.decoding import decode_text
 from symai.function import Function
 from symai.ops.primitives import _execute_language, _require_text, _symbol_value
 
@@ -105,7 +105,7 @@ def query[T](
     _require_text(question, "question")
     function = Function("Answer the question using only the provided data:\n")
     return _execute_language(
-        model, function, (f"Data:\n{value!s}\nQuestion: {question}\nAnswer:",), TextDecoder()
+        model, function, (f"Data:\n{value!s}\nQuestion: {question}\nAnswer:",), decode_text
     )
 
 
@@ -118,7 +118,7 @@ def interpret[T](
         "Evaluate the symbolic expression and return only the result:\n",
         examples=_INTERPRET_EXAMPLES,
     )
-    return _execute_language(model, function, (f"{value!s} =>",), TextDecoder())
+    return _execute_language(model, function, (f"{value!s} =>",), decode_text)
 
 
 def logic[LeftT, RightT](
@@ -135,5 +135,5 @@ def logic[LeftT, RightT](
         examples=_LOGIC_EXAMPLES,
     )
     return _execute_language(
-        model, function, (f"expr {left_value!s} {operator} {right_value!s} =>",), TextDecoder()
+        model, function, (f"expr {left_value!s} {operator} {right_value!s} =>",), decode_text
     )

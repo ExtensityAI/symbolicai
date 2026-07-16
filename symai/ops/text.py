@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from symai.decoding import TextDecoder
+from symai.decoding import decode_text
 from symai.function import Function
 from symai.ops.primitives import _execute_language, _require_text, _symbol_value
 from symai.symbol import Symbol
@@ -234,7 +234,7 @@ def summarize[T](
 ) -> Symbol[str]:
     value = _symbol_value(source, "source")
     function = Function("Summarize the content of the following text:\n")
-    return _execute_language(model, function, (f"Text: {value!s}\n",), TextDecoder())
+    return _execute_language(model, function, (f"Text: {value!s}\n",), decode_text)
 
 
 def translate[T](
@@ -247,7 +247,7 @@ def translate[T](
     function = Function(
         f"Your task is to translate and **only** translate the text into {language}:\n"
     )
-    return _execute_language(model, function, (str(value),), TextDecoder())
+    return _execute_language(model, function, (str(value),), decode_text)
 
 
 def modify[T](
@@ -262,7 +262,7 @@ def modify[T](
         examples=_MODIFY_EXAMPLES,
     )
     return _execute_language(
-        model, function, (f"text '{value!s}' modify '{changes}' =>",), TextDecoder()
+        model, function, (f"text '{value!s}' modify '{changes}' =>",), decode_text
     )
 
 
@@ -278,7 +278,7 @@ def filter[T](
         "Leave matching sentences unchanged:\n"
     )
     return _execute_language(
-        model, function, (f"text '{value!s}' criteria '{criteria}' =>",), TextDecoder()
+        model, function, (f"text '{value!s}' criteria '{criteria}' =>",), decode_text
     )
 
 
@@ -294,9 +294,7 @@ def map[T](
         "Preserve container type and elements that don't match the instruction:\n",
         examples=_MAP_EXAMPLES,
     )
-    return _execute_language(
-        model, function, (f"text '{value!s}' {instruction} =>",), TextDecoder()
-    )
+    return _execute_language(model, function, (f"text '{value!s}' {instruction} =>",), decode_text)
 
 
 def convert[T](
@@ -311,7 +309,7 @@ def convert[T](
         examples=_FORMAT_EXAMPLES,
     )
     return _execute_language(
-        model, function, (f"text {value!s} format '{format}' =>",), TextDecoder()
+        model, function, (f"text {value!s} format '{format}' =>",), decode_text
     )
 
 
@@ -327,7 +325,7 @@ def style[T](
         "Do not remove or invent content.\n"
     )
     return _execute_language(
-        model, function, (f"[FORMAT]: {description}\n[DATA]:\n{value!s}\n",), TextDecoder()
+        model, function, (f"[FORMAT]: {description}\n[DATA]:\n{value!s}\n",), decode_text
     )
 
 
@@ -361,7 +359,7 @@ def replace[T](
         examples=_REPLACE_EXAMPLES,
     )
     return _execute_language(
-        model, function, (f"text '{value!s}' replace '{old}' with '{new}' =>",), TextDecoder()
+        model, function, (f"text '{value!s}' replace '{old}' with '{new}' =>",), decode_text
     )
 
 
@@ -377,7 +375,7 @@ def include[T](
         examples=_INCLUDE_EXAMPLES,
     )
     return _execute_language(
-        model, function, (f"text '{value!s}' include '{information}' =>",), TextDecoder()
+        model, function, (f"text '{value!s}' include '{information}' =>",), decode_text
     )
 
 
@@ -393,7 +391,7 @@ def combine[LeftT, RightT](
         examples=_COMBINE_EXAMPLES,
     )
     return _execute_language(
-        model, function, (f"{left_value!s} + {right_value!s} =>",), TextDecoder()
+        model, function, (f"{left_value!s} + {right_value!s} =>",), decode_text
     )
 
 
@@ -409,5 +407,5 @@ def extract[T](
         examples=_EXTRACT_EXAMPLES,
     )
     return _execute_language(
-        model, function, (f"from '{value!s}' extract '{pattern}' =>",), TextDecoder()
+        model, function, (f"from '{value!s}' extract '{pattern}' =>",), decode_text
     )

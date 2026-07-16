@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Literal
 
-from symai.decoding import TextDecoder
+from symai.decoding import decode_text
 from symai.function import Function
 from symai.ops.primitives import _execute_language, _require_text, _symbol_value
 
@@ -63,5 +63,5 @@ def rank[T](
         model,
         function,
         (f"order: '{order}' measure: '{measure}' list: {value!s} =>",),
-        TextDecoder(),
+        decode_text,
     )

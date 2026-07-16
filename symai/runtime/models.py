@@ -287,6 +287,27 @@ class LanguageModelResponse(FrozenModel):
     outputs: tuple[LanguageModelOutput, ...] = Field(min_length=1)
     metadata: ResponseMetadata
 
+    def output_text(self, output_index: int = 0, /) -> str:
+        """Return one output's text, selected by its own index rather than position.
+
+        Raises:
+            IndexError: if no output carries `output_index`.
+        """
+        for output in self.outputs:
+            if output.index == output_index:
+                return output.text
+
+        msg = f"Language response did not contain output index {output_index}"
+        raise IndexError(msg)
+
+    @property
+    def text(self) -> str:
+        """Raw text of the first output, for the common single-output case.
+
+        No normalization is applied; use `symai.decoding` to decode into a value.
+        """
+        return self.output_text()
+
 
 class EmbeddingVector(FrozenModel):
     index: int = Field(ge=0)

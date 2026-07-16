@@ -1,13 +1,8 @@
 from typing import assert_type
 
-from pydantic import BaseModel
+from pydantic import BaseModel, TypeAdapter
 
-from symai.decoding import (
-    ConstructorDecoder,
-    TextDecoder,
-    TypeAdapterDecoder,
-    decode_output,
-)
+from symai.decoding import decode_bool, decode_output, decode_text, scalar_decoder
 from symai.function import Function
 from symai.runtime.models import LanguageModelResponse
 
@@ -17,16 +12,16 @@ class Answer(BaseModel):
 
 
 def prove_decoder_result_inference(response: LanguageModelResponse) -> None:
-    assert_type(decode_output(response, TextDecoder()), str)
-    assert_type(decode_output(response, ConstructorDecoder(int)), int)
+    assert_type(response.text, str)
+    assert_type(decode_output(response, decode_text), str)
+    assert_type(decode_output(response, decode_bool), bool)
+    assert_type(decode_output(response, int), int)
+    assert_type(decode_output(response, scalar_decoder(int)), int)
     assert_type(
-        decode_output(
-            response,
-            TypeAdapterDecoder(list[dict[str, int]]),
-        ),
+        decode_output(response, TypeAdapter(list[dict[str, int]]).validate_json),
         list[dict[str, int]],
     )
-    assert_type(decode_output(response, TypeAdapterDecoder(Answer)), Answer)
+    assert_type(decode_output(response, TypeAdapter(Answer).validate_json), Answer)
 
 
 function = Function("Answer.")

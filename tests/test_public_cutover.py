@@ -19,9 +19,7 @@ OLD_ROOT_NAMES = {
     "AmbiguousEngineError",
     "AssistantMessage",
     "AuthenticationError",
-    "ConstructorDecoder",
     "DecodeError",
-    "Decoder",
     "EmbeddingRequest",
     "EngineSpec",
     "ErrorMetadata",
@@ -31,10 +29,12 @@ OLD_ROOT_NAMES = {
     "Runtime",
     "RuntimeConfig",
     "Symbol",
-    "TextDecoder",
     "current_runtime",
+    "decode_bool",
     "decode_output",
+    "decode_text",
     "load_runtime",
+    "scalar_decoder",
 }
 
 FORBIDDEN_PUBLIC_NAMES = {
@@ -129,7 +129,7 @@ def test_runtime_configuration_has_a_clean_module_cutover() -> None:
 
 
 def test_canonical_modules_own_their_public_types() -> None:
-    from symai.decoding import TextDecoder
+    from symai.decoding import decode_text
     from symai.function import Function
     from symai.runtime.runtime import Runtime
     from symai.symbol import Symbol
@@ -137,7 +137,7 @@ def test_canonical_modules_own_their_public_types() -> None:
     assert Function.__module__ == "symai.function"
     assert Runtime.__module__ == "symai.runtime.runtime"
     assert Symbol.__module__ == "symai.symbol"
-    assert TextDecoder.__module__ == "symai.decoding"
+    assert decode_text.__module__ == "symai.decoding"
 
 
 def test_runtime_module_exposes_no_ambient_registry_or_provider_clients() -> None:

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from symai.decoding import ConstructorDecoder
+from symai.decoding import decode_bool
 from symai.function import Function
 from symai.ops.primitives import _execute_language, _require_text, _symbol_value
 
@@ -110,7 +110,7 @@ _IS_INSTANCE_OF_EXAMPLES = (
     "'col1,col2\\n1,2' isinstanceof 'table data' =>True",
     "'*@*.com' isinstanceof 'email address' =>True",
 )
-_BOOLEAN_DECODER = ConstructorDecoder(bool)
+_BOOLEAN_DECODER = decode_bool
 
 
 def equals[LeftT, RightT](

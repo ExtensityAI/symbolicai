@@ -1,12 +1,7 @@
-from dataclasses import dataclass
-from typing import TYPE_CHECKING, Protocol, cast, override
-
-from pydantic import TypeAdapter, ValidationError
+from collections.abc import Callable
+from typing import cast, override
 
 from symai.runtime.models import LanguageModelResponse
-
-if TYPE_CHECKING:
-    from collections.abc import Callable
 
 _TRUE_VALUES = frozenset({"true", "yes", "1"})
 _FALSE_VALUES = frozenset({"false", "no", "0"})
@@ -29,91 +24,93 @@ class Missing:
 MISSING = Missing()
 
 
-class Decoder[T_co](Protocol):
-    """Strategy that converts normalized language-model text to one result type."""
+def decode_text(text: str, /) -> str:
+    """Strip surrounding whitespace, leaving quotes and inner text untouched.
 
-    def decode(self, text: str, /) -> T_co: ...
-
-
-@dataclass(frozen=True, slots=True)
-class TextDecoder:
-    def decode(self, text: str, /) -> str:
-        return text.strip()
+    Use `response.text` instead when the raw provider text is wanted verbatim.
+    """
+    return text.strip()
 
 
-@dataclass(frozen=True, slots=True)
-class ConstructorDecoder[T]:
-    constructor: type[T]
+def decode_bool(text: str, /) -> bool:
+    """Decode an explicit boolean word, rejecting anything ambiguous.
 
-    def __post_init__(self) -> None:
-        if self.constructor in (list, tuple, set, dict):
-            msg = "Container outputs require TypeAdapterDecoder"
-            raise TypeError(msg)
-
-    def decode(self, text: str, /) -> T:
-        normalized = _normalize_scalar_text(text)
-        try:
-            if self.constructor is bool:
-                return cast("T", _decode_boolean(normalized))
-
-            converter = cast("Callable[[str], T]", self.constructor)
-            return converter(normalized)
-        except DecodeError:
-            raise
-        except (SyntaxError, TypeError, ValueError) as error:
-            raise _decode_error(self, error) from error
-
-
-@dataclass(frozen=True, slots=True, init=False)
-class TypeAdapterDecoder[T]:
-    adapter: TypeAdapter[T]
-
-    def __init__(self, target: type[T] | TypeAdapter[T]) -> None:
-        adapter = target if isinstance(target, TypeAdapter) else TypeAdapter(target)
-        object.__setattr__(self, "adapter", adapter)
-
-    def decode(self, text: str, /) -> T:
-        try:
-            return self.adapter.validate_json(text)
-        except ValidationError as error:
-            raise _decode_error(self, error) from error
-
-
-def decode_output[T](
-    response: LanguageModelResponse,
-    decoder: Decoder[T],
-    *,
-    output_index: int = 0,
-    default: T | Missing = MISSING,
-    limit: int | None = None,
-) -> T:
-    """Select one output, decode it, then apply an optional deterministic limit."""
-
-    text = _output_text(response, output_index)
-    try:
-        value = decoder.decode(text)
-    except DecodeError:
-        if isinstance(default, Missing):
-            raise
-        value = default
-
-    return _limit_value(value, limit)
-
-
-def _decode_error(decoder: object, error: Exception) -> DecodeError:
-    msg = f"{type(decoder).__name__} could not decode output: {error}"
-    return DecodeError(msg)
-
-
-def _decode_boolean(text: str) -> bool:
-    normalized = text.casefold()
+    Accepts true/yes/1 and false/no/0, case-insensitively and optionally quoted.
+    Prose such as "probably" is a decode failure rather than a silent truthy value.
+    """
+    normalized = _normalize_scalar_text(text).casefold()
     if normalized in _TRUE_VALUES:
         return True
     if normalized in _FALSE_VALUES:
         return False
 
     msg = f"Expected an explicit boolean value, received {text!r}"
-    raise ValueError(msg)
+    raise DecodeError(msg)
+
+
+def scalar_decoder[T](constructor: Callable[[str], T]) -> Callable[[str], T]:
+    """Build a decoder that normalizes scalar text before calling `constructor`.
+
+    Normalization strips whitespace and one layer of surrounding single quotes, so a
+    model that answers `'42'` still decodes. Pass `constructor` directly to
+    `decode_output` instead when the output is known to be clean; use a `TypeAdapter`
+    for containers and models, which need structural parsing rather than a constructor.
+
+    Raises:
+        TypeError: if `constructor` is a container type.
+    """
+    if constructor in (list, tuple, set, frozenset, dict):
+        msg = "Container outputs require a TypeAdapter decoder, not a constructor"
+        raise TypeError(msg)
+    if constructor is bool:
+        return cast("Callable[[str], T]", decode_bool)
+
+    def decode(text: str, /) -> T:
+        return constructor(_normalize_scalar_text(text))
+
+    return decode
+
+
+def decode_output[T](
+    response: LanguageModelResponse,
+    decoder: Callable[[str], T],
+    *,
+    output_index: int = 0,
+    default: T | Missing = MISSING,
+    limit: int | None = None,
+) -> T:
+    """Select one output, decode its text, then apply an optional deterministic limit.
+
+    A decoder is any `Callable[[str], T]` — `int`, `decode_text`, `decode_bool`,
+    `scalar_decoder(int)`, or `TypeAdapter(list[User]).validate_json`. Decoders report
+    failure by raising SyntaxError/TypeError/ValueError (pydantic's ValidationError is a
+    ValueError); those surface as `DecodeError` and are the only failures `default`
+    replaces. Output selection, limiting, and every other decoder exception always
+    propagate, so a decoder bug is never silently converted into `default`.
+
+    Raises:
+        DecodeError: if the decoder rejected the output and no `default` was given.
+        IndexError: if `output_index` is absent from the response.
+    """
+    text = response.output_text(output_index)
+    try:
+        value = decoder(text)
+    except DecodeError:
+        if isinstance(default, Missing):
+            raise
+        value = default
+    except (SyntaxError, TypeError, ValueError) as error:
+        if isinstance(default, Missing):
+            raise _decode_error(decoder, error) from error
+        value = default
+
+    return _limit_value(value, limit)
+
+
+def _decode_error(decoder: object, error: Exception) -> DecodeError:
+    name = getattr(decoder, "__name__", type(decoder).__name__)
+    msg = f"{name} could not decode output: {error}"
+    return DecodeError(msg)
 
 
 def _normalize_scalar_text(text: str) -> str:
@@ -123,24 +120,15 @@ def _normalize_scalar_text(text: str) -> str:
     return normalized
 
 
-def _output_text(response: LanguageModelResponse, output_index: int) -> str:
-    for output in response.outputs:
-        if output.index == output_index:
-            return output.text
-    msg = f"Language response did not contain output index {output_index}"
-    raise IndexError(msg)
-
-
 def _limit_value[T](value: T, limit: int | None) -> T:
     if limit is None:
         return value
     if limit <= 0:
         msg = "limit must be greater than zero"
         raise ValueError(msg)
-    if isinstance(value, list):
-        return cast("T", value[:limit])
-    if isinstance(value, tuple):
+    if isinstance(value, (list, tuple)):
         return cast("T", value[:limit])
     if isinstance(value, dict):
         return cast("T", dict(tuple(value.items())[:limit]))
+
     return value
