@@ -3,7 +3,7 @@ from types import MappingProxyType
 import pytest
 from pydantic import TypeAdapter, ValidationError
 
-from symai.runtime.config import EngineSpec, ImplementationId, RuntimeConfig
+from symai.runtime.config import EngineConfig, ImplementationId, RuntimeConfig
 
 
 @pytest.mark.parametrize(
@@ -36,7 +36,7 @@ def test_runtime_config_copies_and_freezes_envelope_mappings_only() -> None:
     opaque_value = {"context": [4096]}
     settings = {"model_path": "/models/example.gguf", "options": opaque_value}
     language_models = {
-        "local": EngineSpec(implementation="local:gguf", settings=settings)
+        "local": EngineConfig(implementation="local:gguf", settings=settings)
     }
 
     config = RuntimeConfig(
@@ -76,9 +76,9 @@ def test_provider_settings_are_not_core_engine_spec_fields(field: str, value: ob
     }
 
     with pytest.raises(ValidationError):
-        EngineSpec.model_validate(payload)
+        EngineConfig.model_validate(payload)
 
-    spec = EngineSpec(
+    spec = EngineConfig(
         implementation="external:local",
         settings={field: value},
     )

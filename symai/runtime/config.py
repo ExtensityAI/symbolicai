@@ -32,7 +32,7 @@ def _normalize_implementation_id(value: object) -> str:
 ImplementationId = Annotated[str, BeforeValidator(_normalize_implementation_id)]
 
 
-class EngineSpec(FrozenModel):
+class EngineConfig(FrozenModel):
     implementation: ImplementationId
     settings: Mapping[str, object]
 
@@ -43,8 +43,8 @@ class EngineSpec(FrozenModel):
 
 
 class RuntimeConfig(FrozenModel):
-    language_models: Mapping[str, EngineSpec] = Field(default_factory=dict)
-    embeddings: Mapping[str, EngineSpec] = Field(default_factory=dict)
+    language_models: Mapping[str, EngineConfig] = Field(default_factory=dict)
+    embeddings: Mapping[str, EngineConfig] = Field(default_factory=dict)
     default_language_model: str | None = None
     default_embedding: str | None = None
 
@@ -52,8 +52,8 @@ class RuntimeConfig(FrozenModel):
     @classmethod
     def freeze_engines(
         cls,
-        engines: Mapping[str, EngineSpec],
-    ) -> Mapping[str, EngineSpec]:
+        engines: Mapping[str, EngineConfig],
+    ) -> Mapping[str, EngineConfig]:
         return MappingProxyType(dict(engines))
 
     @model_validator(mode="after")
@@ -73,7 +73,7 @@ class RuntimeConfig(FrozenModel):
         return self
 
     @staticmethod
-    def _validate_aliases(operation: str, engines: Mapping[str, EngineSpec]) -> None:
+    def _validate_aliases(operation: str, engines: Mapping[str, EngineConfig]) -> None:
         for alias in engines:
             if not alias:
                 msg = f"{operation.capitalize()} engine alias must not be empty"
@@ -86,7 +86,7 @@ class RuntimeConfig(FrozenModel):
     def _validate_default(
         operation: str,
         default: str | None,
-        engines: Mapping[str, EngineSpec],
+        engines: Mapping[str, EngineConfig],
     ) -> None:
         if default is None:
             return

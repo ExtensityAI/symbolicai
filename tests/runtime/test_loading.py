@@ -4,7 +4,7 @@ import pytest
 from pydantic import BaseModel, ConfigDict
 
 from symai.loading import load_runtime as load_builtin_runtime
-from symai.runtime.config import EngineSpec, RuntimeConfig
+from symai.runtime.config import EngineConfig, RuntimeConfig
 from symai.runtime.loading import load_runtime
 from symai.runtime.models import (
     AssistantOutputMessage,
@@ -94,7 +94,7 @@ def test_credential_free_external_loader_constructs_and_executes() -> None:
 
     config = RuntimeConfig(
         language_models={
-            "offline": EngineSpec(
+            "offline": EngineConfig(
                 implementation="local:gguf",
                 settings={"model_path": "/models/tiny.gguf", "context_size": 4096},
             )
@@ -124,11 +124,11 @@ def test_all_implementation_references_are_checked_before_allocation() -> None:
 
     config = RuntimeConfig(
         language_models={
-            "known": EngineSpec(
+            "known": EngineConfig(
                 implementation="local:known",
                 settings={"model_path": "known", "context_size": 1},
             ),
-            "missing": EngineSpec(
+            "missing": EngineConfig(
                 implementation="local:missing",
                 settings={"model_path": "missing", "context_size": 1},
             ),
@@ -155,7 +155,7 @@ def test_duplicate_loader_ids_are_rejected_before_allocation() -> None:
 
     config = RuntimeConfig(
         language_models={
-            "local": EngineSpec(
+            "local": EngineConfig(
                 implementation="local:duplicate",
                 settings={"model_path": "local", "context_size": 1},
             )
@@ -207,13 +207,13 @@ def test_same_implementation_id_can_load_once_per_operation() -> None:
 
     config = RuntimeConfig(
         language_models={
-            "chat": EngineSpec(
+            "chat": EngineConfig(
                 implementation="shared:engine",
                 settings={"model_path": "shared", "context_size": 1},
             )
         },
         embeddings={
-            "vector": EngineSpec(
+            "vector": EngineConfig(
                 implementation="shared:engine",
                 settings={},
             )
@@ -253,7 +253,7 @@ def test_duplicate_builtin_and_external_ids_are_rejected_before_allocation() -> 
 
     config = RuntimeConfig(
         language_models={
-            "primary": EngineSpec(
+            "primary": EngineConfig(
                 implementation="openai:responses",
                 settings={"api_key": "not-used", "model": "gpt-5.4"},
             )
@@ -288,9 +288,9 @@ def test_loading_rolls_back_exhaustively_and_preserves_primary_failure() -> None
 
     config = RuntimeConfig(
         language_models={
-            "a": EngineSpec(implementation="test:a", settings={}),
-            "b": EngineSpec(implementation="test:b", settings={}),
-            "c": EngineSpec(implementation="test:c", settings={}),
+            "a": EngineConfig(implementation="test:a", settings={}),
+            "b": EngineConfig(implementation="test:b", settings={}),
+            "c": EngineConfig(implementation="test:c", settings={}),
         }
     )
 

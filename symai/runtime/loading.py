@@ -3,7 +3,7 @@ from typing import cast
 
 from pydantic import TypeAdapter
 
-from symai.runtime.config import EngineSpec, ImplementationId, RuntimeConfig
+from symai.runtime.config import EngineConfig, ImplementationId, RuntimeConfig
 from symai.runtime.engines import EmbeddingEngine, LanguageModelEngine
 from symai.runtime.runtime import Runtime
 
@@ -97,7 +97,7 @@ def _index_entries[LoaderT](
 
 def _validate_references[LoaderT](
     operation: str,
-    configured: Mapping[str, EngineSpec],
+    configured: Mapping[str, EngineConfig],
     loaders: Mapping[str, LoaderT],
 ) -> None:
     for alias, spec in configured.items():

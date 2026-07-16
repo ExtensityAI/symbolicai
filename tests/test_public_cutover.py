@@ -123,8 +123,9 @@ FORBIDDEN_IDENTIFIERS = {
 
 
 def test_runtime_configuration_has_a_clean_module_cutover() -> None:
-    assert config.EngineSpec.__name__ == "EngineSpec"
+    assert config.EngineConfig.__name__ == "EngineConfig"
     assert config.RuntimeConfig.__name__ == "RuntimeConfig"
+    assert not hasattr(config, "EngineSpec")
     for name in ("NamedEngineConfig", "ProviderEngineConfig", "TransportConfig"):
         assert not hasattr(models, name)
 
