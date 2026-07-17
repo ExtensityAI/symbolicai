@@ -1,7 +1,15 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any
+
+
+@dataclass(frozen=True)
+class ModelPricing:
+    """USD per 1M tokens, locked at the provider models' API_PINNED date."""
+
+    input: float
+    output: float
+    cached_input: float | None = None
 
 
 @dataclass(frozen=True)
@@ -12,4 +20,4 @@ class EngineUsageRecord:
     total_calls: int = 1
     prompt_breakdown: dict[str, int] = field(default_factory=dict)
     completion_breakdown: dict[str, int] = field(default_factory=dict)
-    extras: dict[str, Any] = field(default_factory=dict)
+    extras: dict[str, int] = field(default_factory=dict)

@@ -1,24 +1,27 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from pydantic import JsonValue
 
 
 @dataclass(frozen=True)
 class EngineStreamDelta:
     text: str = ""
     thinking: str = ""
-    usage: dict[str, Any] | None = None
+    usage: dict[str, JsonValue] | None = None
     finish_reason: str | None = None
     done: bool = False
-    raw: Any = None
+    raw: object = None
 
 
 @dataclass
 class EngineStreamAccumulator:
     text_parts: list[str] = field(default_factory=list)
     thinking_parts: list[str] = field(default_factory=list)
-    usage: dict[str, Any] | None = None
+    usage: dict[str, JsonValue] | None = None
     finish_reason: str | None = None
     done: bool = False
 

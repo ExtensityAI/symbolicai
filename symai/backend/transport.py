@@ -45,6 +45,24 @@ class EngineAPIError(RuntimeError):
         self.request_id = request_id
 
 
+class EngineAuthenticationError(EngineAPIError):
+    """The provider rejected credentials (401) or denied access (403)."""
+
+
+class EngineRateLimitError(EngineAPIError):
+    """The provider throttled the request (429)."""
+
+    def __init__(self, *, retry_after: float | None = None, **kwargs) -> None:
+        super().__init__(**kwargs)
+        self.retry_after = retry_after
+
+
+class EngineTransportError(httpx.RequestError):
+    """The request never produced a well-formed response (connection, DNS, TLS, timeout)
+    and retries are exhausted. Subclasses httpx.RequestError so existing handlers keep
+    catching it."""
+
+
 def default_engine_api_client() -> httpx.Client:
     return ENGINE_API_CLIENT
 
@@ -73,9 +91,9 @@ def execute_engine_api_request(
     while True:
         try:
             response = active_client.request(request.method, request.url, **request_options)
-        except httpx.RequestError:
+        except httpx.RequestError as exc:
             if attempt >= max_retries:
-                raise
+                raise EngineTransportError(str(exc), request=exc.request) from exc
             time.sleep(retry_delay_seconds(attempt, None))
             attempt += 1
             continue
@@ -116,9 +134,9 @@ def execute_engine_api_stream_events(
                     streaming_started = True
                     yield from iter_sse_events(response)
                     return
-        except httpx.RequestError:
+        except httpx.RequestError as exc:
             if streaming_started or attempt >= max_retries:
-                raise
+                raise EngineTransportError(str(exc), request=exc.request) from exc
 
         time.sleep(retry_delay_seconds(attempt, retry_response))
         attempt += 1
@@ -224,9 +242,19 @@ def build_engine_api_error(response: httpx.Response) -> EngineAPIError:
         code = None
         message = response.text
 
-    return EngineAPIError(
-        status_code=response.status_code,
-        code=str(code) if code is not None else None,
-        message=str(message),
-        request_id=response.headers.get("x-request-id"),
-    )
+    kwargs = {
+        "status_code": response.status_code,
+        "code": str(code) if code is not None else None,
+        "message": str(message),
+        "request_id": response.headers.get("x-request-id"),
+    }
+    if response.status_code in (401, 403):
+        return EngineAuthenticationError(**kwargs)
+    if response.status_code == 429:
+        retry_after = response.headers.get("retry-after")
+        try:
+            retry_after_seconds = float(retry_after) if retry_after is not None else None
+        except ValueError:
+            retry_after_seconds = None
+        return EngineRateLimitError(retry_after=retry_after_seconds, **kwargs)
+    return EngineAPIError(**kwargs)

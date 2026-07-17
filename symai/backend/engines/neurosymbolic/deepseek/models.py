@@ -1,13 +1,20 @@
+"""DeepSeek chat completions wire models.
+
+Locked against https://api-docs.deepseek.com/api/create-chat-completion
+Pricing locked against https://api-docs.deepseek.com/quick_start/pricing
+"""
+
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, Literal
+from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import Field, JsonValue
 
-from symai.backend.request import EngineAPIRequest, EngineRequestPayload
+from symai.backend.request import EngineAPIRequest, EngineRequestPayload, EngineResponsePayload
+from symai.backend.usage import ModelPricing
 
-# https://api-docs.deepseek.com/quick_start/pricing
+API_PINNED = "2026-07-17"
 
 
 @dataclass(frozen=True)
@@ -16,6 +23,7 @@ class DeepSeekModelSpec:
     response_tokens: int
     reasoning: bool
     vision: bool
+    pricing: ModelPricing
 
 
 DEEPSEEK_MODEL_SPECS = {
@@ -24,16 +32,37 @@ DEEPSEEK_MODEL_SPECS = {
         response_tokens=384_000,
         reasoning=True,
         vision=False,
+        pricing=ModelPricing(input=0.14, output=0.28, cached_input=0.0028),
     ),
     "deepseek-v4-pro": DeepSeekModelSpec(
         context_tokens=1_000_000,
         response_tokens=384_000,
         reasoning=True,
         vision=False,
+        pricing=ModelPricing(input=0.435, output=0.87, cached_input=0.003625),
     ),
 }
 
 SUPPORTED_MODELS = list(DEEPSEEK_MODEL_SPECS)
+
+
+def deepseek_model_spec_for(model: str) -> DeepSeekModelSpec:
+    try:
+        return DEEPSEEK_MODEL_SPECS[model]
+    except KeyError as e:
+        msg = f"Unsupported DeepSeek model: {model}"
+        raise ValueError(msg) from e
+
+
+class DeepSeekToolCallFunction(EngineRequestPayload):
+    name: str
+    arguments: str
+
+
+class DeepSeekToolCall(EngineRequestPayload):
+    id: str
+    type: Literal["function"]
+    function: DeepSeekToolCallFunction | None = None
 
 
 class DeepSeekMessage(EngineRequestPayload):
@@ -45,7 +74,7 @@ class DeepSeekMessage(EngineRequestPayload):
     prefix: bool | None = None
     reasoning_content: str | None = None
     tool_call_id: str | None = None
-    tool_calls: list[dict[str, Any]] | None = None
+    tool_calls: list[DeepSeekToolCall] | None = None
 
 
 class DeepSeekPayload(EngineRequestPayload):
@@ -72,8 +101,8 @@ class DeepSeekPayload(EngineRequestPayload):
     )
     temperature: float | int | None = Field(default=None, ge=0, le=2)
     top_p: float | int | None = Field(default=None, ge=0, le=1)
-    tools: list[dict[str, Any]] | None = None
-    tool_choice: Literal["none", "auto", "required"] | dict[str, Any] | None = None
+    tools: list[dict[str, JsonValue]] | None = None
+    tool_choice: Literal["none", "auto", "required"] | dict[str, JsonValue] | None = None
     logprobs: bool | None = None
     top_logprobs: int | None = Field(default=None, ge=0, le=20)
     user_id: str | None = None
@@ -86,8 +115,8 @@ class DeepSeekPayload(EngineRequestPayload):
 
 class DeepSeekOptions(EngineRequestPayload):
     extra_headers: dict[str, str] | None = None
-    extra_query: dict[str, Any] | None = None
-    extra_body: dict[str, Any] | None = None
+    extra_query: dict[str, JsonValue] | None = None
+    extra_body: dict[str, JsonValue] | None = None
     timeout: float | None = None
 
 
@@ -97,36 +126,41 @@ DeepSeekRequest = EngineAPIRequest[
 ]
 
 
-class DeepSeekResponse(BaseModel):
-    model_config = ConfigDict(extra="ignore", frozen=True)
-    choices: list[dict[str, Any]] = Field(min_length=1)
+class DeepSeekPromptTokensDetails(EngineResponsePayload):
+    cached_tokens: int | None = None
+
+
+class DeepSeekCompletionTokensDetails(EngineResponsePayload):
+    reasoning_tokens: int | None = None
+
+
+class DeepSeekUsage(EngineResponsePayload):
+    prompt_tokens: int
+    completion_tokens: int
+    total_tokens: int
+    prompt_tokens_details: DeepSeekPromptTokensDetails | None = None
+    completion_tokens_details: DeepSeekCompletionTokensDetails | None = None
+    prompt_cache_hit_tokens: int = 0
+    prompt_cache_miss_tokens: int = 0
+
+
+class DeepSeekResponseMessage(EngineResponsePayload):
+    role: str
+    # NOTE: required but nullable — a missing content key fails validation while an
+    # explicit null (assistant tool-call messages) is a valid provider response.
+    content: str | None
+    reasoning_content: str | None = None
+    tool_calls: list[DeepSeekToolCall] | None = None
+
+
+class DeepSeekChoice(EngineResponsePayload):
+    index: int
+    message: DeepSeekResponseMessage
+    finish_reason: str | None = None
+
+
+class DeepSeekResponse(EngineResponsePayload):
+    choices: list[DeepSeekChoice] = Field(min_length=1)
     # NOTE: MetadataTracker reads raw_output.usage for token accounting; the API always
     # returns it (streaming requests force stream_options.include_usage).
-    usage: dict[str, Any]
-
-    @model_validator(mode="after")
-    def require_message_content(self):
-        for choice in self.choices:
-            message = choice.get("message")
-            if not isinstance(message, dict):
-                msg = "DeepSeek response choice.message is required."
-                raise ValueError(msg)
-            if "content" not in message:
-                msg = "DeepSeek response choice.message.content is required."
-                raise ValueError(msg)
-        return self
-
-
-class DeepSeekMixin:
-    def deepseek_model_spec_for(self, model: str) -> DeepSeekModelSpec:
-        try:
-            return DEEPSEEK_MODEL_SPECS[model]
-        except KeyError as e:
-            msg = f"Unsupported DeepSeek model: {model}"
-            raise ValueError(msg) from e
-
-    def deepseek_model_spec(self) -> DeepSeekModelSpec:
-        return self.deepseek_model_spec_for(self.model)
-
-    def api_max_context_tokens(self) -> int:
-        return self.deepseek_model_spec().context_tokens
+    usage: DeepSeekUsage

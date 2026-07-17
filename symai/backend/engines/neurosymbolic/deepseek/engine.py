@@ -1,24 +1,23 @@
 from __future__ import annotations
 
-import json
 from copy import deepcopy
-from typing import Any
 
 from symai.backend.base import Engine
-from symai.backend.engines.neurosymbolic.prompts import render_chat_system_prompt
-from symai.backend.mixin.deepseek import (
+from symai.backend.engines.neurosymbolic.deepseek.models import (
     SUPPORTED_MODELS,
-    DeepSeekMixin,
+    DeepSeekMessage,
     DeepSeekOptions,
     DeepSeekPayload,
     DeepSeekRequest,
     DeepSeekResponse,
+    deepseek_model_spec_for,
 )
+from symai.backend.engines.neurosymbolic.deepseek.stream import DeepSeekStreamAdapter
+from symai.backend.engines.neurosymbolic.prompts import render_chat_system_prompt
 from symai.backend.settings import SYMAI_CONFIG
-from symai.backend.streaming import EngineStreamAccumulator, EngineStreamDelta
+from symai.backend.streaming import EngineStreamAccumulator
 from symai.backend.transport import (
     DEFAULT_RETRIES,
-    SSEEvent,
     execute_engine_api_request,
     execute_engine_api_stream_events,
 )
@@ -27,31 +26,7 @@ from symai.backend.usage import EngineUsageRecord
 DEEPSEEK_CHAT_COMPLETIONS_URL = "https://api.deepseek.com/chat/completions"
 
 
-class DeepSeekStreamAdapter:
-    def process_event(self, event: SSEEvent) -> EngineStreamDelta:
-        if event.data == "[DONE]":
-            return EngineStreamDelta(done=True, raw=event)
-        if not event.data:
-            return EngineStreamDelta(raw=event)
-
-        chunk = json.loads(event.data)
-        usage = chunk["usage"] if chunk.get("usage") else None
-        choices = chunk.get("choices") or []
-        if not choices:
-            return EngineStreamDelta(usage=usage, raw=chunk)
-
-        choice = choices[0]
-        delta = choice.get("delta") or {}
-        return EngineStreamDelta(
-            text=delta.get("content") or "",
-            thinking=delta.get("reasoning_content") or "",
-            usage=usage,
-            finish_reason=choice.get("finish_reason"),
-            raw=chunk,
-        )
-
-
-class DeepSeekXReasoningEngine(Engine, DeepSeekMixin):
+class DeepSeekXReasoningEngine(Engine):
     def __init__(
         self,
         api_key: str | None = None,
@@ -80,13 +55,35 @@ class DeepSeekXReasoningEngine(Engine, DeepSeekMixin):
             return "neurosymbolic"
         return super().id()  # default to unregistered
 
-    def compute_required_tokens(self, _messages: list[dict[str, Any]]) -> int:
+    def api_max_context_tokens(self) -> int:
+        return deepseek_model_spec_for(self.model).context_tokens
+
+    def compute_required_tokens(self, _messages: list[DeepSeekMessage]) -> int:
         msg = 'Method "compute_required_tokens" not implemented for DeepSeekXReasoningEngine.'
         raise NotImplementedError(msg)
 
-    def compute_remaining_tokens(self, _prompts: list[dict[str, Any]]) -> int:
+    def compute_remaining_tokens(self, _prompts: list[DeepSeekMessage]) -> int:
         msg = 'Method "compute_remaining_tokens" not implemented for DeepSeekXReasoningEngine.'
         raise NotImplementedError(msg)
+
+    def usage_record_from_metadata(self, metadata: dict) -> EngineUsageRecord:
+        usage = metadata["raw_output"].usage
+        completion_details = usage.completion_tokens_details
+
+        return EngineUsageRecord(
+            prompt_tokens=usage.prompt_tokens,
+            completion_tokens=usage.completion_tokens,
+            total_tokens=usage.total_tokens,
+            completion_breakdown={
+                "reasoning_tokens": (completion_details.reasoning_tokens or 0)
+                if completion_details
+                else 0,
+            },
+            extras={
+                "prompt_cache_hit_tokens": usage.prompt_cache_hit_tokens,
+                "prompt_cache_miss_tokens": usage.prompt_cache_miss_tokens,
+            },
+        )
 
     def build_request(self, argument) -> DeepSeekRequest:
         allowed_request_kwargs = set(DeepSeekPayload.model_fields).union(
@@ -99,9 +96,12 @@ class DeepSeekXReasoningEngine(Engine, DeepSeekMixin):
             if key in payload_kwargs
         }
         payload_kwargs["model"] = payload_kwargs.get("model", self.model)
-        self.deepseek_model_spec_for(payload_kwargs["model"])
+        deepseek_model_spec_for(payload_kwargs["model"])
         payload_kwargs["messages"] = argument.prop.prepared_input
-        if "stop" not in payload_kwargs:
+        # NOTE: every core decorator signature defaults stop="" (meaning unset), so an
+        # empty stop always arrives via argument.kwargs. Passing "" to the API truncates
+        # generation at the first character, so only a non-empty user stop wins over the default.
+        if not payload_kwargs.get("stop"):
             payload_kwargs["stop"] = "<|endoftext|>"
         if payload_kwargs.get("stream"):
             # NOTE: usage is required on DeepSeekResponse (MetadataTracker reads it), and
@@ -157,25 +157,10 @@ class DeepSeekXReasoningEngine(Engine, DeepSeekMixin):
         return DeepSeekResponse.model_validate(response.json())
 
     def parse_response(self, response: DeepSeekResponse):
-        message = response.choices[0]["message"]
-        reasoning_content = message.get("reasoning_content")
-        content = message["content"] or ""
-        metadata = {"raw_output": response, "thinking": reasoning_content}
+        message = response.choices[0].message
+        metadata = {"raw_output": response, "thinking": message.reasoning_content}
 
-        return [content], metadata
-
-    def usage_record_from_metadata(self, metadata: dict) -> EngineUsageRecord:
-        usage = metadata["raw_output"].usage
-        completion_details = usage.get("completion_tokens_details") or {}
-
-        return EngineUsageRecord(
-            prompt_tokens=usage["prompt_tokens"],
-            completion_tokens=usage["completion_tokens"],
-            total_tokens=usage["total_tokens"],
-            completion_breakdown={
-                "reasoning_tokens": completion_details.get("reasoning_tokens") or 0,
-            },
-        )
+        return [message.content or ""], metadata
 
     def prepare(self, argument):
         if argument.prop.raw_input:
