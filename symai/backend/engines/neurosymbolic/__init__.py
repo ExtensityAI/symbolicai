@@ -1,10 +1,16 @@
+from symai.backend.engines.neurosymbolic.cerebras import (
+    SUPPORTED_CHAT_MODELS as CEREBRAS_CHAT_MODELS,
+)
+from symai.backend.engines.neurosymbolic.cerebras import (
+    SUPPORTED_REASONING_MODELS as CEREBRAS_REASONING_MODELS,
+)
+from symai.backend.engines.neurosymbolic.cerebras import CerebrasEngine
 from symai.backend.engines.neurosymbolic.deepseek import SUPPORTED_MODELS as DEEPSEEK_MODELS
 from symai.backend.engines.neurosymbolic.deepseek import DeepSeekXReasoningEngine
 from symai.backend.engines.neurosymbolic.engine_anthropic_claudeX_chat import ClaudeXChatEngine
 from symai.backend.engines.neurosymbolic.engine_anthropic_claudeX_reasoning import (
     ClaudeXReasoningEngine,
 )
-from symai.backend.engines.neurosymbolic.engine_cerebras import CerebrasEngine
 from symai.backend.engines.neurosymbolic.engine_google_geminiX_reasoning import (
     GeminiXReasoningEngine,
 )
@@ -14,8 +20,6 @@ from symai.backend.engines.neurosymbolic.engine_openrouter import OpenRouterEngi
 from symai.backend.mixin import (
     ANTHROPIC_CHAT_MODELS,
     ANTHROPIC_REASONING_MODELS,
-    CEREBRAS_CHAT_MODELS,
-    CEREBRAS_REASONING_MODELS,
     GOOGLE_CHAT_MODELS,
     GOOGLE_REASONING_MODELS,
     GROQ_REASONING_MODELS,

@@ -96,6 +96,14 @@ class EngineTestInterface:
         return None
 
     # --- shared helpers ---
+    def spec_for(self, model: str):
+        """Resolve a (possibly provider-prefixed) model name to its spec."""
+        return self.model_specs[model]
+
+    def expected_wire_model(self, model: str | None = None) -> str:
+        """The model id expected on the wire (override when config names carry prefixes)."""
+        return model or self.default_model
+
     def make_engine(self, model=None, **kwargs):
         return self.engine_cls(api_key=DUMMY_KEY, model=model or self.default_model, **kwargs)
 
@@ -133,7 +141,8 @@ class EngineTestInterface:
         )
 
     def expected_cost_usd(self, model, usage: dict) -> float:
-        pricing = self.model_specs[model].pricing
+        pricing = self.spec_for(model).pricing
+        assert pricing is not None, f"no published pricing for {model} at API_PINNED"
         if pricing.cached_input is not None:
             input_cost = (
                 usage.get("prompt_cache_hit_tokens", 0) * pricing.cached_input
@@ -165,16 +174,19 @@ class EngineTestInterface:
             engine.forward(self.make_prepared_argument())
 
     def test_model_specs_declare_capabilities_and_pricing(self):
-        assert set(self.supported_models) == set(self.model_specs)
-        for spec in self.model_specs.values():
+        for model in self.supported_models:
+            spec = self.spec_for(model)
             assert isinstance(spec.reasoning, bool)
             assert isinstance(spec.vision, bool)
             assert spec.context_tokens > 0
             assert spec.response_tokens > 0
-            assert spec.pricing.input >= 0
-            assert spec.pricing.output >= 0
-            if spec.pricing.cached_input is not None:
-                assert spec.pricing.cached_input <= spec.pricing.input
+            # NOTE: pricing may be None when the provider has not published per-token
+            # prices for the model at API_PINNED (e.g. preview models).
+            if spec.pricing is not None:
+                assert spec.pricing.input >= 0
+                assert spec.pricing.output >= 0
+                if spec.pricing.cached_input is not None:
+                    assert spec.pricing.cached_input <= spec.pricing.input
 
     def test_build_request_wire_shape(self):
         engine = self.make_engine(client_timeout=7.0)
@@ -201,7 +213,7 @@ class EngineTestInterface:
         assert request.params == {"debug": "1"}
         assert request.timeout == 7.0
 
-        assert body["model"] == self.default_model
+        assert body["model"] == self.expected_wire_model()
         assert body["temperature"] == 0.2
         assert body["max_tokens"] == 32
         assert body["vendor_flag"] is True
@@ -257,7 +269,7 @@ class EngineTestInterface:
         assert api.last_request.method == "POST"
         assert str(api.last_request.url) == f"{self.wire_url}?debug=1"
         assert api.last_request.headers["authorization"] == f"Bearer {DUMMY_KEY}"
-        assert api.last_body["model"] == self.default_model
+        assert api.last_body["model"] == self.expected_wire_model()
         assert api.last_body["max_tokens"] == 16
         assert api.last_body["messages"] == argument.prop.prepared_input
         assert isinstance(output[0], str)
@@ -382,8 +394,9 @@ class EngineTestInterface:
             raw_output = metadata["raw_output"]
             assert isinstance(raw_output, self.response_cls)
             assert raw_output.usage.total_tokens > 0
-            cost = self.expected_cost_usd(model, raw_output.usage.model_dump())
-            assert 0 < cost < 0.01
+            if self.spec_for(model).pricing is not None:
+                cost = self.expected_cost_usd(model, raw_output.usage.model_dump())
+                assert 0 < cost < 0.01
 
     @pytest.mark.engine_live
     def test_live_stream_smoke(self, engine_api_mode):
@@ -402,7 +415,7 @@ class EngineTestInterface:
 
     @pytest.mark.engine_live
     def test_live_vision(self, engine_api_mode):
-        spec = self.model_specs[self.default_model]
+        spec = self.spec_for(self.default_model)
         if not spec.vision:
             pytest.skip(f"{self.default_model} has no vision support")
         messages = self.vision_messages("tests/data/sample.jpg")

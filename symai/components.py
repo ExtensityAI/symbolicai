@@ -474,25 +474,6 @@ class MetadataTracker(Expression):
                     token_details[(engine_name, model_name)]["extras"]["google_search_queries"] += (
                         sum(gtc.count or 0 for gtc in usage.grounding_tool_count or [])
                     )
-                elif engine_name == "CerebrasEngine":
-                    usage = metadata["raw_output"].usage
-                    token_details[(engine_name, model_name)]["usage"]["completion_tokens"] += (
-                        usage.completion_tokens
-                    )
-                    token_details[(engine_name, model_name)]["usage"]["prompt_tokens"] += (
-                        usage.prompt_tokens
-                    )
-                    token_details[(engine_name, model_name)]["usage"]["total_tokens"] += (
-                        usage.total_tokens
-                    )
-                    token_details[(engine_name, model_name)]["usage"]["total_calls"] += 1
-                    #!: Backward compatibility for components like `RuntimeInfo`
-                    token_details[(engine_name, model_name)]["prompt_breakdown"][
-                        "cached_tokens"
-                    ] += 0  # Assignment not allowed with defualtdict
-                    token_details[(engine_name, model_name)]["completion_breakdown"][
-                        "reasoning_tokens"
-                    ] += 0
                 elif engine_name in ("ClaudeXChatEngine", "ClaudeXReasoningEngine"):
                     raw_output = metadata["raw_output"]
                     usage = self._extract_claude_usage(raw_output)
