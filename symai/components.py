@@ -376,26 +376,7 @@ class MetadataTracker(Expression):
                         )
                         continue
 
-                if engine_name == "GroqEngine":
-                    usage = metadata["raw_output"].usage
-                    token_details[(engine_name, model_name)]["usage"]["completion_tokens"] += (
-                        usage.completion_tokens
-                    )
-                    token_details[(engine_name, model_name)]["usage"]["prompt_tokens"] += (
-                        usage.prompt_tokens
-                    )
-                    token_details[(engine_name, model_name)]["usage"]["total_tokens"] += (
-                        usage.total_tokens
-                    )
-                    token_details[(engine_name, model_name)]["usage"]["total_calls"] += 1
-                    #!: Backward compatibility for components like `RuntimeInfo`
-                    token_details[(engine_name, model_name)]["prompt_breakdown"][
-                        "cached_tokens"
-                    ] += 0  # Assignment not allowed with defualtdict
-                    token_details[(engine_name, model_name)]["completion_breakdown"][
-                        "reasoning_tokens"
-                    ] += 0
-                elif engine_name == "ParallelEngine":
+                if engine_name == "ParallelEngine":
                     token_details[(engine_name, None)]["usage"]["total_calls"] += 1
                     # There are no model-specific tokens for this engine
                     token_details[(engine_name, None)]["usage"]["completion_tokens"] += 0

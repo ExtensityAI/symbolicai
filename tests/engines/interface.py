@@ -78,6 +78,9 @@ class EngineTestInterface:
     wire_url: ClassVar[str] = ""
     supports_streaming: ClassVar[bool] = False
     api_pinned: ClassVar[str] = ""
+    # NOTE: the wire key carrying the max-tokens kwarg differs per provider
+    # (e.g. Groq remaps max_tokens -> max_completion_tokens at the engine).
+    max_tokens_wire_key: ClassVar[str] = "max_tokens"
 
     # --- provider hooks (override) ---
     def mock_response_json(self) -> dict:
@@ -215,7 +218,7 @@ class EngineTestInterface:
 
         assert body["model"] == self.expected_wire_model()
         assert body["temperature"] == 0.2
-        assert body["max_tokens"] == 32
+        assert body[self.max_tokens_wire_key] == 32
         assert body["vendor_flag"] is True
         assert "extra_body" not in body
         assert "extra_headers" not in body
@@ -225,6 +228,7 @@ class EngineTestInterface:
         request = self.make_engine().build_request(self.make_prepared_argument())
 
         assert "max_tokens" not in request.body()
+        assert "max_completion_tokens" not in request.body()
 
     def test_build_request_timeout_prefers_kwarg_then_client_timeout(self):
         engine = self.make_engine(client_timeout=7.0)
@@ -270,7 +274,7 @@ class EngineTestInterface:
         assert str(api.last_request.url) == f"{self.wire_url}?debug=1"
         assert api.last_request.headers["authorization"] == f"Bearer {DUMMY_KEY}"
         assert api.last_body["model"] == self.expected_wire_model()
-        assert api.last_body["max_tokens"] == 16
+        assert api.last_body[self.max_tokens_wire_key] == 16
         assert api.last_body["messages"] == argument.prop.prepared_input
         assert isinstance(output[0], str)
         assert "thinking" in metadata
