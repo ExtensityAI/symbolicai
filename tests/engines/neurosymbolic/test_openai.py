@@ -39,6 +39,7 @@ class TestOpenAIEngine(NeurosymbolicEngineTestInterface):
     wire_input_key = "input"
     stream_options_expected = None
     cache_test_model = "openai:gpt-5.6-terra"
+    supports_token_counting = True
 
     def spec_for(self, model):
         return self.model_specs[openai_strip_prefix(model)]
@@ -163,6 +164,18 @@ class TestOpenAIEngine(NeurosymbolicEngineTestInterface):
             lines.append(f"data: {json.dumps(data)}")
             lines.append("")
         return "\n".join(lines).encode("utf-8")
+
+    def mock_tool_call_json(self):
+        payload = self.mock_response_json()
+        payload["output"] = [
+            {
+                "type": "function_call",
+                "name": "get_weather",
+                "arguments": '{"location": "Paris"}',
+                "call_id": "call_1",
+            }
+        ]
+        return payload
 
     def make_reasoning_engine(self, model="openai:gpt-5.4-mini", **kwargs):
         return self.make_engine(model=model, **kwargs)

@@ -9,7 +9,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Literal
 
-from pydantic import Field, JsonValue
+from pydantic import Field, JsonValue, model_validator
 
 from symai.backend.request import EngineAPIRequest, EngineRequestPayload, EngineResponsePayload
 from symai.backend.usage import ModelPricing
@@ -176,13 +176,27 @@ class CerebrasTimeInfo(EngineResponsePayload):
     total_time: float | None = None
 
 
+class CerebrasToolCallResult(EngineResponsePayload):
+    id: str
+    type: str
+    function: CerebrasToolCallFunction | None = None
+    index: int | None = None
+
+
 class CerebrasResponseMessage(EngineResponsePayload):
     role: str
-    # NOTE: required but nullable — a missing content key fails validation while an
-    # explicit null (assistant tool-call messages) is a valid provider response.
-    content: str | None
+    # NOTE: null content is valid on assistant tool-call messages, and the key may be
+    # absent entirely there; a text answer without content is a malformed response.
+    content: str | None = None
     reasoning: str | None = None
-    tool_calls: list[CerebrasToolCall] | None = None
+    tool_calls: list[CerebrasToolCallResult] | None = None
+
+    @model_validator(mode="after")
+    def require_content_or_tool_calls(self):
+        if self.content is None and not self.tool_calls:
+            msg = "Cerebras response message requires content when no tool calls are present."
+            raise ValueError(msg)
+        return self
 
 
 class CerebrasChoice(EngineResponsePayload):

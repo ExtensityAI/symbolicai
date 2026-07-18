@@ -27,6 +27,9 @@ class TestCerebrasEngine(NeurosymbolicEngineTestInterface):
     wire_url = CEREBRAS_CHAT_COMPLETIONS_URL
     supports_streaming = True
     api_pinned = API_PINNED
+    # NOTE: cerebras's tiktoken estimate undercounts harmony-format overhead ~2x, so
+    # the engine does not claim token counting (see engine compute_required_tokens).
+    supports_token_counting = False
 
     def spec_for(self, model):
         return self.model_specs[cerebras_strip_prefix(model)]
@@ -83,6 +86,21 @@ class TestCerebrasEngine(NeurosymbolicEngineTestInterface):
                 },
             ]
         )
+
+    def mock_tool_call_json(self):
+        payload = self.mock_response_json()
+        payload["choices"][0]["message"] = {
+            "role": "assistant",
+            "content": None,
+            "tool_calls": [
+                {
+                    "id": "call_1",
+                    "type": "function",
+                    "function": {"name": "get_weather", "arguments": '{"location": "Paris"}'},
+                }
+            ],
+        }
+        return payload
 
     def test_forward_streams_sse_and_aggregates_response(self):
         engine = self.make_engine(client_max_retries=0)

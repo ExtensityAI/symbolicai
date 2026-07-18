@@ -11,7 +11,6 @@ from string import ascii_lowercase, ascii_uppercase
 from threading import Lock
 
 from beartype import beartype
-from box import Box
 from tqdm import tqdm
 
 from symai import core
@@ -455,50 +454,6 @@ class MetadataTracker(Expression):
                     token_details[(engine_name, model_name)]["extras"]["google_search_queries"] += (
                         sum(gtc.count or 0 for gtc in usage.grounding_tool_count or [])
                     )
-                elif engine_name in ("ClaudeXChatEngine", "ClaudeXReasoningEngine"):
-                    raw_output = metadata["raw_output"]
-                    usage = self._extract_claude_usage(raw_output)
-                    if usage is None:
-                        # Skip if we can't extract usage (shouldn't happen normally)
-                        logger.warning("Could not extract usage from %s response.", engine_name)
-                        token_details[(engine_name, model_name)]["usage"]["total_calls"] += 1
-                        token_details[(engine_name, model_name)]["prompt_breakdown"][
-                            "cached_tokens"
-                        ] += 0
-                        token_details[(engine_name, model_name)]["completion_breakdown"][
-                            "reasoning_tokens"
-                        ] += 0
-                        continue
-                    input_tokens = getattr(usage, "input_tokens", 0) or 0
-                    output_tokens = getattr(usage, "output_tokens", 0) or 0
-                    token_details[(engine_name, model_name)]["usage"]["prompt_tokens"] += (
-                        input_tokens
-                    )
-                    token_details[(engine_name, model_name)]["usage"]["completion_tokens"] += (
-                        output_tokens
-                    )
-                    # Calculate total tokens
-                    total = input_tokens + output_tokens
-                    token_details[(engine_name, model_name)]["usage"]["total_tokens"] += total
-                    token_details[(engine_name, model_name)]["usage"]["total_calls"] += 1
-                    # Track cache tokens if available
-                    cache_creation = getattr(usage, "cache_creation_input_tokens", 0) or 0
-                    cache_read = getattr(usage, "cache_read_input_tokens", 0) or 0
-                    token_details[(engine_name, model_name)]["prompt_breakdown"][
-                        "cache_creation_tokens"
-                    ] += cache_creation
-                    token_details[(engine_name, model_name)]["prompt_breakdown"][
-                        "cache_read_tokens"
-                    ] += cache_read
-                    # For backward compatibility, also track as cached_tokens
-                    token_details[(engine_name, model_name)]["prompt_breakdown"][
-                        "cached_tokens"
-                    ] += cache_read
-                    # Note: Anthropic doesn't break down reasoning tokens separately in usage,
-                    # but extended thinking is included in output_tokens
-                    token_details[(engine_name, model_name)]["completion_breakdown"][
-                        "reasoning_tokens"
-                    ] += 0
                 elif engine_name == "GeminiXReasoningEngine":
                     usage = metadata["raw_output"].usage_metadata
                     token_details[(engine_name, model_name)]["usage"]["prompt_tokens"] += (
@@ -549,50 +504,6 @@ class MetadataTracker(Expression):
 
         # Convert to normal dict
         return {**token_details}
-
-    def _extract_claude_usage(self, raw_output):
-        """Extract usage information from Claude response (handles both streaming and non-streaming).
-
-        For non-streaming responses, raw_output is a Message object with a .usage attribute.
-        For streaming responses, raw_output is a list of stream events. Usage info is in:
-        - RawMessageStartEvent.message.usage (input_tokens)
-        - RawMessageDeltaEvent.usage (output_tokens)
-        """
-        # Non-streaming: raw_output is a Message with .usage
-        if hasattr(raw_output, "usage"):
-            return raw_output.usage
-
-        # Streaming: raw_output is a list of events
-        if isinstance(raw_output, list):
-            # Accumulate usage from stream events
-            input_tokens = 0
-            output_tokens = 0
-            cache_creation = 0
-            cache_read = 0
-
-            for event in raw_output:
-                # RawMessageStartEvent contains initial usage with input_tokens
-                if hasattr(event, "message") and hasattr(event.message, "usage"):
-                    msg_usage = event.message.usage
-                    input_tokens += getattr(msg_usage, "input_tokens", 0) or 0
-                    cache_creation += getattr(msg_usage, "cache_creation_input_tokens", 0) or 0
-                    cache_read += getattr(msg_usage, "cache_read_input_tokens", 0) or 0
-                # RawMessageDeltaEvent contains usage with output_tokens
-                elif hasattr(event, "usage") and event.usage is not None:
-                    evt_usage = event.usage
-                    output_tokens += getattr(evt_usage, "output_tokens", 0) or 0
-
-            # Create a simple object-like dict to hold usage (using Box for attribute access)
-            return Box(
-                {
-                    "input_tokens": input_tokens,
-                    "output_tokens": output_tokens,
-                    "cache_creation_input_tokens": cache_creation,
-                    "cache_read_input_tokens": cache_read,
-                }
-            )
-
-        return None
 
     def _track_parallel_usage_items(self, token_details, engine_name, metadata):
         usage_items = getattr(metadata.get("raw_output", None), "usage", None)

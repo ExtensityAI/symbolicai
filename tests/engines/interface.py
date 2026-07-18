@@ -96,6 +96,15 @@ class EngineTestInterface:
     # cache-breakpoint support (deepseek/cerebras/groq auto-cache only). The cache
     # suite activates per provider by setting this (anthropic once migrated).
     cache_test_model: ClassVar[str | None] = None
+    # NOTE: whether a marker on a non-supporting model raises (OpenAI semantics).
+    # Anthropic caches on every model by default, so its test asserts stripping instead.
+    cache_unsupported_model_raises: ClassVar[bool] = True
+    # NOTE: whether the provider's API requires max_tokens on every request (Anthropic)
+    # — the engine then defaults it to the model's response budget instead of omitting.
+    max_tokens_required: ClassVar[bool] = False
+    # NOTE: whether the engine implements compute_required_tokens (openai/anthropic via
+    # tiktoken or the count endpoint; deepseek/groq/openrouter raise NotImplementedError).
+    supports_token_counting: ClassVar[bool] = False
 
     # --- provider hooks (override) ---
     def mock_response_json(self) -> dict:
@@ -117,9 +126,17 @@ class EngineTestInterface:
         """Prompt/input token count in the provider's usage shape."""
         return usage["prompt_tokens"]
 
+    def wire_input_expected(self, argument) -> list:
+        """The prepared input as it appears on the wire (Anthropic splits system out)."""
+        return argument.prop.prepared_input
+
     def usage_completion_tokens(self, usage: dict) -> int:
         """Completion/output token count in the provider's usage shape."""
         return usage["completion_tokens"]
+
+    def usage_total_tokens(self, usage: dict) -> int:
+        """Total token count in the provider's usage shape."""
+        return usage["total_tokens"]
 
     def inject_self_prompt_response(self, payload: dict, content: str) -> dict:
         """Place the self-prompt JSON answer into the provider's mock response shape."""
@@ -129,6 +146,19 @@ class EngineTestInterface:
     def assert_self_prompt_response_format(self, body: dict):
         """What the provider does with the response_format kwarg on self-prompt calls."""
         assert body["response_format"] == {"type": "json_object"}
+
+    def assert_self_prompt_messages(self, body: dict):
+        """The self-prompt request's system + user structure on the wire."""
+        messages = body[self.wire_input_key]
+        assert messages[0]["role"] == "system"
+        assert "Generate a new system or developer prompt" in messages[0]["content"]
+        assert messages[1]["role"] == "user"
+        assert json.loads(messages[1]["content"]) == {"system": "old system", "user": "old user"}
+
+    def assert_auth_headers(self, headers: dict):
+        """Provider auth wire convention (Bearer for most, x-api-key for Anthropic)."""
+        auth = headers.get("authorization") or headers.get("Authorization")
+        assert auth == f"Bearer {DUMMY_KEY}"
 
     def assert_cache_breakpoint_body(self, body: dict, segments: list[str]):
         """Assert the provider transformed a two-segment marked prompt into cache
@@ -143,6 +173,29 @@ class EngineTestInterface:
     def cache_read_tokens(self, usage: dict) -> int:
         """Tokens read from cache per the provider's usage shape."""
         raise NotImplementedError
+
+    def mock_tool_call_json(self) -> dict:
+        """Provider-shaped response containing one get_weather tool call."""
+        raise NotImplementedError
+
+    def weather_tool_spec(self) -> dict:
+        """The provider's get_weather tool definition for the live tool smoke."""
+        return {
+            "type": "function",
+            "function": {
+                "name": "get_weather",
+                "description": "Get current weather for a city.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {"location": {"type": "string"}},
+                    "required": ["location"],
+                },
+            },
+        }
+
+    def tool_choice_kwarg(self) -> dict:
+        """Kwarg forcing the tool call (Anthropic uses 'any', others 'required')."""
+        return {"tool_choice": "required"}
 
     # --- shared helpers ---
     def spec_for(self, model: str):
@@ -257,7 +310,7 @@ class EngineTestInterface:
         assert request.operation == self.wire_operation
         assert request.method == "POST"
         assert request.url == self.wire_url
-        assert request.headers["Authorization"] == f"Bearer {DUMMY_KEY}"
+        self.assert_auth_headers(request.headers)
         assert request.headers["Content-Type"] == "application/json"
         assert request.headers["X-Test"] == "1"
         assert request.params == {"debug": "1"}
@@ -273,9 +326,15 @@ class EngineTestInterface:
 
     def test_build_request_omits_max_tokens_when_not_provided(self):
         request = self.make_engine().build_request(self.make_prepared_argument())
+        body = request.body()
 
-        assert "max_tokens" not in request.body()
-        assert "max_completion_tokens" not in request.body()
+        if self.max_tokens_required:
+            assert (
+                body[self.max_tokens_wire_key] == self.spec_for(self.default_model).response_tokens
+            )
+        else:
+            assert "max_tokens" not in body
+            assert "max_completion_tokens" not in body
 
     def test_build_request_timeout_prefers_kwarg_then_client_timeout(self):
         engine = self.make_engine(client_timeout=7.0)
@@ -321,10 +380,10 @@ class EngineTestInterface:
 
         assert api.last_request.method == "POST"
         assert str(api.last_request.url) == f"{self.wire_url}?debug=1"
-        assert api.last_request.headers["authorization"] == f"Bearer {DUMMY_KEY}"
+        self.assert_auth_headers(dict(api.last_request.headers))
         assert api.last_body["model"] == self.expected_wire_model()
         assert api.last_body[self.max_tokens_wire_key] == 16
-        assert api.last_body[self.wire_input_key] == argument.prop.prepared_input
+        assert api.last_body[self.wire_input_key] == self.wire_input_expected(argument)
         assert isinstance(output[0], str)
         assert "thinking" in metadata
         assert isinstance(metadata["raw_output"], self.response_cls)
@@ -371,7 +430,7 @@ class EngineTestInterface:
         mock_usage = self.mock_response_json()["usage"]
         assert details["usage"]["prompt_tokens"] == 2 * self.usage_prompt_tokens(mock_usage)
         assert details["usage"]["completion_tokens"] == 2 * self.usage_completion_tokens(mock_usage)
-        assert details["usage"]["total_tokens"] == 2 * mock_usage["total_tokens"]
+        assert details["usage"]["total_tokens"] == 2 * self.usage_total_tokens(mock_usage)
         assert details["usage"]["total_calls"] == 2
         assert "thinking_content" not in details
 
@@ -458,6 +517,8 @@ class EngineTestInterface:
     def test_cache_breakpoint_rejects_unsupported_model(self):
         if self.cache_test_model is None:
             pytest.skip(f"{self.engine_cls.__name__} has no explicit cache support")
+        if not self.cache_unsupported_model_raises:
+            pytest.skip(f"{self.engine_cls.__name__} strips markers instead of raising")
 
         engine = self.make_engine()
         marked = [{"role": "user", "content": f"prefix {CACHE_BREAKPOINT} suffix"}]
@@ -486,6 +547,67 @@ class EngineTestInterface:
 
         with pytest.raises(ValueError, match="non-empty"):
             engine.build_request(self.make_prepared_argument(messages=marked))
+
+    def test_tool_call_extraction(self):
+        engine = self.make_engine(client_max_retries=0)
+
+        with MockAPI(
+            engine,
+            lambda request: httpx.Response(200, json=self.mock_tool_call_json(), request=request),
+        ):
+            _output, metadata = engine.forward(self.make_prepared_argument())
+
+        function_call = metadata.get("function_call")
+        assert function_call is not None
+        assert function_call["name"] == "get_weather"
+        assert isinstance(function_call["arguments"], dict)
+        assert "location" in function_call["arguments"]
+
+    @pytest.mark.engine_live
+    def test_live_tool_smoke(self, engine_api_mode):
+        api_key = self.require_live(engine_api_mode)
+
+        engine = self.make_live_engine(self.default_model, api_key)
+        messages = [
+            {
+                "role": "user",
+                "content": "What is the weather in Paris? Use the get_weather tool.",
+            }
+        ]
+        kwargs = {"tools": [self.weather_tool_spec()], **self.tool_choice_kwarg()}
+
+        output, metadata = engine.forward(
+            self.make_prepared_argument(kwargs=kwargs, messages=messages)
+        )
+
+        function_call = metadata.get("function_call")
+        assert function_call is not None, f"no tool call; output was: {output!r}"
+        assert function_call["name"] == "get_weather"
+        assert "location" in function_call["arguments"]
+
+    @pytest.mark.engine_live
+    def test_live_token_count_matches_generation_usage(self, engine_api_mode):
+        if not self.supports_token_counting:
+            pytest.skip(f"{self.engine_cls.__name__} has no token counting")
+        api_key = self.require_live(engine_api_mode)
+
+        engine = self.make_live_engine(self.default_model, api_key)
+        messages = [
+            {"role": "system", "content": "You are a helpful assistant."},
+            {"role": "user", "content": "New synergies will help drive top-line growth."},
+            {"role": "assistant", "content": "Things working well together will increase revenue."},
+            {"role": "user", "content": "Let's circle back when we have more bandwidth."},
+        ]
+
+        estimated = engine.compute_required_tokens(messages)
+        _output, metadata = engine.forward(self.make_prepared_argument(messages=messages))
+        actual = self.usage_prompt_tokens(metadata["raw_output"].usage.model_dump())
+
+        # NOTE: provider counters and local estimates may drift a few tokens per message;
+        # the contract is closeness, not identity (Anthropic's endpoint is exact).
+        assert abs(estimated - actual) <= max(4, int(0.1 * actual)), (
+            f"estimated {estimated} vs actual {actual}"
+        )
 
     @pytest.mark.engine_live
     def test_live_cache_write_then_read(self, engine_api_mode):
@@ -526,7 +648,7 @@ class EngineTestInterface:
             assert isinstance(output[0], str) and output[0]
             raw_output = metadata["raw_output"]
             assert isinstance(raw_output, self.response_cls)
-            assert raw_output.usage.total_tokens > 0
+            assert self.usage_total_tokens(raw_output.usage.model_dump()) > 0
             if self.spec_for(model).pricing is not None:
                 cost = self.expected_cost_usd(model, raw_output.usage.model_dump())
                 assert 0 < cost < 0.01
@@ -546,7 +668,7 @@ class EngineTestInterface:
         output, metadata = engine.forward(argument)
 
         assert isinstance(output[0], str)
-        assert metadata["raw_output"].usage.total_tokens > 0
+        assert self.usage_total_tokens(metadata["raw_output"].usage.model_dump()) > 0
 
     @pytest.mark.engine_live
     def test_live_vision(self, engine_api_mode):
@@ -652,10 +774,6 @@ class NeurosymbolicEngineTestInterface(EngineTestInterface):
                 else:
                     repository._engines.pop("neurosymbolic", None)
 
-        messages = api.last_body[self.wire_input_key]
         assert result == {"system": "new system prompt", "user": "new user prompt"}
-        assert messages[0]["role"] == "system"
-        assert "Generate a new system or developer prompt" in messages[0]["content"]
-        assert messages[1]["role"] == "user"
-        assert json.loads(messages[1]["content"]) == {"system": "old system", "user": "old user"}
+        self.assert_self_prompt_messages(api.last_body)
         self.assert_self_prompt_response_format(api.last_body)

@@ -105,6 +105,21 @@ class TestOpenRouterEngine(NeurosymbolicEngineTestInterface):
             ]
         )
 
+    def mock_tool_call_json(self):
+        payload = self.mock_response_json()
+        payload["choices"][0]["message"] = {
+            "role": "assistant",
+            "content": None,
+            "tool_calls": [
+                {
+                    "id": "call_1",
+                    "type": "function",
+                    "function": {"name": "get_weather", "arguments": '{"location": "Paris"}'},
+                }
+            ],
+        }
+        return payload
+
     def test_forward_streams_sse_and_aggregates_response(self):
         engine = self.make_engine(client_max_retries=0)
 

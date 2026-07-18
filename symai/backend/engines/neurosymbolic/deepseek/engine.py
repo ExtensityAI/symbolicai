@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import json
+import logging
 from copy import deepcopy
 
 from symai.backend.base import Engine
@@ -24,6 +26,8 @@ from symai.backend.transport import (
 )
 from symai.backend.usage import EngineUsageRecord
 from symai.prompts import strip_cache_breakpoints_from_messages
+
+logger = logging.getLogger(__name__)
 
 DEEPSEEK_CHAT_COMPLETIONS_URL = "https://api.deepseek.com/chat/completions"
 
@@ -161,10 +165,37 @@ class DeepseekEngine(Engine):
         return DeepSeekResponse.model_validate(response.json())
 
     def parse_response(self, response: DeepSeekResponse):
-        message = response.choices[0].message
-        metadata = {"raw_output": response, "thinking": message.reasoning_content}
+        metadata = {
+            "raw_output": response,
+            "thinking": response.choices[0].message.reasoning_content,
+        }
+        metadata = self._process_function_calls(response, metadata)
 
-        return [message.content or ""], metadata
+        return [response.choices[0].message.content or ""], metadata
+
+    def _process_function_calls(self, response: DeepSeekResponse, metadata: dict) -> dict:
+        message = response.choices[0].message
+        if not message.tool_calls:
+            return metadata
+
+        for tool_call in message.tool_calls:
+            if tool_call.function is None:
+                continue
+            if "function_call" in metadata:
+                logger.warning(
+                    "Multiple function calls detected in the response but only the first one will be processed."
+                )
+                break
+            try:
+                args_dict = json.loads(tool_call.function.arguments)
+            except json.JSONDecodeError:
+                args_dict = {}
+            metadata["function_call"] = {
+                "name": tool_call.function.name,
+                "arguments": args_dict,
+            }
+
+        return metadata
 
     def prepare(self, argument):
         if argument.prop.raw_input:

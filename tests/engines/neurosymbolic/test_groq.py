@@ -103,6 +103,21 @@ class TestGroqEngine(NeurosymbolicEngineTestInterface):
         assert raw_output.choices[0].finish_reason == "stop"
         assert raw_output.usage.total_tokens == 15
 
+    def mock_tool_call_json(self):
+        payload = self.mock_response_json()
+        payload["choices"][0]["message"] = {
+            "role": "assistant",
+            "content": None,
+            "tool_calls": [
+                {
+                    "id": "call_1",
+                    "type": "function",
+                    "function": {"name": "get_weather", "arguments": '{"location": "Paris"}'},
+                }
+            ],
+        }
+        return payload
+
     def test_usage_tracking_includes_reasoning_breakdown(self):
         engine = self.make_engine(client_max_retries=0)
 

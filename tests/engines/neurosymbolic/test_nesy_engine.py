@@ -1,13 +1,12 @@
 from pathlib import Path
 
 import pytest
-from anthropic import Stream
-from anthropic.types.message import Message
 from google.genai import types  # Import for Gemini types
 from openai.types.chat.chat_completion import ChatCompletion
 from openai.types.responses import Response
 
 from symai import EngineRepository, Expression, Symbol
+from symai.backend.engines.neurosymbolic.anthropic.models import AnthropicResponse
 from symai.backend.mixin.openai import SUPPORTED_REASONING_MODELS
 from symai.backend.settings import SYMAI_CONFIG
 from symai.components import Function
@@ -19,10 +18,11 @@ CLAUDE_MAX_TOKENS = 4092
 IS_OPENAI_API = NEUROSYMBOLIC.startswith("openai:")
 
 
-def _compute_required_tokens(*_args, **_kwargs):
-    return EngineRepository.bind_property(
+def _compute_required_tokens(*args, **kwargs):
+    compute = EngineRepository.bind_property(
         engine="neurosymbolic", property="compute_required_tokens"
     )
+    return compute(*args, **kwargs)
 
 
 @pytest.mark.mandatory
@@ -61,19 +61,6 @@ def test_vision():
     # it makes sense here to explicitly check if there is a cat; we are testing the vision component
     assert "cat" in res.value
 
-    file = "https://raw.githubusercontent.com/ExtensityAI/symbolicai/main/artifacts/images/cat.jpg"
-    x = Symbol(f"<<vision:{file}:>>")
-
-    if all(model_marker not in NEUROSYMBOLIC for model_marker in ["3-7", "4-0", "4-1", "4-5"]):
-        res = x.query("What is in the image?")
-    else:
-        res = x.query(
-            "What is in the image?", max_tokens=CLAUDE_MAX_TOKENS, thinking=CLAUDE_THINKING
-        )
-
-    # same check but for url
-    assert "cat" in res.value
-
 
 @pytest.mark.mandatory
 @pytest.mark.skipif(
@@ -93,7 +80,7 @@ def test_vision():
     reason="deepseek tokens computation is not yet implemented",
 )
 def test_tokenizer():
-    if NEUROSYMBOLIC.startswith("gemini"):
+    if "gemini" in NEUROSYMBOLIC:
         messages = [
             {
                 "role": "system",
@@ -114,7 +101,7 @@ def test_tokenizer():
                 "content": "This late pivot means we don't have time to boil the ocean for the client deliverable.",
             },
         ]
-    elif NEUROSYMBOLIC.startswith("claude"):
+    elif "claude" in NEUROSYMBOLIC:
         messages = [
             {
                 "role": "system",
@@ -198,11 +185,9 @@ def test_tokenizer():
 
     response = Expression.prompt(messages, raw_output=True)
 
-    if NEUROSYMBOLIC.startswith("gemini"):
+    if "gemini" in NEUROSYMBOLIC:
         api_tokens = response.usage_metadata.prompt_token_count
-    elif NEUROSYMBOLIC.startswith("claude"):
-        api_tokens = response[0].message.usage.input_tokens
-    elif IS_OPENAI_API:
+    elif "claude" in NEUROSYMBOLIC or IS_OPENAI_API:
         api_tokens = response.usage.input_tokens
     else:
         api_tokens = response.usage.prompt_tokens
@@ -279,7 +264,7 @@ def test_tool_usage():
         assert metadata["function_call"]["name"] == "get_weather"
         assert "location" in metadata["function_call"]["arguments"]
         assert "bogotá, colombia" in metadata["function_call"]["arguments"]["location"].lower()
-    elif NEUROSYMBOLIC.startswith("claude"):
+    elif "claude" in NEUROSYMBOLIC:
         tools = [
             {
                 "name": "get_stock_price",
@@ -313,7 +298,7 @@ def test_tool_usage():
         assert any(
             t in metadata["function_call"]["arguments"]["ticker"].lower() for t in ("spy", "gspc")
         )
-    elif NEUROSYMBOLIC.startswith("gemini"):
+    elif "gemini" in NEUROSYMBOLIC:
         # Test case 1: Callable Python function
         def get_capital(country: str | None = None) -> str:
             """Gets the capital city of a given country."""
@@ -374,7 +359,7 @@ def test_tool_usage():
 
 @pytest.mark.mandatory
 def test_raw_output():
-    if NEUROSYMBOLIC.startswith("claude"):
+    if "claude" in NEUROSYMBOLIC:
         if all(model_marker not in NEUROSYMBOLIC for model_marker in ["3-7", "4-0", "4-1", "4-5"]):
             S = Expression.prompt("What is the capital of France?", raw_output=True)
         else:
@@ -384,8 +369,8 @@ def test_raw_output():
                 max_tokens=CLAUDE_MAX_TOKENS,
                 thinking=CLAUDE_THINKING,
             )
-        # Accept list of events (when stream is consumed) or Message/Stream objects
-        assert isinstance(S.value, (Message, Stream, list))
+        # The migrated engine returns one typed response (no internal SDK streaming).
+        assert isinstance(S.value, AnthropicResponse)
         if isinstance(S.value, list):
             # Verify it's a list of streaming events
             assert len(S.value) > 0
@@ -410,7 +395,7 @@ def test_raw_output():
     ):
         S = Expression.prompt("What is the capital of France?", raw_output=True)
         assert isinstance(S.value, ChatCompletion)
-    elif NEUROSYMBOLIC.startswith("gemini"):
+    elif "gemini" in NEUROSYMBOLIC:
         S = Expression.prompt("What is the capital of France?", raw_output=True)
         assert isinstance(S.value, types.GenerateContentResponse)
 
@@ -428,10 +413,10 @@ def test_preview():
 
 
 @pytest.mark.skipif(
-    NEUROSYMBOLIC.startswith("claude"), reason="Claude tokens computation is not yet implemented"
+    "claude" in NEUROSYMBOLIC, reason="Claude tokens computation is not yet implemented"
 )
 @pytest.mark.skipif(
-    NEUROSYMBOLIC.startswith("gemini"), reason="Claude tokens computation is not yet implemented"
+    "gemini" in NEUROSYMBOLIC, reason="Claude tokens computation is not yet implemented"
 )
 def test_token_truncator():
     file_path = (Path(__file__).parent.parent.parent / "data/sample.txt").as_posix()

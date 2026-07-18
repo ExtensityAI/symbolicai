@@ -9,7 +9,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Literal
 
-from pydantic import Field, JsonValue
+from pydantic import Field, JsonValue, model_validator
 
 from symai.backend.request import EngineAPIRequest, EngineRequestPayload, EngineResponsePayload
 from symai.backend.usage import ModelPricing
@@ -151,13 +151,27 @@ class DeepSeekUsage(EngineResponsePayload):
     prompt_cache_miss_tokens: int = 0
 
 
+class DeepSeekToolCallResult(EngineResponsePayload):
+    id: str
+    type: str
+    function: DeepSeekToolCallFunction | None = None
+    index: int | None = None
+
+
 class DeepSeekResponseMessage(EngineResponsePayload):
     role: str
-    # NOTE: required but nullable — a missing content key fails validation while an
-    # explicit null (assistant tool-call messages) is a valid provider response.
-    content: str | None
+    # NOTE: null content is valid on assistant tool-call messages, and the key may be
+    # absent entirely there; a text answer without content is a malformed response.
+    content: str | None = None
     reasoning_content: str | None = None
-    tool_calls: list[DeepSeekToolCall] | None = None
+    tool_calls: list[DeepSeekToolCallResult] | None = None
+
+    @model_validator(mode="after")
+    def require_content_or_tool_calls(self):
+        if self.content is None and not self.tool_calls:
+            msg = "DeepSeek response message requires content when no tool calls are present."
+            raise ValueError(msg)
+        return self
 
 
 class DeepSeekChoice(EngineResponsePayload):

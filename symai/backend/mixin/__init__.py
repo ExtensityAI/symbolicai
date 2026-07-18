@@ -1,5 +1,3 @@
-from symai.backend.mixin.anthropic import SUPPORTED_CHAT_MODELS as ANTHROPIC_CHAT_MODELS
-from symai.backend.mixin.anthropic import SUPPORTED_REASONING_MODELS as ANTHROPIC_REASONING_MODELS
 from symai.backend.mixin.google import SUPPORTED_CHAT_MODELS as GOOGLE_CHAT_MODELS
 from symai.backend.mixin.google import SUPPORTED_REASONING_MODELS as GOOGLE_REASONING_MODELS
 from symai.backend.mixin.openai import SUPPORTED_CHAT_MODELS as OPENAI_CHAT_MODELS
@@ -7,8 +5,6 @@ from symai.backend.mixin.openai import SUPPORTED_OPENAI_MODELS as OPENAI_MODELS
 from symai.backend.mixin.openai import SUPPORTED_REASONING_MODELS as OPENAI_REASONING_MODELS
 
 __all__ = [
-    "ANTHROPIC_CHAT_MODELS",
-    "ANTHROPIC_REASONING_MODELS",
     "GOOGLE_CHAT_MODELS",
     "GOOGLE_REASONING_MODELS",
     "OPENAI_CHAT_MODELS",

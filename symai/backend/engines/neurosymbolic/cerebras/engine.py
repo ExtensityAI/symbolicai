@@ -5,8 +5,6 @@ import logging
 import re
 from copy import deepcopy
 
-import tiktoken
-
 from symai.backend.base import Engine
 from symai.backend.engines.neurosymbolic.cerebras.models import (
     SUPPORTED_CEREBRAS_MODELS,
@@ -54,7 +52,7 @@ class CerebrasEngine(Engine):
         self.model = self.config["NEUROSYMBOLIC_ENGINE_MODEL"]
         if self.id() != "neurosymbolic":
             return
-        self.tokenizer = tiktoken.get_encoding("o200k_base")
+        self.tokenizer = None
         self.max_context_tokens = self.api_max_context_tokens()
         self.max_response_tokens = self.api_max_response_tokens()
         self.transport_client = None
@@ -70,29 +68,13 @@ class CerebrasEngine(Engine):
     def api_max_response_tokens(self) -> int:
         return cerebras_model_spec_for(self.model).response_tokens
 
-    def compute_required_tokens(self, messages: list[dict]) -> int:
-        tokens_per_message = 3
-        tokens_per_name = 1
-        num_tokens = 0
-        for message in messages:
-            num_tokens += tokens_per_message
-            for key, value in message.items():
-                if isinstance(value, str):
-                    num_tokens += len(self.tokenizer.encode(value, disallowed_special=()))
-                else:
-                    for v in value:
-                        if v["type"] == "text":
-                            num_tokens += len(
-                                self.tokenizer.encode(v["text"], disallowed_special=())
-                            )
-                if key == "name":
-                    num_tokens += tokens_per_name
-        num_tokens += 3  # every reply is primed with <|start|>assistant<|message|>
-        return num_tokens
+    def compute_required_tokens(self, _messages: list[dict]) -> int:
+        msg = 'Method "compute_required_tokens" not implemented for CerebrasEngine.'
+        raise NotImplementedError(msg)
 
-    def compute_remaining_tokens(self, prompts: list[dict]) -> int:
-        val = self.compute_required_tokens(prompts)
-        return min(self.max_context_tokens - val, self.max_response_tokens)
+    def compute_remaining_tokens(self, _prompts: list[dict]) -> int:
+        msg = 'Method "compute_remaining_tokens" not implemented for CerebrasEngine.'
+        raise NotImplementedError(msg)
 
     def usage_record_from_metadata(self, metadata: dict) -> EngineUsageRecord:
         usage = metadata["raw_output"].usage

@@ -88,6 +88,26 @@ class TestDeepSeekEngine(NeurosymbolicEngineTestInterface):
             ]
         )
 
+    def tool_choice_kwarg(self):
+        # NOTE: DeepSeek's thinking mode rejects tool_choice=required; auto + an
+        # explicit instruction is the reliable path.
+        return {"tool_choice": "auto"}
+
+    def mock_tool_call_json(self):
+        payload = self.mock_response_json()
+        payload["choices"][0]["message"] = {
+            "role": "assistant",
+            "content": None,
+            "tool_calls": [
+                {
+                    "id": "call_1",
+                    "type": "function",
+                    "function": {"name": "get_weather", "arguments": '{"location": "Paris"}'},
+                }
+            ],
+        }
+        return payload
+
     def test_forward_streams_sse_and_aggregates_response(self):
         engine = self.make_engine(client_max_retries=0)
 
