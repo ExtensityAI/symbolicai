@@ -48,8 +48,7 @@ class TestOpenAISearchEngine(SearchEngineTestInterface):
     auth_header_prefix = "Bearer "
     api_pinned = API_PINNED
     api_pinned_module = "symai.backend.engines.search.openai.models"
-    keys_log_section = "openai"
-    keys_log_pattern = r'"(sk-proj-[^"]+)"'
+    api_key_env = "OPENAI_API_KEY"
 
     def mock_response_json(self):
         text, annotations = _answer_text_and_annotations()

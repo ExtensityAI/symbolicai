@@ -25,8 +25,7 @@ class TestOpenAIEmbeddingEngine(EmbeddingTestInterface):
     auth_header_prefix = "Bearer "
     api_pinned = API_PINNED
     api_pinned_module = "symai.backend.engines.embedding.openai.models"
-    keys_log_section = "openai"
-    keys_log_pattern = r'"(sk-proj-[^"]+)"'
+    api_key_env = "OPENAI_API_KEY"
     supports_usage = True
 
     def mock_response_json(self):

@@ -80,8 +80,7 @@ class TestParallelEngine(SearchEngineTestInterface):
     auth_header_prefix = ""
     api_pinned = API_PINNED
     api_pinned_module = "symai.backend.engines.search.parallel.models"
-    keys_log_section = "parallel"
-    keys_log_pattern = r'"(xxxx[^"]+)"'
+    api_key_env = "PARALLEL_API_KEY"
     supports_scrape = True
     scrape_wire_url = f"{PARALLEL_API_BASE}{PARALLEL_EXTRACT_PATH}"
 

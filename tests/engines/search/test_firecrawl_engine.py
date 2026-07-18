@@ -27,10 +27,9 @@ class TestFirecrawlEngine(SearchEngineTestInterface):
     auth_header_prefix = "Bearer "
     api_pinned = API_PINNED
     api_pinned_module = "symai.backend.engines.search.firecrawl.models"
-    # NOTE: no firecrawl key in api_keys.log at API_PINNED — every live test skips
+    # NOTE: no firecrawl key available — every live test skips without FIRECRAWL_API_KEY
     # through require_live until one is added.
-    keys_log_section = "firecrawl"
-    keys_log_pattern = r'"(fc-[^"]+)"'
+    api_key_env = "FIRECRAWL_API_KEY"
     supports_scrape = True
     scrape_wire_url = f"{FIRECRAWL_API_BASE}/scrape"
 

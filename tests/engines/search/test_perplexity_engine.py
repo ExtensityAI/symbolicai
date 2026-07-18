@@ -20,8 +20,7 @@ class TestPerplexityEngine(SearchEngineTestInterface):
     auth_header_prefix = "Bearer "
     api_pinned = API_PINNED
     api_pinned_module = "symai.backend.engines.search.perplexity.models"
-    keys_log_section = "perplexity"
-    keys_log_pattern = r'"(pplx-[^"]+)"\s*# office'
+    api_key_env = "PERPLEXITY_API_KEY"
 
     def mock_response_json(self):
         return {

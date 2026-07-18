@@ -1,4 +1,9 @@
 import pytest
+from dotenv import load_dotenv
+
+# NOTE: live engine tests read provider keys from the environment; a local .env
+# (gitignored) can supply them — never commit keys to the repo.
+load_dotenv()
 
 
 def pytest_addoption(parser):

@@ -13,14 +13,13 @@ interface asserts the uniform search-engine contract:
 - malformed responses fail typed parsing
 - HTTP 401 -> EngineAuthenticationError
 - scrape/extract url route through MockAPI (providers that support it)
-- live smoke (--engine-api=live + provider key in api_keys.log)
+- live smoke (--engine-api=live + provider key in the environment)
 """
 
 from __future__ import annotations
 
 import importlib
-import re
-from pathlib import Path
+import os
 from types import SimpleNamespace
 from typing import ClassVar
 
@@ -33,16 +32,6 @@ from symai.backend.transport import EngineAuthenticationError
 from tests.engines.mock_api import DUMMY_KEY, MockAPI
 
 MOCK_QUERY = "Who won the UEFA Euro 2024 final and what was the score?"
-KEYS_LOG = Path("api_keys.log")
-
-
-def load_key(provider: str, pattern: str) -> str | None:
-    raw = KEYS_LOG.read_text()
-    section = re.search(rf"^{provider}:\n((?:\s+.*\n)+)", raw, re.MULTILINE)
-    if not section:
-        return None
-    match = re.search(pattern, section.group(1))
-    return match.group(1) if match else None
 
 
 def assert_citation_contract(result) -> None:
@@ -99,8 +88,8 @@ class SearchEngineTestInterface:
     auth_header_prefix: ClassVar[str] = "Bearer "
     api_pinned: ClassVar[str] = ""
     api_pinned_module: ClassVar[str] = ""
-    keys_log_section: ClassVar[str] = ""
-    keys_log_pattern: ClassVar[str] = ""
+    # NOTE: env var holding the provider key for live runs (never hardcode keys).
+    api_key_env: ClassVar[str] = ""
     supports_scrape: ClassVar[bool] = False
     scrape_wire_url: ClassVar[str] = ""
 
@@ -174,11 +163,9 @@ class SearchEngineTestInterface:
     def require_live(self, engine_api_mode) -> str:
         if engine_api_mode != "live":
             pytest.skip("use --engine-api=live to run live search API requests")
-        if not KEYS_LOG.is_file():
-            pytest.skip("api_keys.log not present; live test skipped")
-        api_key = load_key(self.keys_log_section, self.keys_log_pattern)
+        api_key = os.environ.get(self.api_key_env, "")
         if not api_key:
-            pytest.skip(f"api_keys.log has no {self.keys_log_section} key; live test skipped")
+            pytest.skip(f"{self.api_key_env} not set; live test skipped")
         return api_key
 
     def assert_auth_header(self, headers: dict):

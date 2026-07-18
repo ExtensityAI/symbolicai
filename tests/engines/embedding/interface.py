@@ -11,7 +11,7 @@ interface asserts the uniform embedding-engine contract:
 - HTTP 401 -> EngineAuthenticationError
 - new_dim client-side truncation with L2 re-normalization (norm ~1.0)
 - usage metadata tracking (MetadataTracker "EmbeddingEngine" branch; OpenAI only)
-- live smoke (--engine-api=live + provider key in api_keys.log)
+- live smoke (--engine-api=live + provider key in the environment)
 
 The llama.cpp engine is not part of this interface: it builds a per-call
 httpx.Client (no transport_client injection point for MockAPI) and bypasses
@@ -22,8 +22,7 @@ from __future__ import annotations
 
 import importlib
 import math
-import re
-from pathlib import Path
+import os
 from types import SimpleNamespace
 from typing import ClassVar
 
@@ -35,18 +34,8 @@ from symai.backend.transport import EngineAuthenticationError
 from symai.components import MetadataTracker
 from tests.engines.mock_api import DUMMY_KEY, MockAPI
 
-KEYS_LOG = Path("api_keys.log")
 MOCK_DIMS = 8  # >= new_dim used in the truncation test, so truncation is observable
 NEW_DIM = 4
-
-
-def load_key(provider: str, pattern: str) -> str | None:
-    raw = KEYS_LOG.read_text()
-    section = re.search(rf"^{provider}:\n((?:\s+.*\n)+)", raw, re.MULTILINE)
-    if not section:
-        return None
-    match = re.search(pattern, section.group(1))
-    return match.group(1) if match else None
 
 
 def normalized_vector(seed: float, dims: int = MOCK_DIMS) -> list[float]:
@@ -86,8 +75,8 @@ class EmbeddingTestInterface:
     auth_header_prefix: ClassVar[str] = "Bearer "
     api_pinned: ClassVar[str] = ""
     api_pinned_module: ClassVar[str] = ""
-    keys_log_section: ClassVar[str] = ""
-    keys_log_pattern: ClassVar[str] = ""
+    # NOTE: env var holding the provider key for live runs (never hardcode keys).
+    api_key_env: ClassVar[str] = ""
     supports_usage: ClassVar[bool] = False
 
     MOCK_ENTRIES: ClassVar[tuple[str, ...]] = ("hello", "world")
@@ -140,11 +129,9 @@ class EmbeddingTestInterface:
     def require_live(self, engine_api_mode) -> str:
         if engine_api_mode != "live":
             pytest.skip("use --engine-api=live to run live embedding API requests")
-        if not KEYS_LOG.is_file():
-            pytest.skip("api_keys.log not present; live test skipped")
-        api_key = load_key(self.keys_log_section, self.keys_log_pattern)
+        api_key = os.environ.get(self.api_key_env, "")
         if not api_key:
-            pytest.skip(f"api_keys.log has no {self.keys_log_section} key; live test skipped")
+            pytest.skip(f"{self.api_key_env} not set; live test skipped")
         return api_key
 
     def assert_auth_header(self, headers: dict):

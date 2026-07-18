@@ -30,8 +30,7 @@ class TestGeminiEmbeddingEngine(EmbeddingTestInterface):
     auth_header_prefix = ""
     api_pinned = API_PINNED
     api_pinned_module = "symai.backend.engines.embedding.gemini.models"
-    keys_log_section = "google"
-    keys_log_pattern = r'"(AIzaSy[^"]+)"'
+    api_key_env = "GOOGLE_API_KEY"
     supports_usage = False  # GeminiBatchEmbedResponse carries no usage; no tracker branch
 
     def mock_response_json(self):

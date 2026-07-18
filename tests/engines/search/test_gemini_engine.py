@@ -55,8 +55,7 @@ class TestGeminiSearchEngine(SearchEngineTestInterface):
     auth_header_prefix = ""
     api_pinned = API_PINNED
     api_pinned_module = "symai.backend.engines.search.gemini.models"
-    keys_log_section = "google"
-    keys_log_pattern = r'"(AIzaSy[^"]+)"'
+    api_key_env = "GOOGLE_API_KEY"
 
     def mock_forward_kwargs(self):
         # NOTE: resolve_urls=True (the engine default) would HEAD the provider's redirect
