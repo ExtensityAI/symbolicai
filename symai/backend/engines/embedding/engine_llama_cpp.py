@@ -1,9 +1,8 @@
 import logging
-from typing import Any, ClassVar
+from typing import ClassVar
 
 import httpx
 
-from symai.backend.async_bridge import run_async
 from symai.backend.base import Engine
 from symai.backend.settings import SYMAI_CONFIG, SYMSERVER_CONFIG
 from symai.utils import silence_noisy_loggers
@@ -14,20 +13,12 @@ logger = logging.getLogger(__name__)
 
 
 class LlamaCppEmbeddingEngine(Engine):
-    _retry_params: ClassVar[dict[str, Any]] = {
-        "tries": 5,
-        "delay": 2,
-        "max_delay": 60,
-        "backoff": 2,
-        "jitter": (1, 5),
-        "graceful": True,
-    }
-    _timeout_params: ClassVar[dict[str, Any]] = {
+    _timeout_params: ClassVar[dict] = {
         "read": None,
         "connect": None,
     }
 
-    def __init__(self, retry_params: dict = _retry_params, timeout_params: dict = _timeout_params):
+    def __init__(self, timeout_params: dict = _timeout_params):
         super().__init__()
         self.config = SYMAI_CONFIG
         if self.id() != "embedding":
@@ -40,7 +31,6 @@ class LlamaCppEmbeddingEngine(Engine):
             f"http://{SYMSERVER_CONFIG.get('--host')}:{SYMSERVER_CONFIG.get('--port')}"
         )
         self.timeout_params = self._validate_timeout_params(timeout_params)
-        self.retry_params = self._validate_retry_params(retry_params)
         self.name = self.__class__.__name__
 
     def id(self) -> str:
@@ -55,29 +45,6 @@ class LlamaCppEmbeddingEngine(Engine):
         if "EMBEDDING_ENGINE_MODEL" in kwargs:
             self.model = kwargs["EMBEDDING_ENGINE_MODEL"]
 
-    async def _arequest(self, text: str, embd_normalize: str) -> dict:
-        """Makes an async HTTP request to the llama.cpp server."""
-
-        async def _make_request():
-            timeout = httpx.Timeout(
-                timeout=None,
-                connect=self.timeout_params["connect"],
-                read=self.timeout_params["read"],
-                write=None,
-                pool=None,
-            )
-            async with httpx.AsyncClient(timeout=timeout) as client:
-                res = await client.post(
-                    f"{self.server_endpoint}/v1/embeddings",
-                    json={"content": text, "embd_normalize": embd_normalize},
-                )
-                if res.status_code != 200:
-                    msg = f"Request failed with status code: {res.status_code}"
-                    raise ValueError(msg)
-                return res.json()
-
-        return await _make_request()
-
     def forward(self, argument):
         prepared_input = argument.prop.prepared_input
         kwargs = argument.kwargs
@@ -90,11 +57,26 @@ class LlamaCppEmbeddingEngine(Engine):
             msg = "new_dim is not yet supported"
             raise NotImplementedError(msg)
 
+        timeout = httpx.Timeout(
+            timeout=None,
+            connect=self.timeout_params["connect"],
+            read=self.timeout_params["read"],
+            write=None,
+            pool=None,
+        )
         try:
-            res = run_async(self._arequest(inp, embd_normalize))
-        except Exception as e:
+            with httpx.Client(timeout=timeout) as client:
+                response = client.post(
+                    f"{self.server_endpoint}/v1/embeddings",
+                    json={"content": inp, "embd_normalize": embd_normalize},
+                )
+        except httpx.HTTPError as e:
             msg = f"Request failed with error: {e!s}"
             raise ValueError(msg) from e
+        if response.status_code != 200:
+            msg = f"Request failed with status code: {response.status_code}"
+            raise ValueError(msg)
+        res = response.json()
 
         output = [r["embedding"] for r in res] if res is not None else None  # B x 1 x D
         metadata = {"raw_output": res}
