@@ -2,138 +2,182 @@ import time
 from pathlib import Path
 
 import pytest
-from google.genai.types import Content, Part
 
-from symai import Symbol
-from symai.backend.settings import SYMAI_CONFIG
+from symai.backend.engines.embedding.gemini import GeminiEmbeddingEngine
+from symai.backend.engines.embedding.gemini.models import (
+    API_PINNED,
+    GEMINI_API_BASE,
+    GEMINI_EMBEDDING_MODEL_SPECS,
+    GeminiBatchEmbedResponse,
+)
+from tests.engines.embedding.interface import (
+    EmbeddingTestInterface,
+    normalized_vector,
+)
 
-MODEL = SYMAI_CONFIG.get("EMBEDDING_ENGINE_MODEL", "")
-IS_GEMINI = "gemini-embedding" in MODEL
-SKIP_MSG = f"EMBEDDING_ENGINE_MODEL={MODEL!r} is not a Gemini embedding model"
-
-API_KEY = SYMAI_CONFIG.get("EMBEDDING_ENGINE_API_KEY", "")
-HAS_API_KEY = bool(API_KEY)
 SAMPLE_IMAGE = Path(__file__).parent.parent.parent / "data" / "sample.png"
+MULTIMODAL_MODEL = "gemini-embedding-2"
+MULTIMODAL_DIMS = GEMINI_EMBEDDING_MODEL_SPECS[MULTIMODAL_MODEL][1]
 
 
-@pytest.mark.skipif(not IS_GEMINI, reason=SKIP_MSG)
-def test_single_embedding():
-    result = Symbol("hello world").embed()
-    assert len(result.value) == 1
-    assert isinstance(result.value[0], list)
-    assert len(result.value[0]) > 0
-    assert all(isinstance(x, float) for x in result.value[0])
+class TestGeminiEmbeddingEngine(EmbeddingTestInterface):
+    engine_cls = GeminiEmbeddingEngine
+    response_cls = GeminiBatchEmbedResponse
+    default_model = "gemini-embedding-001"
+    expected_dims = GEMINI_EMBEDDING_MODEL_SPECS[default_model][1]
+    wire_url = f"{GEMINI_API_BASE}/models/{default_model}:batchEmbedContents"
+    auth_header_name = "x-goog-api-key"
+    auth_header_prefix = ""
+    api_pinned = API_PINNED
+    api_pinned_module = "symai.backend.engines.embedding.gemini.models"
+    keys_log_section = "google"
+    keys_log_pattern = r'"(AIzaSy[^"]+)"'
+    supports_usage = False  # GeminiBatchEmbedResponse carries no usage; no tracker branch
 
+    def mock_response_json(self):
+        return {
+            "embeddings": [
+                {"values": normalized_vector(0.11)},
+                {"values": normalized_vector(0.07)},
+            ]
+        }
 
-@pytest.mark.skipif(not IS_GEMINI, reason=SKIP_MSG)
-def test_batched_embedding():
-    result = Symbol(["hello", "world"]).embed()
-    # gemini-embedding-001 returns individual embeddings
-    # gemini-embedding-2 aggregates multiple inputs into one embedding
-    if "gemini-embedding-2" in MODEL:
-        assert len(result.value) >= 1
-    else:
-        assert len(result.value) == 2
-    assert all(isinstance(emb, list) for emb in result.value)
-    assert all(len(emb) > 0 for emb in result.value)
+    def response_dropping_required(self, payload):
+        # embeddings is required (min 1 item) — dropping it must fail typed parsing.
+        payload.pop("embeddings")
+        return payload
 
+    def expected_request_body_subset(self):
+        return {
+            "requests": [
+                {
+                    "model": f"models/{self.default_model}",
+                    "content": {"parts": [{"text": "hello"}]},
+                    "taskType": "SEMANTIC_SIMILARITY",
+                },
+                {
+                    "model": f"models/{self.default_model}",
+                    "content": {"parts": [{"text": "world"}]},
+                    "taskType": "SEMANTIC_SIMILARITY",
+                },
+            ]
+        }
 
-@pytest.mark.skipif(not IS_GEMINI, reason=SKIP_MSG)
-def test_truncated_embedding():
-    result = Symbol(["hello"]).embed(new_dim=128)
-    assert len(result.value[0]) == 128
+    def test_new_dim_sent_on_wire_as_output_dimensionality(self):
+        # Unlike OpenAI (client-side only), Gemini steers the server via
+        # outputDimensionality per request entry AND re-normalizes client-side.
+        api, output, _metadata = self.forward_through_mock(new_dim=4)
 
+        for entry in api.last_body["requests"]:
+            assert entry["outputDimensionality"] == 4
+        assert all(len(vector) == 4 for vector in output[0])
 
-@pytest.mark.skipif(not IS_GEMINI, reason=SKIP_MSG)
-class TestGeminiEmbedBatching:
-    """Verify that a single batched embed call is faster than N sequential ones."""
+    @pytest.mark.engine_live
+    def test_live_single_embedding(self, engine_api_mode):
+        api_key = self.require_live(engine_api_mode)
+        engine = self.make_live_engine(api_key)
 
-    TEXTS = [
+        argument = self.make_argument(entries=["hello world"])
+        engine.prepare(argument)
+        output, _metadata = engine.forward(argument)
+
+        assert len(output[0]) == 1
+        assert isinstance(output[0][0], list)
+        assert len(output[0][0]) == self.expected_dims
+        assert all(isinstance(x, float) for x in output[0][0])
+
+    TIMING_TEXTS = (
         "Machine learning transforms data into insights.",
         "Python is the dominant language for data science.",
         "Neural networks learn hierarchical representations.",
         "Embeddings map semantic meaning into vector space.",
         "Cosine similarity measures the angle between vectors.",
         "Batching amortizes the fixed HTTP round-trip cost.",
-    ]
+    )
 
-    def test_batch_embed_faster_than_sequential(self):
+    @pytest.mark.engine_live
+    def test_live_batch_embed_faster_than_sequential(self, engine_api_mode):
+        """Perf smoke: one batched embed call beats N sequential ones (live only)."""
+        api_key = self.require_live(engine_api_mode)
+        engine = self.make_live_engine(api_key)
+
+        def embed(entries):
+            argument = self.make_argument(entries=entries)
+            engine.prepare(argument)
+            return engine.forward(argument)[0][0]
+
         t0 = time.perf_counter()
-        for text in self.TEXTS:
-            Symbol(text).embed()
+        for text in self.TIMING_TEXTS:
+            assert len(embed([text])) == 1
         sequential_time = time.perf_counter() - t0
 
         t0 = time.perf_counter()
-        Symbol(self.TEXTS).embed()
+        vectors = embed(list(self.TIMING_TEXTS))
         batch_time = time.perf_counter() - t0
 
-        print(f"\nSequential ({len(self.TEXTS)} calls): {sequential_time:.3f}s")
-        print(f"Batch      (1 call):              {batch_time:.3f}s")
-        print(f"Speedup: {sequential_time / batch_time:.1f}x")
+        assert len(vectors) == len(self.TIMING_TEXTS)
 
+        # NOTE: tolerant perf smoke — batching must not be slower than sequential,
+        # but no minimum speedup factor is demanded.
         assert sequential_time > batch_time, (
             f"Batch embed ({batch_time:.3f}s) should be faster than "
             f"sequential embed ({sequential_time:.3f}s)"
         )
 
 
-@pytest.mark.skipif(not HAS_API_KEY, reason="No EMBEDDING_ENGINE_API_KEY configured")
-@pytest.mark.skipif("gemini-embedding-2" not in MODEL, reason="Requires gemini-embedding-2 model")
-class TestGeminiEmbedding2Multimodal:
-    """Tests for gemini-embedding-2 multimodal capabilities using Symbol.embed()."""
+class TestGeminiEmbedding2Multimodal(TestGeminiEmbeddingEngine):
+    """Live multimodal capabilities of gemini-embedding-2 (raw bytes)."""
 
-    def test_text_embedding(self):
-        """Test text embedding via Symbol.embed()."""
-        result = Symbol("hello world").embed()
-        assert len(result.value) == 1
-        assert len(result.value[0]) == 3072
-        assert all(isinstance(x, float) for x in result.value[0])
+    default_model = MULTIMODAL_MODEL
+    expected_dims = MULTIMODAL_DIMS
+    wire_url = f"{GEMINI_API_BASE}/models/{MULTIMODAL_MODEL}:batchEmbedContents"
 
-    def test_image_embedding_from_bytes(self):
-        """Test image embedding from raw bytes."""
-        image_bytes = SAMPLE_IMAGE.read_bytes()
-        result = Symbol(image_bytes).embed()
-        assert len(result.value) == 1
-        assert len(result.value[0]) == 3072
-        assert all(isinstance(x, float) for x in result.value[0])
+    def embed_live(self, entries, api_key, **kwargs):
+        engine = self.make_live_engine(api_key)
+        argument = self.make_argument(entries=entries, kwargs=kwargs)
+        engine.prepare(argument)
+        return engine.forward(argument)[0][0]
 
-    def test_image_embedding_from_part(self):
-        """Test image embedding from Google Part object."""
-        image_bytes = SAMPLE_IMAGE.read_bytes()
-        image_part = Part.from_bytes(data=image_bytes, mime_type="image/png")
-        result = Symbol(image_part).embed()
-        assert len(result.value) == 1
-        assert len(result.value[0]) == 3072
-        assert all(isinstance(x, float) for x in result.value[0])
+    @pytest.mark.engine_live
+    def test_live_text_embedding(self, engine_api_mode):
+        api_key = self.require_live(engine_api_mode)
 
-    def test_multimodal_embedding_text_and_image(self):
-        """Test combined text and image embedding."""
-        image_bytes = SAMPLE_IMAGE.read_bytes()
-        content = Content(
-            parts=[
-                Part.from_text(text="Describe this image"),
-                Part.from_bytes(data=image_bytes, mime_type="image/png"),
-            ]
-        )
-        result = Symbol(content).embed()
-        assert len(result.value) == 1
-        assert len(result.value[0]) == 3072
-        assert all(isinstance(x, float) for x in result.value[0])
+        vectors = self.embed_live(["hello world"], api_key)
 
-    def test_truncated_multimodal_embedding(self):
-        """Test dimension reduction with multimodal input."""
-        image_bytes = SAMPLE_IMAGE.read_bytes()
-        image_part = Part.from_bytes(data=image_bytes, mime_type="image/png")
-        result = Symbol(image_part).embed(new_dim=768)
-        assert len(result.value[0]) == 768
+        assert len(vectors) == 1
+        assert len(vectors[0]) == MULTIMODAL_DIMS
+        assert all(isinstance(x, float) for x in vectors[0])
 
-    def test_batch_mixed_inputs(self):
-        """Test batch embedding with mixed text and image inputs."""
-        image_bytes = SAMPLE_IMAGE.read_bytes()
-        image_part = Part.from_bytes(data=image_bytes, mime_type="image/png")
-        
-        # Batch with text and image
-        result = Symbol(["hello world", image_part]).embed()
-        # Note: gemini-embedding-2 aggregates multiple inputs into one embedding
-        assert len(result.value) >= 1
-        assert all(len(emb) == 3072 for emb in result.value)
+    @pytest.mark.engine_live
+    def test_live_image_embedding_from_bytes(self, engine_api_mode):
+        api_key = self.require_live(engine_api_mode)
+
+        vectors = self.embed_live([SAMPLE_IMAGE.read_bytes()], api_key)
+
+        assert len(vectors) == 1
+        assert len(vectors[0]) == MULTIMODAL_DIMS
+        assert all(isinstance(x, float) for x in vectors[0])
+
+    def test_part_or_content_inputs_raise_type_error(self):
+        engine = self.make_engine()
+        argument = self.make_argument(entries=[{"not": "str-or-bytes"}])
+        engine.prepare(argument)
+
+        with pytest.raises(TypeError, match="str and bytes"):
+            engine.forward(argument)
+
+    @pytest.mark.engine_live
+    def test_live_truncated_multimodal_embedding(self, engine_api_mode):
+        api_key = self.require_live(engine_api_mode)
+        vectors = self.embed_live([SAMPLE_IMAGE.read_bytes()], api_key, new_dim=768)
+
+        assert len(vectors[0]) == 768
+
+    @pytest.mark.engine_live
+    def test_live_batch_mixed_inputs(self, engine_api_mode):
+        api_key = self.require_live(engine_api_mode)
+        vectors = self.embed_live(["hello world", SAMPLE_IMAGE.read_bytes()], api_key)
+
+        # NOTE: the batch endpoint embeds every request entry separately.
+        assert len(vectors) >= 1
+        assert all(len(emb) == MULTIMODAL_DIMS for emb in vectors)

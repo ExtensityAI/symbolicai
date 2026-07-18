@@ -1,33 +1,36 @@
+from __future__ import annotations
+
 import logging
 from copy import deepcopy
 
 import numpy as np
-import openai
 
 from symai.backend.base import Engine
+from symai.backend.engines.embedding.openai.models import (
+    OPENAI_EMBEDDING_MODEL_SPECS,
+    OPENAI_EMBEDDINGS_URL,
+    OpenAIEmbeddingRequest,
+    OpenAIEmbeddingResponse,
+)
+from symai.backend.request import EngineAPIRequest
 from symai.backend.settings import SYMAI_CONFIG
+from symai.backend.transport import DEFAULT_RETRIES, execute_engine_api_request
 from symai.utils import silence_noisy_loggers
 
 silence_noisy_loggers("openai")
 
 logger = logging.getLogger(__name__)
 
-# model -> (context tokens, embedding dimensions)
-OPENAI_EMBEDDING_MODEL_SPECS = {
-    "text-embedding-ada-002": (8192, 1536),
-    "text-embedding-3-small": (8192, 1536),
-    "text-embedding-3-large": (8192, 3072),
-}
-
 
 class EmbeddingEngine(Engine):
     def __init__(self, api_key: str | None = None, model: str | None = None):
         super().__init__()
-        logger = logging.getLogger("openai")
-        logger.setLevel(logging.WARNING)
+        logger_ = logging.getLogger("openai")
+        logger_.setLevel(logging.WARNING)
         self.config = deepcopy(SYMAI_CONFIG)
         self.api_key = api_key or self.config.get("EMBEDDING_ENGINE_API_KEY")
         self.model = model or self.config.get("EMBEDDING_ENGINE_MODEL")
+        self.transport_client = None
         if self.id() != "embedding":
             return  # do not initialize if not embedding; avoids conflict with llama.cpp check in EngineRepository.register_from_package
         if not self.api_key:
@@ -36,7 +39,6 @@ class EmbeddingEngine(Engine):
                 "in symai.config.json or pass it to the engine."
             )
             raise ValueError(msg)
-        self.client = openai.OpenAI(api_key=self.api_key)
         self.max_tokens = self.api_max_context_tokens()
         self.embedding_dim = self.api_embedding_dims()
         self.name = self.__class__.__name__
@@ -56,18 +58,26 @@ class EmbeddingEngine(Engine):
         super().command(*args, **kwargs)
         if "EMBEDDING_ENGINE_API_KEY" in kwargs:
             self.api_key = kwargs["EMBEDDING_ENGINE_API_KEY"]
-            self.client = openai.OpenAI(api_key=self.api_key)
+            # NOTE: auth headers are built per request on the shared transport, so a key
+            # change only needs the cached transport handle dropped, not a client rebuild.
+            self.transport_client = None
         if "EMBEDDING_ENGINE_MODEL" in kwargs:
             self.model = kwargs["EMBEDDING_ENGINE_MODEL"]
 
     def forward(self, argument):
-        prepared_input = argument.prop.prepared_input
-        args = argument.args
-        kwargs = argument.kwargs
+        request = self.build_request(argument)
+        response = self.call_request(request, argument)
+        return self.parse_response(response, argument)
 
+    def prepare(self, argument):
+        assert not argument.prop.processed_input, (
+            "EmbeddingEngine does not support processed_input."
+        )
+        argument.prop.prepared_input = argument.prop.entries
+
+    def build_request(self, argument) -> EngineAPIRequest:
+        prepared_input = argument.prop.prepared_input
         inp = prepared_input if isinstance(prepared_input, list) else [prepared_input]
-        except_remedy = kwargs.get("except_remedy")
-        new_dim = kwargs.get("new_dim")
 
         # Validate inputs - OpenAI only supports text
         for item in inp:
@@ -79,31 +89,61 @@ class EmbeddingEngine(Engine):
                 )
                 raise TypeError(msg)
 
+        payload = OpenAIEmbeddingRequest(model=self.model, input=inp)
+        return EngineAPIRequest(
+            provider="openai",
+            operation="embeddings.create",
+            payload=payload,
+            method="POST",
+            url=OPENAI_EMBEDDINGS_URL,
+            headers={
+                "Authorization": f"Bearer {self.api_key}",
+                "Content-Type": "application/json",
+            },
+            timeout=self.client_timeout,
+        )
+
+    def call_request(self, request: EngineAPIRequest, argument) -> OpenAIEmbeddingResponse:
+        except_remedy = argument.kwargs.get("except_remedy")
         try:
-            res = self.client.embeddings.create(model=self.model, input=inp)
+            return self._execute(request)
         except Exception as e:
             if except_remedy is None:
                 raise
-            callback = self.client.embeddings.create
-            res = except_remedy(e, inp, callback, self, *args, **kwargs)
 
+            # NOTE: the callback retries the wire request verbatim (remedies may close
+            # over it); whatever the remedy returns flows into parse_response, as before.
+            def callback(*_args, **_kwargs):
+                return self._execute(request)
+
+            return except_remedy(
+                e, request.payload.input, callback, self, *argument.args, **argument.kwargs
+            )
+
+    def _execute(self, request: EngineAPIRequest) -> OpenAIEmbeddingResponse:
+        max_retries = (
+            self.client_max_retries if self.client_max_retries is not None else DEFAULT_RETRIES
+        )
+        response = execute_engine_api_request(
+            request,
+            client=self.transport_client,
+            max_retries=max_retries,
+        )
+        return OpenAIEmbeddingResponse.model_validate(response.json())
+
+    def parse_response(self, response: OpenAIEmbeddingResponse, argument):
+        new_dim = argument.kwargs.get("new_dim")
         if new_dim:
             mn = min(
                 new_dim, self.embedding_dim
             )  # @NOTE: new_dim should be less than or equal to the original embedding dim
-            output = [self._normalize_l2(r.embedding[:mn]) for r in res.data]
+            output = [self._normalize_l2(r.embedding[:mn]) for r in response.data]
         else:
-            output = [r.embedding for r in res.data]
+            output = [r.embedding for r in response.data]
 
-        metadata = {"raw_output": res}
+        metadata = {"raw_output": response}
 
         return [output], metadata
-
-    def prepare(self, argument):
-        assert not argument.prop.processed_input, (
-            "EmbeddingEngine does not support processed_input."
-        )
-        argument.prop.prepared_input = argument.prop.entries
 
     def _normalize_l2(self, x):
         x = np.array(x)

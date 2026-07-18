@@ -2,8 +2,10 @@ import logging
 from typing import ClassVar
 
 import httpx
+from pydantic import TypeAdapter
 
 from symai.backend.base import Engine
+from symai.backend.engines.embedding.llama_cpp.models import LlamaCppEmbeddingResponse
 from symai.backend.settings import SYMAI_CONFIG, SYMSERVER_CONFIG
 from symai.utils import silence_noisy_loggers
 
@@ -76,9 +78,9 @@ class LlamaCppEmbeddingEngine(Engine):
         if response.status_code != 200:
             msg = f"Request failed with status code: {response.status_code}"
             raise ValueError(msg)
-        res = response.json()
+        res = TypeAdapter(LlamaCppEmbeddingResponse).validate_python(response.json())
 
-        output = [r["embedding"] for r in res] if res is not None else None  # B x 1 x D
+        output = [item.embedding for item in res]  # B x 1 x D
         metadata = {"raw_output": res}
 
         return [output], metadata
