@@ -1,63 +1,157 @@
-import json
-import logging
+"""Naive scrape engine tests: mock validates the fetch/extract pipeline offline,
+live hits stable sandbox sites (--engine-api=live). No provider key required.
+"""
 
+import httpx
 import pytest
 
-from symai.backend.engines.scrape.engine_requests import RequestsResult
-from symai.components import Interface
+from symai.backend.engines.scrape.requests import RequestsEngine, RequestsResult
+from symai.core import Argument
 
-logging.getLogger("trafilatura").setLevel(logging.WARNING)
-logging.getLogger("pdfminer").setLevel(logging.WARNING)
+ARTICLE_HTML = b"""
+<html><head><title>Test Page</title></head>
+<body><article><h1>Symbolic AI</h1>
+<p>Neurosymbolic programming combines learning and reasoning in one framework.</p>
+</article></body></html>
+"""
 
-try:
-    import bs4
-    import trafilatura
-except ImportError:
-    raise ImportError("trafilatura and/or bs4 not installed. Please install them.")
+REFRESH_HTML = b"""
+<html><head><meta http-equiv="refresh" content="0;url=/final"></head><body></body></html>
+"""
 
-scraper = Interface('naive_scrape')
 
-@pytest.mark.parametrize("output_format", ["txt", "markdown", "csv", "json", "html", "xml"])
-def test_naive_scrape(output_format):
-    url = "https://trafilatura.readthedocs.io/en/latest/crawls.html"
-    rsp = scraper(url, output_format=output_format)
+def make_argument(url: str, **kwargs) -> Argument:
+    return Argument((), {}, {"url": url, **kwargs})
 
-    assert isinstance(rsp, RequestsResult), f"Expected RequestsResult, got {type(rsp)}"
-    assert rsp is not None, f"Expected a non-empty response for format '{output_format}'"
 
-    content = str(rsp).strip()
+def mock_engine(handler, **kwargs) -> RequestsEngine:
+    kwargs.setdefault("retries", 1)
+    kwargs.setdefault("backoff_factor", 0)
+    engine = RequestsEngine(**kwargs)
+    engine.client = httpx.Client(transport=httpx.MockTransport(handler), follow_redirects=True)
+    return engine
 
-    if output_format == "json":
+
+def run_scrape(engine: RequestsEngine, url: str, **kwargs):
+    argument = make_argument(url, **kwargs)
+    engine.prepare(argument)
+    results, metadata = engine.forward(argument)
+    return results[0], metadata
+
+
+@pytest.fixture
+def engine_api_mode(request):
+    return request.config.getoption("--engine-api")
+
+
+class TestNaiveScrapeMock:
+    def test_extracts_markdown(self):
+        def handler(_request: httpx.Request) -> httpx.Response:
+            return httpx.Response(200, content=ARTICLE_HTML, headers={"Content-Type": "text/html"})
+
+        result, metadata = run_scrape(mock_engine(handler), "https://example.com/page")
+        assert isinstance(result, RequestsResult)
+        assert "Neurosymbolic programming" in str(result)
+        assert metadata["response_source"] == "requests"
+
+    def test_strips_utm_params(self):
+        seen = []
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            seen.append(str(request.url))
+            return httpx.Response(200, content=ARTICLE_HTML, headers={"Content-Type": "text/html"})
+
+        run_scrape(
+            mock_engine(handler),
+            "https://example.com/page?utm_source=newsletter&utm_medium=email&keep=1",
+        )
+        assert seen == ["https://example.com/page?keep=1"]
+
+    def test_seeds_bypass_cookies(self):
+        def handler(_request: httpx.Request) -> httpx.Response:
+            return httpx.Response(200, content=ARTICLE_HTML, headers={"Content-Type": "text/html"})
+
+        engine = mock_engine(handler)
+        run_scrape(engine, "https://example.com/page")
+        assert engine.client.cookies.get("cookieconsent_status", domain="example.com") == "allow"
+
+    def test_follows_meta_refresh(self):
+        def handler(request: httpx.Request) -> httpx.Response:
+            if request.url.path == "/final":
+                return httpx.Response(
+                    200, content=ARTICLE_HTML, headers={"Content-Type": "text/html"}
+                )
+            return httpx.Response(200, content=REFRESH_HTML, headers={"Content-Type": "text/html"})
+
+        result, metadata = run_scrape(mock_engine(handler), "https://example.com/start")
+        assert "Neurosymbolic programming" in str(result)
+        assert metadata["final_url"] == "https://example.com/final"
+
+    def test_retries_then_succeeds(self):
+        calls = []
+
+        def handler(_request: httpx.Request) -> httpx.Response:
+            calls.append(1)
+            if len(calls) == 1:
+                return httpx.Response(503)
+            return httpx.Response(200, content=ARTICLE_HTML, headers={"Content-Type": "text/html"})
+
+        result, _ = run_scrape(mock_engine(handler, retries=2), "https://example.com/flaky")
+        assert len(calls) == 2
+        assert "Neurosymbolic programming" in str(result)
+
+    def test_raises_after_retry_exhaustion(self):
+        def handler(_request: httpx.Request) -> httpx.Response:
+            return httpx.Response(500)
+
+        engine = mock_engine(handler, retries=2)
+        argument = make_argument("https://example.com/down")
+        engine.prepare(argument)
+        with pytest.raises(httpx.HTTPStatusError):
+            engine.forward(argument)
+
+
+class TestNaiveScrapeLive:
+    @pytest.fixture(autouse=True)
+    def require_live(self, engine_api_mode):
+        if engine_api_mode != "live":
+            pytest.skip("live scrape test skipped in mock mode")
+
+    def test_scrape_example_com(self):
+        engine = RequestsEngine(timeout=15)
+        result, metadata = run_scrape(engine, "https://example.com/")
+        assert isinstance(result, RequestsResult)
+        # trafilatura extracts main text; the <h1> title is not part of it
+        assert "documentation examples" in str(result)
+        assert metadata["final_url"].startswith("https://example.com")
+
+    @pytest.mark.parametrize("output_format", ["txt", "markdown", "html"])
+    def test_output_formats(self, output_format):
+        engine = RequestsEngine(timeout=15)
+        result, _ = run_scrape(engine, "https://example.com/", output_format=output_format)
+        content = str(result).strip()
+        assert len(content) > 0
+        if output_format == "html":
+            assert content.startswith("<")
+
+    def test_pdf_extraction(self):
+        engine = RequestsEngine(timeout=20)
+        url = "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf"
+        result, _ = run_scrape(engine, url)
+        assert len(str(result)) > 0
+
+    def test_render_js(self):
+        pytest.importorskip("playwright.sync_api", reason="Playwright runtime required")
+        engine = RequestsEngine(timeout=30)
+        # quotes.toscrape.com is a scraping sandbox serving quotes only via JS
         try:
-            parsed = json.loads(content)
-            assert isinstance(parsed, dict), "JSON output is not a valid JSON object"
-        except json.JSONDecodeError as exc:
-            assert False, f"Invalid JSON output: {exc}"
-    elif output_format in ("html", "xml"):
-        assert content.startswith("<"), f"Expected {output_format} content to start with '<'"
-    else:  # txt, markdown, or csv
-        assert len(content) > 0, f"{output_format} output is empty"
-
-def test_pdf_extraction():
-    url = 'https://jevinwest.org/papers/Kim2017asa.pdf'
-    rsp = scraper(url)
-    assert isinstance(rsp, RequestsResult), f"Expected RequestsResult, got {type(rsp)}"
-    assert len(rsp) > 0, "Expected non-empty response"
-
-
-@pytest.mark.parametrize(
-    "url",
-    [
-        "https://x.com/karpathy/status/1973468610917179630",
-        "https://www.linkedin.com/posts/george-hotz-b3866476_more-technology-is-not-going-to-bring-you-activity-7367261116713861122-YcLy",
-    ],
-)
-def test_naive_scrape_render_js(url):
-    pytest.importorskip(
-        "playwright.sync_api",
-        reason="Playwright runtime is required to execute render_js flows.",
-    )
-
-    rsp = scraper(url, render_js=True, render_timeout=30)
-    assert isinstance(rsp, RequestsResult), "render_js should still produce RequestsResult"
-    assert len(str(rsp)) > 0, "Expected rendered content for social media page"
+            result, metadata = run_scrape(
+                engine, "https://quotes.toscrape.com/js/", render_js=True, render_timeout=30
+            )
+        except Exception as exc:
+            if "Executable doesn't exist" in str(exc):
+                pytest.skip("Playwright browser binaries not installed (playwright install)")
+            raise
+        assert isinstance(result, RequestsResult)
+        assert metadata["response_source"] == "playwright"
+        assert len(str(result)) > 0

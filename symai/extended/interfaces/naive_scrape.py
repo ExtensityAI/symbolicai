@@ -1,5 +1,5 @@
 from symai import core
-from symai.backend.engines.scrape.engine_requests import RequestsResult
+from symai.backend.engines.scrape.requests import RequestsResult
 from symai.symbol import Expression
 
 
