@@ -7,7 +7,9 @@ from pydantic import BaseModel, ConfigDict, JsonValue
 
 
 class EngineRequestPayload(BaseModel):
-    model_config = ConfigDict(extra="forbid", strict=True)
+    # NOTE: populate_by_name lets aliased (camelCase wire) models validate snake_case
+    # Python kwargs; fields without aliases are unaffected.
+    model_config = ConfigDict(extra="forbid", strict=True, populate_by_name=True)
 
 
 class EngineResponsePayload(BaseModel):
@@ -36,7 +38,9 @@ class EngineAPIRequest(Generic[Payload, CallOptions]):
 
     def body(self) -> dict[str, JsonValue]:
         body = {} if self.extra_body is None else dict(self.extra_body)
-        payload_body = self.payload.model_dump(exclude_none=True)
+        # NOTE: by_alias lets camelCase APIs (Google) keep snake_case Python fields;
+        # fields without aliases dump under their field name either way.
+        payload_body = self.payload.model_dump(exclude_none=True, by_alias=True)
         body.update(payload_body)
         return body
 

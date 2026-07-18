@@ -92,6 +92,12 @@ class EngineTestInterface:
     # NOTE: stream options the engine must force on streaming requests; None when the
     # provider's streams always carry usage (Responses API) or streaming is unsupported.
     stream_options_expected: ClassVar = {"include_usage": True}
+    # NOTE: Gemini streams over a sibling endpoint (?alt=sse) instead of a stream flag
+    # in the body; the stream tests assert URL shape instead of body fields there.
+    stream_via_url: ClassVar[bool] = False
+    # NOTE: the usage object key in the provider's mock response payload
+    # ("usageMetadata" for Gemini).
+    mock_usage_key: ClassVar[str] = "usage"
     # NOTE: model used by the explicit-cache tests; None when the provider has no
     # cache-breakpoint support (deepseek/cerebras/groq auto-cache only). The cache
     # suite activates per provider by setting this (anthropic once migrated).
@@ -135,6 +141,14 @@ class EngineTestInterface:
     def wire_input_expected(self, argument) -> list:
         """The prepared input as it appears on the wire (Anthropic splits system out)."""
         return argument.prop.prepared_input
+
+    def wire_generation_value(self, body: dict, key: str):
+        """Where a sampling/generation field lives on the wire (generationConfig on Gemini)."""
+        return body[key]
+
+    def usage_dump(self, raw_output) -> dict:
+        """The provider's usage object as a plain dict (usageMetadata on Gemini)."""
+        return raw_output.usage.model_dump()
 
     def usage_completion_tokens(self, usage: dict) -> int:
         """Completion/output token count in the provider's usage shape."""
@@ -327,8 +341,8 @@ class EngineTestInterface:
 
         if self.wire_model_present:
             assert body["model"] == self.expected_wire_model()
-        assert body["temperature"] == 0.2
-        assert body[self.max_tokens_wire_key] == 32
+        assert self.wire_generation_value(body, "temperature") == 0.2
+        assert self.wire_generation_value(body, self.max_tokens_wire_key) == 32
         assert body["vendor_flag"] is True
         assert "extra_body" not in body
         assert "extra_headers" not in body
@@ -393,7 +407,7 @@ class EngineTestInterface:
         self.assert_auth_headers(dict(api.last_request.headers))
         if self.wire_model_present:
             assert api.last_body["model"] == self.expected_wire_model()
-        assert api.last_body[self.max_tokens_wire_key] == 16
+        assert self.wire_generation_value(api.last_body, self.max_tokens_wire_key) == 16
         assert api.last_body[self.wire_input_key] == self.wire_input_expected(argument)
         assert isinstance(output[0], str)
         assert "thinking" in metadata
@@ -438,7 +452,7 @@ class EngineTestInterface:
             usage = tracker.usage
 
         details = usage[(self.engine_cls.__name__, self.default_model)]
-        mock_usage = self.mock_response_json()["usage"]
+        mock_usage = self.mock_response_json()[self.mock_usage_key]
         assert details["usage"]["prompt_tokens"] == 2 * self.usage_prompt_tokens(mock_usage)
         assert details["usage"]["completion_tokens"] == 2 * self.usage_completion_tokens(mock_usage)
         assert details["usage"]["total_tokens"] == 2 * self.usage_total_tokens(mock_usage)
@@ -475,8 +489,13 @@ class EngineTestInterface:
         ) as api:
             output, metadata = engine.forward(self.make_prepared_argument(kwargs={"stream": True}))
 
-        assert api.last_body["stream"] is True
-        assert api.last_body["stream_options"] == {"include_usage": True}
+        if self.stream_via_url:
+            assert "streamGenerateContent" in str(api.last_request.url)
+            assert api.last_request.url.params["alt"] == "sse"
+        else:
+            assert api.last_body["stream"] is True
+            if self.stream_options_expected is not None:
+                assert api.last_body["stream_options"] == self.stream_options_expected
         assert isinstance(output[0], str) and output[0]
         raw_output = metadata["raw_output"]
         assert isinstance(raw_output, self.response_cls)
@@ -615,7 +634,7 @@ class EngineTestInterface:
 
         estimated = engine.compute_required_tokens(messages)
         _output, metadata = engine.forward(self.make_prepared_argument(messages=messages))
-        actual = self.usage_prompt_tokens(metadata["raw_output"].usage.model_dump())
+        actual = self.usage_prompt_tokens(self.usage_dump(metadata["raw_output"]))
 
         # NOTE: provider counters and local estimates may drift a few tokens per message;
         # the contract is closeness, not identity (Anthropic's endpoint is exact).
@@ -639,11 +658,11 @@ class EngineTestInterface:
         marked = [{"role": "user", "content": f"{prefix}{CACHE_BREAKPOINT} Reply with exactly: ok"}]
 
         first = engine.forward(self.make_prepared_argument(messages=marked))[1]
-        first_writes = self.cache_write_tokens(first["raw_output"].usage.model_dump())
+        first_writes = self.cache_write_tokens(self.usage_dump(first["raw_output"]))
         assert first_writes > 0, "first call should write cache"
 
         second = engine.forward(self.make_prepared_argument(messages=marked))[1]
-        reads = self.cache_read_tokens(second["raw_output"].usage.model_dump())
+        reads = self.cache_read_tokens(self.usage_dump(second["raw_output"]))
         assert reads > 0, "second call should read from cache"
 
     @pytest.mark.engine_live
@@ -664,9 +683,9 @@ class EngineTestInterface:
             assert isinstance(output[0], str) and output[0]
             raw_output = metadata["raw_output"]
             assert isinstance(raw_output, self.response_cls)
-            assert self.usage_total_tokens(raw_output.usage.model_dump()) > 0
+            assert self.usage_total_tokens(self.usage_dump(raw_output)) > 0
             if self.spec_for(model).pricing is not None:
-                cost = self.expected_cost_usd(model, raw_output.usage.model_dump())
+                cost = self.expected_cost_usd(model, self.usage_dump(raw_output))
                 assert 0 < cost < 0.01
 
     @pytest.mark.engine_live
@@ -684,7 +703,7 @@ class EngineTestInterface:
         output, metadata = engine.forward(argument)
 
         assert isinstance(output[0], str)
-        assert self.usage_total_tokens(metadata["raw_output"].usage.model_dump()) > 0
+        assert self.usage_total_tokens(self.usage_dump(metadata["raw_output"])) > 0
 
     @pytest.mark.engine_live
     def test_live_vision(self, engine_api_mode):

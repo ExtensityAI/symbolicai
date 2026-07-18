@@ -454,28 +454,6 @@ class MetadataTracker(Expression):
                     token_details[(engine_name, model_name)]["extras"]["google_search_queries"] += (
                         sum(gtc.count or 0 for gtc in usage.grounding_tool_count or [])
                     )
-                elif engine_name == "GeminiXReasoningEngine":
-                    usage = metadata["raw_output"].usage_metadata
-                    token_details[(engine_name, model_name)]["usage"]["prompt_tokens"] += (
-                        usage.prompt_token_count
-                    )
-                    token_details[(engine_name, model_name)]["usage"]["completion_tokens"] += (
-                        usage.candidates_token_count
-                    )
-                    token_details[(engine_name, model_name)]["usage"]["total_tokens"] += (
-                        usage.total_token_count
-                    )
-                    token_details[(engine_name, model_name)]["usage"]["total_calls"] += 1
-                    # Track cache tokens if available
-                    cache_read = getattr(usage, "cached_content_token_count", 0) or 0
-                    token_details[(engine_name, model_name)]["prompt_breakdown"][
-                        "cached_tokens"
-                    ] += cache_read
-                    # Track thinking tokens (reported separately since Gemini 3.x SDK)
-                    thoughts_token_count = getattr(usage, "thoughts_token_count", 0) or 0
-                    token_details[(engine_name, model_name)]["completion_breakdown"][
-                        "reasoning_tokens"
-                    ] += thoughts_token_count
                 elif engine_name == "MistralOCREngine":
                     # Mistral OCR uses page-based billing, not token-based
                     raw_output = metadata.get("raw_output")

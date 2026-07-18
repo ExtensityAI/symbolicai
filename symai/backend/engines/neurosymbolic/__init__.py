@@ -14,9 +14,11 @@ from symai.backend.engines.neurosymbolic.cerebras import (
 from symai.backend.engines.neurosymbolic.cerebras import CerebrasEngine
 from symai.backend.engines.neurosymbolic.deepseek import SUPPORTED_MODELS as DEEPSEEK_MODELS
 from symai.backend.engines.neurosymbolic.deepseek import DeepseekEngine
-from symai.backend.engines.neurosymbolic.engine_google_geminiX_reasoning import (
-    GeminiXReasoningEngine,
+from symai.backend.engines.neurosymbolic.google import SUPPORTED_CHAT_MODELS as GOOGLE_CHAT_MODELS
+from symai.backend.engines.neurosymbolic.google import (
+    SUPPORTED_REASONING_MODELS as GOOGLE_REASONING_MODELS,
 )
+from symai.backend.engines.neurosymbolic.google import GoogleEngine
 from symai.backend.engines.neurosymbolic.groq import (
     SUPPORTED_REASONING_MODELS as GROQ_REASONING_MODELS,
 )
@@ -30,10 +32,6 @@ from symai.backend.engines.neurosymbolic.openrouter import (
     SUPPORTED_REASONING_MODELS as OPENROUTER_REASONING_MODELS,
 )
 from symai.backend.engines.neurosymbolic.openrouter import OpenRouterEngine
-from symai.backend.mixin import (
-    GOOGLE_CHAT_MODELS,
-    GOOGLE_REASONING_MODELS,
-)
 
 # create the mapping
 ENGINE_MAPPING = {
@@ -42,8 +40,8 @@ ENGINE_MAPPING = {
     **dict.fromkeys(CEREBRAS_CHAT_MODELS, CerebrasEngine),
     **dict.fromkeys(CEREBRAS_REASONING_MODELS, CerebrasEngine),
     **dict.fromkeys(DEEPSEEK_MODELS, DeepseekEngine),
-    **dict.fromkeys(GOOGLE_CHAT_MODELS, GeminiXReasoningEngine),
-    **dict.fromkeys(GOOGLE_REASONING_MODELS, GeminiXReasoningEngine),
+    **dict.fromkeys(GOOGLE_CHAT_MODELS, GoogleEngine),
+    **dict.fromkeys(GOOGLE_REASONING_MODELS, GoogleEngine),
     **dict.fromkeys(OPENAI_MODELS, OpenAIEngine),
     **dict.fromkeys(GROQ_REASONING_MODELS, GroqEngine),
     **dict.fromkeys(OPENROUTER_CHAT_MODELS, OpenRouterEngine),
@@ -65,7 +63,7 @@ __all__ = [
     "OPENROUTER_REASONING_MODELS",
     "AnthropicEngine",
     "DeepseekEngine",
-    "GeminiXReasoningEngine",
+    "GoogleEngine",
     "GroqEngine",
     "OpenAIEngine",
     "OpenRouterEngine",
