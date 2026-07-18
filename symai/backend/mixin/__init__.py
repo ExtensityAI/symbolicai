@@ -5,8 +5,6 @@ from symai.backend.mixin.google import SUPPORTED_REASONING_MODELS as GOOGLE_REAS
 from symai.backend.mixin.openai import SUPPORTED_CHAT_MODELS as OPENAI_CHAT_MODELS
 from symai.backend.mixin.openai import SUPPORTED_OPENAI_MODELS as OPENAI_MODELS
 from symai.backend.mixin.openai import SUPPORTED_REASONING_MODELS as OPENAI_REASONING_MODELS
-from symai.backend.mixin.openrouter import SUPPORTED_CHAT_MODELS as OPENROUTER_CHAT_MODELS
-from symai.backend.mixin.openrouter import SUPPORTED_REASONING_MODELS as OPENROUTER_REASONING_MODELS
 
 __all__ = [
     "ANTHROPIC_CHAT_MODELS",
@@ -16,6 +14,4 @@ __all__ = [
     "OPENAI_CHAT_MODELS",
     "OPENAI_MODELS",
     "OPENAI_REASONING_MODELS",
-    "OPENROUTER_CHAT_MODELS",
-    "OPENROUTER_REASONING_MODELS",
 ]
