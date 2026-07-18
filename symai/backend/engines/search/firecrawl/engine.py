@@ -14,7 +14,7 @@ from symai.backend.engines.search.firecrawl.models import (
     FirecrawlSearchRequest,
     FirecrawlSearchResponse,
 )
-from symai.backend.engines.search.utils import Citation, CitationResultMixin, normalize_url
+from symai.backend.engines.search.utils import Citation, CitationResult, normalize_url
 from symai.backend.request import EngineAPIRequest
 from symai.backend.settings import SYMAI_CONFIG
 from symai.backend.transport import DEFAULT_RETRIES, execute_engine_api_request
@@ -26,7 +26,7 @@ silence_noisy_loggers()
 logger = logging.getLogger(__name__)
 
 
-class FirecrawlSearchResult(CitationResultMixin, Result):
+class FirecrawlSearchResult(CitationResult, Result):
     def __init__(
         self, value: dict[str, Any] | Any, max_chars_per_result: int | None = None, **kwargs
     ) -> None:
@@ -44,12 +44,20 @@ class FirecrawlSearchResult(CitationResultMixin, Result):
             raise ValueError(msg) from e
 
     def _build_text_and_citations(self, data: dict[str, Any]) -> tuple[str, list[Citation]]:
-        results = []
-        for source in ["web", "news", "images"]:
-            source_data = data.get(source) or []
-            results.extend(source_data)
+        # NOTE: the v2 wire fixes one content field per source — web items carry
+        # `description` (plus `markdown` when scrape options requested it), news items
+        # `snippet`, and images no content field at all (title + url only).
+        items = [
+            (item, content_field)
+            for source, content_field in (
+                ("web", "description"),
+                ("news", "snippet"),
+                ("images", None),
+            )
+            for item in data.get(source) or []
+        ]
 
-        if not results:
+        if not items:
             return "", []
 
         parts = []
@@ -58,12 +66,8 @@ class FirecrawlSearchResult(CitationResultMixin, Result):
         seen_urls = set()
         cid = 0
 
-        for item in results:
-            # Handle both SearchResultWeb (url/title at top level) and Document (url/title in metadata)
-            metadata = item.get("metadata") or {}
-            raw_url = item.get("url") or metadata.get("url") or metadata.get("source_url") or ""
-            title = item.get("title") or metadata.get("title") or ""
-
+        for item, content_field in items:
+            raw_url = item.get("url")
             if not raw_url:
                 continue
 
@@ -73,21 +77,16 @@ class FirecrawlSearchResult(CitationResultMixin, Result):
             seen_urls.add(url)
             cid += 1
 
-            # Check if this is a scraped result (has markdown content)
-            markdown = item.get("markdown", "")
+            title = item.get("title") or ""
+            markdown = item.get("markdown")
             if markdown:
                 content = markdown
                 if self._max_chars_per_result and len(content) > self._max_chars_per_result:
                     content = content[: self._max_chars_per_result] + "..."
                 result_text = f"{title}\n{url}\n{content}"
             else:
-                description = (
-                    item.get("description")
-                    or item.get("snippet")
-                    or metadata.get("description")
-                    or ""
-                )
                 result_text = f"{title}\n{url}"
+                description = item.get(content_field) if content_field else None
                 if description:
                     if self._max_chars_per_result and len(description) > self._max_chars_per_result:
                         description = description[: self._max_chars_per_result] + "..."
@@ -154,6 +153,8 @@ class FirecrawlEngine(Engine):
         self.model = self.config.get("SEARCH_ENGINE_MODEL")
         self.name = self.__class__.__name__
         self.transport_client = None
+        self._max_chars_per_result = None
+        self._final_url = None
 
         if api_key is None and self.id() != "search":
             return
@@ -177,12 +178,46 @@ class FirecrawlEngine(Engine):
         if "SEARCH_ENGINE_MODEL" in kwargs:
             self.model = kwargs["SEARCH_ENGINE_MODEL"]
 
-    def _search(self, query: str, kwargs: dict[str, Any]):
+    def forward(self, argument):
+        request = self.build_request(argument)
+        response = self.call_request(request)
+        return self.parse_response(response)
+
+    def build_request(self, argument) -> EngineAPIRequest:
+        kwargs = argument.kwargs
+        url = argument.prop.url or kwargs.get("url")
+        if url:
+            operation = "scrape"
+            payload = self._build_scrape_payload(str(url), kwargs)
+        else:
+            operation = "search"
+            payload = self._build_search_payload(argument, kwargs)
+
+        return EngineAPIRequest(
+            provider="firecrawl",
+            operation=operation,
+            payload=payload,
+            method="POST",
+            url=f"{FIRECRAWL_API_BASE}/{operation}",
+            headers={
+                "Authorization": f"Bearer {self.api_key}",
+                "Content-Type": "application/json",
+            },
+            timeout=self.client_timeout,
+        )
+
+    def _build_search_payload(self, argument, kwargs) -> FirecrawlSearchRequest:
+        raw_query = argument.prop.prepared_input
+        if raw_query is None:
+            raw_query = argument.prop.query
+        query = str(raw_query or "").strip() if raw_query else ""
         if not query:
-            msg = "FirecrawlEngine._search requires a non-empty query."
+            msg = "FirecrawlEngine.forward requires at least one non-empty query or url."
             raise ValueError(msg)
 
-        max_chars_per_result = kwargs.get("max_chars_per_result")
+        # NOTE: max_chars_per_result steers result parsing (per-result truncation), not the
+        # wire payload; stash it for parse_response, which only receives the response.
+        self._max_chars_per_result = kwargs.get("max_chars_per_result")
 
         search_kwargs = {}
         for key in ("limit", "location", "tbs", "sources", "categories", "timeout"):
@@ -199,20 +234,13 @@ class FirecrawlEngine(Engine):
         if scrape_opts:
             search_kwargs["scrape_options"] = FirecrawlScrapeOptions.model_validate(scrape_opts)
 
-        payload = FirecrawlSearchRequest.model_validate({"query": query, **search_kwargs})
-        response = self._call_api(payload, "search")
-        result = FirecrawlSearchResponse.model_validate(response.json())
-        if not result.success:
-            msg = f"Failed to call Firecrawl Search API: {result.error or 'unknown error'}"
-            raise ValueError(msg)
+        return FirecrawlSearchRequest.model_validate({"query": query, **search_kwargs})
 
-        data = result.data.model_dump(exclude_none=True) if result.data is not None else {}
-        return [FirecrawlSearchResult(data, max_chars_per_result=max_chars_per_result)], {
-            "raw_output": data
-        }
-
-    def _extract(self, url: str, kwargs: dict[str, Any]):
+    def _build_scrape_payload(self, url: str, kwargs) -> FirecrawlScrapeRequest:
         normalized_url = normalize_url(url)
+        # NOTE: final_url is parse-time metadata (the normalized input url); stash it for
+        # parse_response, which only receives the response.
+        self._final_url = normalized_url
 
         scrape_kwargs: dict[str, Any] = {"formats": kwargs.get("formats", ["markdown"])}
         for key in (
@@ -232,32 +260,38 @@ class FirecrawlEngine(Engine):
             if key in kwargs:
                 scrape_kwargs[key] = kwargs[key]
 
-        payload = FirecrawlScrapeRequest.model_validate({"url": normalized_url, **scrape_kwargs})
-        response = self._call_api(payload, "scrape")
-        result = FirecrawlScrapeResponse.model_validate(response.json())
+        return FirecrawlScrapeRequest.model_validate({"url": normalized_url, **scrape_kwargs})
+
+    def call_request(
+        self, request: EngineAPIRequest
+    ) -> FirecrawlSearchResponse | FirecrawlScrapeResponse:
+        max_retries = (
+            self.client_max_retries if self.client_max_retries is not None else DEFAULT_RETRIES
+        )
+        response = execute_engine_api_request(
+            request,
+            client=self.transport_client,
+            max_retries=max_retries,
+        )
+        model = (
+            FirecrawlScrapeResponse if request.operation == "scrape" else FirecrawlSearchResponse
+        )
+        result = model.model_validate(response.json())
         if not result.success:
-            msg = f"Failed to call Firecrawl Scrape API: {result.error or 'unknown error'}"
+            msg = f"Failed to call Firecrawl {request.operation.capitalize()} API: {result.error or 'unknown error'}"
             raise ValueError(msg)
+        return result
 
-        data = result.data.model_dump(exclude_none=True) if result.data is not None else {}
-        return [FirecrawlExtractResult(data)], {"raw_output": data, "final_url": normalized_url}
-
-    def forward(self, argument):
-        kwargs = argument.kwargs
-        url = argument.prop.url or kwargs.get("url")
-        if url:
-            return self._extract(str(url), kwargs)
-
-        raw_query = argument.prop.prepared_input
-        if raw_query is None:
-            raw_query = argument.prop.query
-
-        query = str(raw_query or "").strip() if raw_query else ""
-        if not query:
-            msg = "FirecrawlEngine.forward requires at least one non-empty query or url."
-            raise ValueError(msg)
-
-        return self._search(query, kwargs)
+    def parse_response(self, response: FirecrawlSearchResponse | FirecrawlScrapeResponse):
+        data = response.data.model_dump(exclude_none=True) if response.data is not None else {}
+        if isinstance(response, FirecrawlScrapeResponse):
+            return [FirecrawlExtractResult(data)], {
+                "raw_output": data,
+                "final_url": self._final_url,
+            }
+        return [FirecrawlSearchResult(data, max_chars_per_result=self._max_chars_per_result)], {
+            "raw_output": data
+        }
 
     def prepare(self, argument):
         url = argument.kwargs.get("url") or argument.prop.url
@@ -271,25 +305,3 @@ class FirecrawlEngine(Engine):
             return
 
         argument.prop.prepared_input = str(query or "").strip()
-
-    def _call_api(self, payload: FirecrawlSearchRequest | FirecrawlScrapeRequest, operation: str):
-        max_retries = (
-            self.client_max_retries if self.client_max_retries is not None else DEFAULT_RETRIES
-        )
-        request = EngineAPIRequest(
-            provider="firecrawl",
-            operation=operation,
-            payload=payload,
-            method="POST",
-            url=f"{FIRECRAWL_API_BASE}/{operation}",
-            headers={
-                "Authorization": f"Bearer {self.api_key}",
-                "Content-Type": "application/json",
-            },
-            timeout=self.client_timeout,
-        )
-        return execute_engine_api_request(
-            request,
-            client=self.transport_client,
-            max_retries=max_retries,
-        )

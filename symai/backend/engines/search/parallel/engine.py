@@ -8,18 +8,24 @@ from urllib.parse import urlsplit
 from symai.backend.base import Engine
 from symai.backend.engines.search.parallel.models import (
     PARALLEL_API_BASE,
-    SEARCH_MODE_ALIASES,
+    PARALLEL_EXTRACT_PATH,
+    PARALLEL_SEARCH_PATH,
+    PARALLEL_TASK_RUNS_PATH,
     ParallelExcerptSettings,
+    ParallelExtractAdvancedSettings,
     ParallelExtractRequest,
     ParallelExtractResponse,
     ParallelFetchPolicy,
     ParallelFullContentSettings,
+    ParallelMCPServer,
+    ParallelSearchAdvancedSettings,
     ParallelSearchRequest,
     ParallelSearchResponse,
     ParallelSourceItem,
     ParallelSourcePolicy,
     ParallelTaskOutput,
     ParallelTaskOutputSchema,
+    ParallelTaskPollOptions,
     ParallelTaskRun,
     ParallelTaskRunCreateRequest,
     ParallelTaskRunResult,
@@ -27,7 +33,7 @@ from symai.backend.engines.search.parallel.models import (
 )
 from symai.backend.engines.search.utils import (
     Citation,
-    CitationResultMixin,
+    CitationResult,
     normalize_domains,
     normalize_url,
 )
@@ -65,13 +71,13 @@ _RE_UNSAFE_ID_CHARS = re.compile(r"[^A-Za-z0-9._:-]+")
 _RE_SLUG = re.compile(r"[^a-z0-9]+")
 
 
-class ParallelSearchResult(CitationResultMixin, Result):
+class ParallelSearchResult(CitationResult, Result):
     def __init__(self, value, **kwargs) -> None:
         super().__init__(value, **kwargs)
         self._citations = []
         # value is either:
         #   - ParallelSearchResponse (from search) with .results: list[ParallelSearchResultItem]
-        #   - list[ParallelSourceItem] (from _task path)
+        #   - list[ParallelSourceItem] (from the task route)
         items = value.results if hasattr(value, "results") else value
         text, citations = self._build_text_and_citations(items)
         self._value = text
@@ -173,7 +179,7 @@ class ParallelExtractResult(Result):
 class ParallelEngine(Engine):
     MAX_INCLUDE_DOMAINS = 10
     MAX_EXCLUDE_DOMAINS = 10
-    # Overall seconds a task route waits for completion before giving up.
+    # Overall seconds the task route waits for completion before giving up.
     DEFAULT_TASK_TIMEOUT = 600
     # Per-request long-poll seconds sent as the `timeout` query param on GET result.
     DEFAULT_TASK_POLL_TIMEOUT = 600
@@ -203,40 +209,242 @@ class ParallelEngine(Engine):
         if "SEARCH_ENGINE_MODEL" in kwargs:
             self.model = kwargs["SEARCH_ENGINE_MODEL"]
 
-    def _headers(self) -> dict[str, str]:
-        return {
-            "x-api-key": self.api_key,
-            "Content-Type": "application/json",
+    def forward(self, argument):
+        request = self.build_request(argument)
+        response = self.call_request(request)
+        return self.parse_response(response)
+
+    def build_request(self, argument) -> EngineAPIRequest:
+        kwargs = argument.kwargs
+        url = argument.prop.url or kwargs.get("url")
+        if url is not None:
+            return self._build_extract_request(url, kwargs)
+
+        raw_query = argument.prop.prepared_input
+        if raw_query is None:
+            raw_query = argument.prop.query
+        search_queries = self._normalize_queries(raw_query)
+        if not any(q.strip() for q in search_queries):
+            msg = "ParallelEngine requires at least one non-empty query or a url."
+            raise ValueError(msg)
+
+        if kwargs.get("processor") is not None:
+            return self._build_task_create_request(search_queries, kwargs)
+        return self._build_search_request(search_queries, kwargs)
+
+    def call_request(self, request: EngineAPIRequest):
+        response = execute_engine_api_request(
+            request,
+            client=self.transport_client,
+            max_retries=self._max_retries(),
+        )
+        if request.operation == "search":
+            return ParallelSearchResponse.model_validate(response.json())
+        if request.operation == "extract":
+            return ParallelExtractResponse.model_validate(response.json())
+        # operation == "task_create": creation answers 202 Accepted; the transport only
+        # raises on is_error (4xx/5xx), so 202 passes through as success.
+        run = ParallelTaskRun.model_validate(response.json())
+        return self._poll_task_result(run.run_id, request.call_options)
+
+    def parse_response(self, response):
+        if isinstance(response, ParallelSearchResponse):
+            return [ParallelSearchResult(response)], {"raw_output": response}
+        if isinstance(response, ParallelExtractResponse):
+            final_url = response.results[0].url if response.results else None
+            return [ParallelExtractResult(response)], {
+                "raw_output": response,
+                "final_url": final_url,
+            }
+        # ParallelTaskRunResult from the task route.
+        output = response.output
+        items, prefix = self._task_output_to_items(output)
+        wrapped = ParallelSearchResult(items)
+        if prefix:
+            offset = len(prefix) + (2 if wrapped._value else 0)
+            for c in wrapped._citations:
+                c.start += offset
+                c.end += offset
+            wrapped._value = prefix + ("\n\n" + wrapped._value if wrapped._value else "")
+        wrapped.raw = response
+        return [wrapped], {
+            "raw_output": response,
+            "task_output": output.content if output else None,
+            "task_output_type": output.type if output else None,
         }
 
-    def _max_retries(self) -> int:
-        return self.client_max_retries if self.client_max_retries is not None else DEFAULT_RETRIES
+    def prepare(self, argument):
+        # For scraping: store the URL directly. For search: normalize to a list[str] of queries.
+        url = argument.kwargs.get("url") or argument.prop.url
+        if url is not None:
+            if not isinstance(url, str):
+                msg = f"url must be a str, got {type(url).__name__}."
+                raise TypeError(msg)
+            argument.prop.prepared_input = url
+            return
+        argument.prop.prepared_input = self._normalize_queries(argument.prop.query)
+
+    # --- request builders ---
+
+    def _build_search_request(self, queries: list[str], kwargs: dict) -> EngineAPIRequest:
+        payload = ParallelSearchRequest(
+            mode=kwargs.get("mode", "advanced"),
+            objective=kwargs.get("objective"),
+            search_queries=queries,
+            max_chars_total=kwargs.get("max_chars_total"),
+            advanced_settings=self._build_search_advanced_settings(kwargs),
+        )
+        return EngineAPIRequest(
+            provider="parallel",
+            operation="search",
+            payload=payload,
+            method="POST",
+            url=f"{PARALLEL_API_BASE}{PARALLEL_SEARCH_PATH}",
+            headers=self._headers(),
+            timeout=self.client_timeout,
+        )
+
+    def _build_extract_request(self, url, kwargs: dict) -> EngineAPIRequest:
+        if not isinstance(url, str):
+            msg = f"url must be a str, got {type(url).__name__}."
+            raise TypeError(msg)
+        payload = ParallelExtractRequest(
+            urls=[url],
+            objective=kwargs.get("objective"),
+            search_queries=(
+                self._normalize_queries(kwargs["search_queries"])
+                if kwargs.get("search_queries") is not None
+                else None
+            ),
+            max_chars_total=kwargs.get("max_chars_total"),
+            advanced_settings=self._build_extract_advanced_settings(kwargs),
+        )
+        return EngineAPIRequest(
+            provider="parallel",
+            operation="extract",
+            payload=payload,
+            method="POST",
+            url=f"{PARALLEL_API_BASE}{PARALLEL_EXTRACT_PATH}",
+            headers=self._headers(),
+            timeout=self.client_timeout,
+        )
+
+    def _build_task_create_request(self, queries: list[str], kwargs: dict) -> EngineAPIRequest:
+        processor = kwargs.get("processor")
+        if not isinstance(processor, str) or not processor.strip():
+            msg = "ParallelEngine task route requires a non-empty 'processor' string."
+            raise ValueError(msg)
+
+        task_input = (
+            queries[0]
+            if len(queries) == 1
+            else "\n\n".join(f"{i}. {q}" for i, q in enumerate(queries, start=1))
+        )
+
+        metadata = kwargs.get("metadata")
+        if metadata is not None and not isinstance(metadata, dict):
+            msg = f"metadata must be a dict of str, got {type(metadata).__name__}."
+            raise TypeError(msg)
+
+        mcp_servers = kwargs.get("mcp_servers")
+        if mcp_servers is not None:
+            mcp_servers = [
+                server
+                if isinstance(server, ParallelMCPServer)
+                else ParallelMCPServer.model_validate(server)
+                for server in mcp_servers
+            ]
+
+        payload = ParallelTaskRunCreateRequest(
+            processor=processor.strip(),
+            input=task_input,
+            task_spec=self._build_task_spec(kwargs),
+            metadata=metadata,
+            source_policy=self._build_source_policy(kwargs),
+            previous_interaction_id=kwargs.get("previous_interaction_id"),
+            mcp_servers=mcp_servers,
+        )
+        return EngineAPIRequest(
+            provider="parallel",
+            operation="task_create",
+            payload=payload,
+            call_options=self._build_task_poll_options(kwargs),
+            method="POST",
+            url=f"{PARALLEL_API_BASE}{PARALLEL_TASK_RUNS_PATH}",
+            headers=self._headers(),
+            timeout=self.client_timeout,
+        )
+
+    # --- payload section builders ---
 
     @staticmethod
-    def _map_search_mode(mode) -> str:
-        # NOTE: default keeps the legacy behavior (old kwarg default "advanced" -> "agentic").
-        if not mode:
-            return "agentic"
-        normalized = str(mode).strip().lower()
-        return SEARCH_MODE_ALIASES.get(normalized, normalized)
-
-    def _coerce_search_queries(self, value) -> list[str]:  # called from forward + prepare
-        if value is None:
-            return []
+    def _normalize_queries(value) -> list[str]:
+        # Trust boundary: a query is a str or a list[str]; anything else is a caller bug.
         if isinstance(value, str):
-            text = value.strip()
-            return [text] if text else []
-        if isinstance(value, list):
-            cleaned = []
-            for item in value:
-                if item is None:
-                    continue
-                text = str(item).strip()
-                if text:
-                    cleaned.append(text)
-            return cleaned
-        text = str(value).strip()
-        return [text] if text else []
+            return [value]
+        if isinstance(value, list) and all(isinstance(q, str) for q in value):
+            return value
+        msg = f"query must be a str or list[str], got {type(value).__name__}."
+        raise TypeError(msg)
+
+    def _build_search_advanced_settings(
+        self, kwargs: dict
+    ) -> ParallelSearchAdvancedSettings | None:
+        source_policy = self._build_source_policy(kwargs)
+        fetch_policy = self._build_fetch_policy(kwargs.get("fetch_policy"))
+        excerpt_settings = None
+        if kwargs.get("max_chars_per_result") is not None:
+            excerpt_settings = ParallelExcerptSettings(
+                max_chars_per_result=kwargs["max_chars_per_result"]
+            )
+        location = kwargs.get("location")
+        max_results = kwargs.get("max_results")
+        if (
+            source_policy is None
+            and fetch_policy is None
+            and excerpt_settings is None
+            and location is None
+            and max_results is None
+        ):
+            return None
+        return ParallelSearchAdvancedSettings(
+            source_policy=source_policy,
+            fetch_policy=fetch_policy,
+            excerpt_settings=excerpt_settings,
+            location=location,
+            max_results=max_results,
+        )
+
+    def _build_extract_advanced_settings(
+        self, kwargs: dict
+    ) -> ParallelExtractAdvancedSettings | None:
+        fetch_policy = self._build_fetch_policy(kwargs.get("fetch_policy"))
+        excerpt_settings = None
+        if kwargs.get("max_chars_per_result") is not None:
+            excerpt_settings = ParallelExcerptSettings(
+                max_chars_per_result=kwargs["max_chars_per_result"]
+            )
+        full_content = kwargs.get("full_content", False)
+        if (
+            fetch_policy is None
+            and excerpt_settings is None
+            and (full_content is False or full_content is None)
+        ):
+            return None
+        return ParallelExtractAdvancedSettings(
+            fetch_policy=fetch_policy,
+            excerpt_settings=excerpt_settings,
+            full_content=self._build_full_content(full_content),
+        )
+
+    @staticmethod
+    def _build_full_content(value) -> bool | ParallelFullContentSettings:
+        if isinstance(value, bool):
+            return value
+        if isinstance(value, dict):
+            return ParallelFullContentSettings.model_validate(value)
+        msg = f"full_content must be a bool or a dict of wire fields, got {type(value).__name__}."
+        raise TypeError(msg)
 
     def _build_source_policy(self, kwargs: dict) -> ParallelSourcePolicy | None:
         include = normalize_domains(kwargs.get("allowed_domains"), self.MAX_INCLUDE_DOMAINS)
@@ -251,7 +459,7 @@ class ParallelEngine(Engine):
         )
 
     @staticmethod
-    def _coerce_fetch_policy(value) -> ParallelFetchPolicy | None:
+    def _build_fetch_policy(value) -> ParallelFetchPolicy | None:
         if value is None:
             return None
         if isinstance(value, ParallelFetchPolicy):
@@ -259,16 +467,11 @@ class ParallelEngine(Engine):
         if isinstance(value, dict):
             return ParallelFetchPolicy.model_validate(value)
         msg = f"fetch_policy must be a dict of wire fields, got {type(value).__name__}."
-        raise ValueError(msg)
+        raise TypeError(msg)
 
     @staticmethod
     def _build_task_spec(kwargs: dict) -> ParallelTaskSpec | None:
-        output_schema = (
-            kwargs.get("task_output_schema")
-            or kwargs.get("task_output")
-            or kwargs.get("output_schema")
-            or kwargs.get("output")
-        )
+        output_schema = kwargs.get("output_schema")
         if output_schema is None:
             return None
         if isinstance(output_schema, dict):
@@ -282,130 +485,43 @@ class ParallelEngine(Engine):
                 output_schema=ParallelTaskOutputSchema(type="text", description=output_schema)
             )
         msg = (
-            "Invalid task output schema: expected a dict (JSON schema) or a str "
+            "Invalid output_schema: expected a dict (JSON schema) or a str "
             f"(text description), got {type(output_schema).__name__}."
         )
-        raise ValueError(msg)
+        raise TypeError(msg)
 
-    def _search(self, queries: list[str], kwargs: dict):
-        if not queries:
-            msg = "ParallelEngine._search requires at least one query."
-            raise ValueError(msg)
-
-        payload = ParallelSearchRequest(
-            mode=self._map_search_mode(kwargs.get("mode")),
-            objective=kwargs.get("objective"),
-            search_queries=queries,
-            max_results=kwargs.get("max_results", 10),
-            excerpts=ParallelExcerptSettings(
-                max_chars_per_result=kwargs.get("max_chars_per_result", 15000),
-                max_chars_total=kwargs.get("max_chars_total"),
-            ),
-            location=kwargs.get("location"),
-            source_policy=self._build_source_policy(kwargs),
-            fetch_policy=self._coerce_fetch_policy(kwargs.get("fetch_policy")),
-            session_id=kwargs.get("session_id"),
-            client_model=kwargs.get("client_model"),
-        )
-        request = EngineAPIRequest(
-            provider="parallel",
-            operation="search.create",
-            payload=payload,
-            method="POST",
-            url=f"{PARALLEL_API_BASE}/v1beta/search",
-            headers=self._headers(),
-            timeout=self.client_timeout,
-        )
-        response = execute_engine_api_request(
-            request,
-            client=self.transport_client,
-            max_retries=self._max_retries(),
-        )
-        result = ParallelSearchResponse.model_validate(response.json())
-        return [ParallelSearchResult(result)], {"raw_output": result}
-
-    def _task(self, queries: list[str], kwargs: dict):
-        processor = kwargs.get("processor")
-        if not processor or not str(processor).strip():
-            msg = "ParallelEngine.task requires a non-empty processor."
-            raise ValueError(msg)
-
-        task_input = (
-            queries[0]
-            if len(queries) == 1
-            else "\n\n".join(f"{i}. {q}" for i, q in enumerate(queries, start=1))
+    @staticmethod
+    def _build_task_poll_options(kwargs: dict) -> ParallelTaskPollOptions:
+        task_timeout = kwargs.get("task_timeout")
+        if task_timeout is not None and (
+            isinstance(task_timeout, bool) or not isinstance(task_timeout, (int, float))
+        ):
+            msg = f"task_timeout must be a number of seconds, got {type(task_timeout).__name__}."
+            raise TypeError(msg)
+        task_api_timeout = kwargs.get("task_api_timeout")
+        if task_api_timeout is not None and (
+            isinstance(task_api_timeout, bool) or not isinstance(task_api_timeout, int)
+        ):
+            msg = f"task_api_timeout must be whole seconds, got {type(task_api_timeout).__name__}."
+            raise TypeError(msg)
+        return ParallelTaskPollOptions(
+            task_timeout=task_timeout,
+            task_api_timeout=task_api_timeout,
         )
 
-        metadata = kwargs.get("metadata")
-        mcp_servers = kwargs.get("mcp_servers")
-        if mcp_servers:
-            mcp_servers = [
-                {"type": "url", **server} if isinstance(server, dict) else server
-                for server in mcp_servers
-            ]
+    # --- task result polling ---
 
-        payload = ParallelTaskRunCreateRequest(
-            processor=str(processor).strip(),
-            input=task_input,
-            task_spec=self._build_task_spec(kwargs),
-            metadata=metadata if isinstance(metadata, dict) else None,
-            source_policy=self._build_source_policy(kwargs),
-            previous_interaction_id=kwargs.get("previous_interaction_id"),
-            mcp_servers=mcp_servers or None,
+    def _poll_task_result(
+        self, run_id: str, options: ParallelTaskPollOptions | None
+    ) -> ParallelTaskRunResult:
+        deadline_seconds = float(
+            options.task_timeout if options and options.task_timeout else self.DEFAULT_TASK_TIMEOUT
         )
-        request = EngineAPIRequest(
-            provider="parallel",
-            operation="task_run.create",
-            payload=payload,
-            method="POST",
-            url=f"{PARALLEL_API_BASE}/v1/tasks/runs",
-            headers=self._headers(),
-            timeout=self.client_timeout,
+        poll_timeout = int(
+            options.task_api_timeout
+            if options and options.task_api_timeout
+            else self.DEFAULT_TASK_POLL_TIMEOUT
         )
-        # NOTE: task run creation answers 202 Accepted; the transport only raises on
-        # is_error (4xx/5xx), so 202 passes through as success.
-        response = execute_engine_api_request(
-            request,
-            client=self.transport_client,
-            max_retries=self._max_retries(),
-        )
-        run = ParallelTaskRun.model_validate(response.json())
-
-        task_result = self._poll_task_result(run.run_id, kwargs)
-        output = task_result.output
-        items, prefix = self._task_output_to_items(output)
-        wrapped = ParallelSearchResult(items)
-        if prefix:
-            offset = len(prefix) + (2 if wrapped._value else 0)
-            for c in wrapped._citations:
-                c.start += offset
-                c.end += offset
-            wrapped._value = prefix + ("\n\n" + wrapped._value if wrapped._value else "")
-        wrapped.raw = task_result
-        return [wrapped], {
-            "raw_output": task_result,
-            "task_output": output.content if output else None,
-            "task_output_type": output.type if output else None,
-        }
-
-    def _poll_task_result(self, run_id: str, kwargs: dict) -> ParallelTaskRunResult:
-        try:
-            deadline_seconds = float(
-                kwargs.get("task_timeout") or kwargs.get("timeout") or self.DEFAULT_TASK_TIMEOUT
-            )
-        except (TypeError, ValueError) as exc:
-            msg = f"task_timeout must be numeric: {exc}"
-            raise ValueError(msg) from exc
-
-        api_timeout = kwargs.get("task_api_timeout") or kwargs.get("api_timeout")
-        if api_timeout is not None:
-            try:
-                poll_timeout = int(api_timeout)
-            except (TypeError, ValueError) as exc:
-                msg = f"api_timeout must be numeric: {exc}"
-                raise ValueError(msg) from exc
-        else:
-            poll_timeout = self.DEFAULT_TASK_POLL_TIMEOUT
 
         deadline = time.monotonic() + deadline_seconds
         while True:
@@ -424,7 +540,7 @@ class ParallelEngine(Engine):
                 else self.transport_client
             )
             response = client.get(
-                f"{PARALLEL_API_BASE}/v1/tasks/runs/{run_id}/result",
+                f"{PARALLEL_API_BASE}{PARALLEL_TASK_RUNS_PATH}/{run_id}/result",
                 headers=self._headers(),
                 params={"timeout": wire_timeout},
                 timeout=wire_timeout + self.POLL_TIMEOUT_BUFFER,
@@ -509,81 +625,13 @@ class ParallelEngine(Engine):
 
         return items, "\n\n".join(prefix_parts)
 
-    def _extract(self, url: str, kwargs: dict):
-        max_chars_per_result = kwargs.get("max_chars_per_result")
-        max_chars_total = kwargs.get("max_chars_total")
-        if max_chars_per_result or max_chars_total:
-            excerpts: bool | ParallelExcerptSettings | None = ParallelExcerptSettings(
-                max_chars_per_result=max_chars_per_result,
-                max_chars_total=max_chars_total,
-            )
-        else:
-            excerpts = None  # wire default: excerpts enabled
+    # --- transport helpers ---
 
-        full_content = kwargs.get("full_content", False)
-        if isinstance(full_content, dict):
-            full_content_value: bool | ParallelFullContentSettings | None = (
-                ParallelFullContentSettings.model_validate(full_content)
-            )
-        elif full_content:
-            full_content_value = True
-        else:
-            full_content_value = None  # wire default: full_content disabled
+    def _headers(self) -> dict[str, str]:
+        return {
+            "x-api-key": self.api_key,
+            "Content-Type": "application/json",
+        }
 
-        payload = ParallelExtractRequest(
-            urls=[url],
-            objective=kwargs.get("objective"),
-            search_queries=self._coerce_search_queries(kwargs.get("search_queries")) or None,
-            fetch_policy=self._coerce_fetch_policy(kwargs.get("fetch_policy")),
-            excerpts=excerpts,
-            full_content=full_content_value,
-            session_id=kwargs.get("session_id"),
-            client_model=kwargs.get("client_model"),
-        )
-        request = EngineAPIRequest(
-            provider="parallel",
-            operation="extract.create",
-            payload=payload,
-            method="POST",
-            url=f"{PARALLEL_API_BASE}/v1beta/extract",
-            headers=self._headers(),
-            timeout=self.client_timeout,
-        )
-        response = execute_engine_api_request(
-            request,
-            client=self.transport_client,
-            max_retries=self._max_retries(),
-        )
-        result = ParallelExtractResponse.model_validate(response.json())
-        return [ParallelExtractResult(result)], {"raw_output": result, "final_url": url}
-
-    def forward(self, argument):
-        kwargs = argument.kwargs
-        # Route based on presence of URL vs Query
-        url = argument.prop.url or kwargs.get("url")
-        if url:
-            return self._extract(str(url), kwargs)
-
-        raw_query = argument.prop.prepared_input
-        if raw_query is None:
-            raw_query = argument.prop.query
-        search_queries = self._coerce_search_queries(raw_query)
-        if not search_queries:
-            msg = "ParallelEngine.forward requires at least one non-empty query or url."
-            raise ValueError(msg)
-        processor = kwargs.get("processor")
-        if processor is not None:
-            return self._task(search_queries, kwargs)
-        return self._search(search_queries, kwargs)
-
-    def prepare(self, argument):
-        # For scraping: store URL directly. For search: pass through query string.
-        url = argument.kwargs.get("url") or argument.prop.url
-        if url:
-            argument.prop.prepared_input = str(url)
-            return
-        query = argument.prop.query
-        if isinstance(query, list):
-            argument.prop.prepared_input = self._coerce_search_queries(query)
-            return
-        argument.prop.prepared_input = str(query or "").strip()
+    def _max_retries(self) -> int:
+        return self.client_max_retries if self.client_max_retries is not None else DEFAULT_RETRIES

@@ -7,15 +7,20 @@ from google import genai
 from google.genai.types import Content, EmbedContentConfig, Part
 
 from symai.backend.base import Engine
-from symai.backend.mixin.google import GoogleMixin
 from symai.backend.settings import SYMAI_CONFIG
 
 logging.getLogger("google.generativeai").setLevel(logging.ERROR)
 
 logger = logging.getLogger(__name__)
 
+# model -> (context tokens, embedding dimensions)
+GEMINI_EMBEDDING_MODEL_SPECS = {
+    "gemini-embedding-001": (2048, 3072),
+    "gemini-embedding-2": (8192, 3072),
+}
 
-class GeminiEmbeddingEngine(Engine, GoogleMixin):
+
+class GeminiEmbeddingEngine(Engine):
     def __init__(self, api_key: str | None = None, model: str | None = None):
         super().__init__()
         self.config = deepcopy(SYMAI_CONFIG)
@@ -39,6 +44,12 @@ class GeminiEmbeddingEngine(Engine, GoogleMixin):
         if self.api_key and self.model and self.model.startswith("gemini"):
             return "embedding"
         return super().id()
+
+    def api_max_context_tokens(self) -> int:
+        return GEMINI_EMBEDDING_MODEL_SPECS[self.model][0]
+
+    def api_embedding_dims(self) -> int:
+        return GEMINI_EMBEDDING_MODEL_SPECS[self.model][1]
 
     def command(self, *args, **kwargs):
         super().command(*args, **kwargs)

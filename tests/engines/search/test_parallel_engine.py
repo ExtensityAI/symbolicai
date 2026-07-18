@@ -12,7 +12,9 @@ MODEL_PARALLEL = str(SYMAI_CONFIG.get("SEARCH_ENGINE_MODEL", "")).lower() == "pa
 
 pytestmark = [
     pytest.mark.searchengine,
-    pytest.mark.skipif(not API_KEY, reason="PARALLEL/SEARCH_ENGINE_API_KEY not set; live test skipped"),
+    pytest.mark.skipif(
+        not API_KEY, reason="PARALLEL/SEARCH_ENGINE_API_KEY not set; live test skipped"
+    ),
     pytest.mark.skipif(not MODEL_PARALLEL, reason="SEARCH_ENGINE_MODEL is not 'parallel'."),
 ]
 
@@ -54,11 +56,15 @@ def assert_bulletproof_citations(res):
         seen_ids.add(c.id)
 
         assert 0 <= c.start <= c.end <= len(res.value)
-        assert c.start > prev_end, f"Citation {c.id} overlaps with previous (start={c.start}, prev_end={prev_end})"
+        assert c.start > prev_end, (
+            f"Citation {c.id} overlaps with previous (start={c.start}, prev_end={prev_end})"
+        )
         prev_end = c.end
 
         slice_text = res.value[c.start : c.end]
-        assert slice_text == f"[{c.id}]", f"Marker mismatch: expected '[{c.id}]', got '{slice_text}'"
+        assert slice_text == f"[{c.id}]", (
+            f"Marker mismatch: expected '[{c.id}]', got '{slice_text}'"
+        )
 
         parsed = urlparse(c.url)
         assert parsed.scheme, f"Citation {c.id} URL missing scheme: {c.url}"
@@ -98,8 +104,14 @@ def test_parallel_search_domain_filtering():
     # Parallel API includes apex; cite hosts may include www.
     assert any(
         n in citation_netlocs
-        for n in ("www.tomshardware.com", "tomshardware.com", "www.arstechnica.com", "arstechnica.com")
+        for n in (
+            "www.tomshardware.com",
+            "tomshardware.com",
+            "www.arstechnica.com",
+            "arstechnica.com",
+        )
     ), "No citations from allowed domains found"
+
 
 def test_parallel_search_location_geo_targeting():
     search = _iface()
@@ -112,13 +124,9 @@ def test_parallel_search_location_geo_targeting():
     citations = res.get_citations()
     if len(citations) > 0:
         citation_domains = {urlparse(c.url).netloc.lower() for c in citations}
-        has_ro_domain = any(
-            domain.endswith(".ro")
-            for domain in citation_domains
-        )
+        has_ro_domain = any(domain.endswith(".ro") for domain in citation_domains)
         assert has_ro_domain, (
-            f"Expected at least one .ro domain with location='ro', "
-            f"got: {citation_domains}"
+            f"Expected at least one .ro domain with location='ro', got: {citation_domains}"
         )
 
 

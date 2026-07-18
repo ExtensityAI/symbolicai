@@ -405,7 +405,7 @@ class MetadataTracker(Expression):
                     token_details[(engine_name, model_name)]["completion_breakdown"][
                         "reasoning_tokens"
                     ] += 0
-                elif engine_name == "GPTXSearchEngine":
+                elif engine_name == "OpenAISearchEngine":
                     usage = metadata["raw_output"].usage
                     token_details[(engine_name, model_name)]["usage"]["prompt_tokens"] += (
                         usage.input_tokens

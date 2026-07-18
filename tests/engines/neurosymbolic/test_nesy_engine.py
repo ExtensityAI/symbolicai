@@ -7,7 +7,7 @@ from openai.types.responses import Response
 from symai import EngineRepository, Expression, Symbol
 from symai.backend.engines.neurosymbolic.anthropic.models import AnthropicResponse
 from symai.backend.engines.neurosymbolic.google.models import GoogleResponse
-from symai.backend.mixin.openai import SUPPORTED_REASONING_MODELS
+from symai.backend.engines.neurosymbolic.openai.models import SUPPORTED_REASONING_MODELS
 from symai.backend.settings import SYMAI_CONFIG
 from symai.components import Function
 

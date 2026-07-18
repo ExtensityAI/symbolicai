@@ -3,9 +3,10 @@
 Engines that ground answers in web sources (OpenAI, Gemini) produce a marker
 annotated answer string plus an ordered list of citations. The citation building
 pipeline and the URL normalization it depends on are identical across those
-engines, so they live here. Engines that return scraped results (Firecrawl,
-Parallel) only share the ``Citation`` dataclass, ``normalize_url`` and the
-``CitationResultMixin`` repr surface.
+engines, so they live here. Perplexity grounds answers with inline markers
+already present in the wire text, so it (like the scraped-result engines
+Firecrawl and Parallel) only shares the ``Citation`` dataclass, ``normalize_url``
+and the ``CitationResult`` repr surface.
 """
 
 import json
@@ -207,7 +208,7 @@ def insert_citation_markers(
     return replaced, citations
 
 
-class CitationResultMixin:
+class CitationResult:
     """Result mixin for a citation-bearing string value.
 
     The subclass is expected to set ``self._value`` (the marker-annotated text, or

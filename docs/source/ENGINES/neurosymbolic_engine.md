@@ -342,7 +342,7 @@ print(Symbol(string).tokens)
 For more detailed tracking of API calls, token usage, and estimating costs, you can use the `MetadataTracker` in conjunction with `RuntimeInfo`. This is particularly useful for monitoring multiple calls within a specific code block.
 > ❗️**NOTE**❗️`MetadataTracker` collects raw per-call metadata for any `Engine`, but **token usage extraction** (i.e. `tracker.usage` → `RuntimeInfo`) is currently implemented for:
 >
-> - **OpenAI**: `GPTXChatEngine`, `GPTXReasoningEngine`, `OpenAIResponsesEngine`, `GPTXSearchEngine` (eg. `gpt-5-chat-latest`)
+> - **OpenAI**: `GPTXChatEngine`, `GPTXReasoningEngine`, `OpenAIResponsesEngine`, `OpenAISearchEngine` (eg. `gpt-5-chat-latest`)
 > - **Claude (Anthropic)**: `ClaudeXChatEngine`, `ClaudeXReasoningEngine` (eg. `claude-sonnet-4-5`)
 > - **Gemini (Google)**: `GeminiXReasoningEngine` (e.g. `gemini-2.5-pro`, `gemini-2.5-flash`, `gemini-3.1-flash-lite-preview`)
 >
@@ -383,7 +383,7 @@ dummy_pricing = {
         "cached_input": 0.000001,
         "output": 0.000002
     },
-    ("GPTXSearchEngine", "gpt-4.1-mini"): {
+    ("OpenAISearchEngine", "gpt-4.1-mini"): {
         "input": 0.000002,
         "cached_input": 0.000001,
         "output": 0.000002,

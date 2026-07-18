@@ -76,7 +76,6 @@ class FirecrawlSearchResultItem(EngineResponsePayload):
     description: str | None = None
     snippet: str | None = None
     markdown: str | None = None
-    metadata: dict[str, JsonValue] | None = None
 
 
 class FirecrawlSearchData(EngineResponsePayload):

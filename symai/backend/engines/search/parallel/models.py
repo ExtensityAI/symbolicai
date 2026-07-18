@@ -1,4 +1,4 @@
-"""Parallel Search / Extract / Task API wire models.
+"""Parallel Search / Extract / Task API wire models (GA v1 endpoints).
 
 Locked against the official Parallel OpenAPI specs:
 https://docs.parallel.ai/api-reference/search-api/search
@@ -18,14 +18,9 @@ from symai.backend.request import EngineAPIRequest, EngineRequestPayload, Engine
 API_PINNED = "2026-07-18"
 
 PARALLEL_API_BASE = "https://api.parallel.ai"
-
-# NOTE: the retired parallel-web SDK accepted basic/advanced/turbo and mapped them onto
-# the wire enum one-shot/agentic/fast; the aliases stay so existing configs keep working.
-SEARCH_MODE_ALIASES = {
-    "basic": "one-shot",
-    "advanced": "agentic",
-    "turbo": "fast",
-}
+PARALLEL_SEARCH_PATH = "/v1/search"
+PARALLEL_EXTRACT_PATH = "/v1/extract"
+PARALLEL_TASK_RUNS_PATH = "/v1/tasks/runs"
 
 
 class ParallelSourcePolicy(EngineRequestPayload):
@@ -36,7 +31,6 @@ class ParallelSourcePolicy(EngineRequestPayload):
 
 class ParallelExcerptSettings(EngineRequestPayload):
     max_chars_per_result: int | None = Field(default=None, gt=0)
-    max_chars_total: int | None = Field(default=None, gt=0)
 
 
 class ParallelFetchPolicy(EngineRequestPayload):
@@ -45,32 +39,38 @@ class ParallelFetchPolicy(EngineRequestPayload):
     disable_cache_fallback: bool | None = None
 
 
-class ParallelSearchRequest(EngineRequestPayload):
-    objective: str | None = None
-    search_queries: list[str] | None = None
-    mode: Literal["one-shot", "agentic", "fast"] | None = None
-    max_results: int | None = Field(default=None, gt=0)
-    excerpts: ParallelExcerptSettings | None = None
-    location: str | None = None
+class ParallelSearchAdvancedSettings(EngineRequestPayload):
     source_policy: ParallelSourcePolicy | None = None
     fetch_policy: ParallelFetchPolicy | None = None
-    session_id: str | None = None
-    client_model: str | None = None
+    excerpt_settings: ParallelExcerptSettings | None = None
+    location: str | None = None
+    max_results: int | None = Field(default=None, gt=0)
+
+
+class ParallelSearchRequest(EngineRequestPayload):
+    mode: Literal["turbo", "basic", "advanced"] = "advanced"
+    objective: str | None = None
+    search_queries: list[str] = Field(min_length=1)
+    max_chars_total: int | None = Field(default=None, gt=0)
+    advanced_settings: ParallelSearchAdvancedSettings | None = None
 
 
 class ParallelFullContentSettings(EngineRequestPayload):
     max_chars_per_result: int | None = Field(default=None, gt=0)
 
 
+class ParallelExtractAdvancedSettings(EngineRequestPayload):
+    fetch_policy: ParallelFetchPolicy | None = None
+    excerpt_settings: ParallelExcerptSettings | None = None
+    full_content: bool | ParallelFullContentSettings = False
+
+
 class ParallelExtractRequest(EngineRequestPayload):
     urls: list[str] = Field(min_length=1)
     objective: str | None = None
     search_queries: list[str] | None = None
-    fetch_policy: ParallelFetchPolicy | None = None
-    excerpts: bool | ParallelExcerptSettings | None = None
-    full_content: bool | ParallelFullContentSettings | None = None
-    session_id: str | None = None
-    client_model: str | None = None
+    max_chars_total: int | None = Field(default=None, gt=0)
+    advanced_settings: ParallelExtractAdvancedSettings | None = None
 
 
 class ParallelTaskOutputSchema(EngineRequestPayload):
@@ -102,6 +102,14 @@ class ParallelTaskRunCreateRequest(EngineRequestPayload):
     mcp_servers: list[ParallelMCPServer] | None = None
 
 
+class ParallelTaskPollOptions(EngineRequestPayload):
+    """Client-side task polling options carried on EngineAPIRequest.call_options.
+    Never serialized to the wire (transport only sends EngineAPIRequest.body())."""
+
+    task_timeout: float | None = None
+    task_api_timeout: int | None = None
+
+
 class ParallelSearchResultItem(EngineResponsePayload):
     url: str
     title: str | None = None
@@ -111,6 +119,7 @@ class ParallelSearchResultItem(EngineResponsePayload):
 
 class ParallelSearchResponse(EngineResponsePayload):
     search_id: str | None = None
+    session_id: str
     results: list[ParallelSearchResultItem] = Field(default_factory=list)
     warnings: list[JsonValue] | None = None
     usage: JsonValue = None
@@ -133,8 +142,9 @@ class ParallelExtractError(EngineResponsePayload):
 
 class ParallelExtractResponse(EngineResponsePayload):
     extract_id: str | None = None
+    session_id: str
     results: list[ParallelExtractResultItem] = Field(default_factory=list)
-    errors: list[ParallelExtractError] | None = None
+    errors: list[ParallelExtractError]
     warnings: list[JsonValue] | None = None
 
 
@@ -186,5 +196,5 @@ class ParallelSourceItem(EngineResponsePayload):
 ParallelSearchAPIRequest = EngineAPIRequest[ParallelSearchRequest, EngineRequestPayload]
 ParallelExtractAPIRequest = EngineAPIRequest[ParallelExtractRequest, EngineRequestPayload]
 ParallelTaskRunCreateAPIRequest = EngineAPIRequest[
-    ParallelTaskRunCreateRequest, EngineRequestPayload
+    ParallelTaskRunCreateRequest, ParallelTaskPollOptions
 ]

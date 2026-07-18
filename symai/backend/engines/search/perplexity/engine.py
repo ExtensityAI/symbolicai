@@ -1,5 +1,7 @@
-import json
 import logging
+import re
+from copy import deepcopy
+from urllib.parse import urlsplit
 
 from symai.backend.base import Engine
 from symai.backend.engines.search.perplexity.models import (
@@ -7,6 +9,7 @@ from symai.backend.engines.search.perplexity.models import (
     PerplexityRequestPayload,
     PerplexityResponse,
 )
+from symai.backend.engines.search.utils import Citation, CitationResult, normalize_url
 from symai.backend.request import EngineAPIRequest
 from symai.backend.settings import SYMAI_CONFIG
 from symai.backend.transport import DEFAULT_RETRIES, execute_engine_api_request
@@ -17,8 +20,12 @@ silence_noisy_loggers()
 
 logger = logging.getLogger(__name__)
 
+# Inline source markers in the response content, e.g. "...2-1[1]." — n is a 1-based
+# index into the response's top-level `citations` URL list.
+_MARKER_RE = re.compile(r"\[(\d+)\]")
 
-class PerplexitySearchResult(Result):
+
+class PerplexitySearchResult(CitationResult, Result):
     def __init__(self, value, **kwargs) -> None:
         super().__init__(value, **kwargs)
         if value.get("error"):
@@ -26,30 +33,39 @@ class PerplexitySearchResult(Result):
             raise ValueError(msg)
         try:
             self._value = value["choices"][0]["message"]["content"]
+            self._citations = self._extract_citations(self._value, value.get("citations") or [])
         except Exception as e:
             self._value = None
+            self._citations = []
             msg = f"Failed to parse response: {e}"
             raise ValueError(msg) from e
 
-    def __str__(self) -> str:
-        try:
-            return json.dumps(self.raw, indent=2)
-        except TypeError:
-            return str(self.raw)
-
-    def _repr_html_(self) -> str:
-        try:
-            return f"<pre>{json.dumps(self.raw, indent=2)}</pre>"
-        except TypeError:
-            return f"<pre>{self.raw!s}</pre>"
+    @staticmethod
+    def _extract_citations(text: str, urls: list[str]) -> list[Citation]:
+        # The wire inlines [n] markers in the content; n is a 1-based index into the
+        # top-level citations list of URLs. The text (and thus its markers) is kept
+        # unchanged, so each citation's id equals its marker number and its span covers
+        # the marker's first occurrence.
+        citations = {}
+        for m in _MARKER_RE.finditer(text):
+            n = int(m.group(1))
+            if n < 1 or n > len(urls) or n in citations:
+                continue
+            url = normalize_url(urls[n - 1])
+            title = urlsplit(url).hostname or ""
+            citations[n] = Citation(id=n, title=title, url=url, start=m.start(), end=m.end())
+        return [citations[n] for n in sorted(citations)]
 
 
 class PerplexityEngine(Engine):
-    def __init__(self):
+    def __init__(self, api_key: str | None = None, model: str | None = None):
         super().__init__()
-        self.config = SYMAI_CONFIG
-        self.api_key = self.config["SEARCH_ENGINE_API_KEY"]
-        self.model = self.config["SEARCH_ENGINE_MODEL"]
+        self.config = deepcopy(SYMAI_CONFIG)
+        if api_key is not None and model is not None:
+            self.config["SEARCH_ENGINE_API_KEY"] = api_key
+            self.config["SEARCH_ENGINE_MODEL"] = model
+        self.api_key = self.config.get("SEARCH_ENGINE_API_KEY")
+        self.model = self.config.get("SEARCH_ENGINE_MODEL")
         self.name = self.__class__.__name__
 
     def id(self) -> str:
@@ -67,6 +83,11 @@ class PerplexityEngine(Engine):
             self.model = kwargs["SEARCH_ENGINE_MODEL"]
 
     def forward(self, argument):
+        request = self.build_request(argument)
+        response = self.call_request(request)
+        return self.parse_response(response)
+
+    def build_request(self, argument) -> EngineAPIRequest:
         messages = argument.prop.prepared_input
         kwargs = argument.kwargs
 
@@ -86,7 +107,7 @@ class PerplexityEngine(Engine):
             search_recency_filter=kwargs.get("search_recency_filter", "month"),
             web_search_options=kwargs.get("web_search_options", None),
         )
-        request = EngineAPIRequest(
+        return EngineAPIRequest(
             provider="perplexity",
             operation="chat.completions.create",
             payload=payload,
@@ -97,18 +118,18 @@ class PerplexityEngine(Engine):
                 "Content-Type": "application/json",
             },
         )
+
+    def call_request(self, request: EngineAPIRequest) -> PerplexityResponse:
         max_retries = (
             self.client_max_retries if self.client_max_retries is not None else DEFAULT_RETRIES
         )
         response = execute_engine_api_request(request, max_retries=max_retries)
-        perplexity_response = PerplexityResponse.model_validate(response.json())
+        return PerplexityResponse.model_validate(response.json())
 
-        res = PerplexitySearchResult(perplexity_response.model_dump())
-
+    def parse_response(self, response: PerplexityResponse):
+        res = PerplexitySearchResult(response.model_dump())
         metadata = {"raw_output": res.raw}
-        output = [res]
-
-        return output, metadata
+        return [res], metadata
 
     def prepare(self, argument):
         system_message = (

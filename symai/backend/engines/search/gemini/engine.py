@@ -14,7 +14,7 @@ from symai.backend.engines.search.gemini.models import (
     GeminiInteractionResponse,
     GeminiInteractionTool,
 )
-from symai.backend.engines.search.utils import CitationResultMixin, insert_citation_markers
+from symai.backend.engines.search.utils import CitationResult, insert_citation_markers
 from symai.backend.request import EngineAPIRequest
 from symai.backend.settings import SYMAI_CONFIG
 from symai.backend.transport import DEFAULT_RETRIES, execute_engine_api_request
@@ -27,7 +27,7 @@ logger = logging.getLogger(__name__)
 _REDIRECT_HOST = "vertexaisearch.cloud.google.com"
 
 
-class GeminiSearchResult(CitationResultMixin, Result):
+class GeminiSearchResult(CitationResult, Result):
     def __init__(self, value, *, resolve_urls: bool = True, resolve_timeout: float = 10.0) -> None:
         super().__init__(value)
         self._resolve_urls = resolve_urls
@@ -81,9 +81,6 @@ class GeminiSearchResult(CitationResultMixin, Result):
                 pos += len(seg_text)
 
         built_text = "".join(segments) if segments else None
-        # Fall back to the convenience field when no model_output text could be assembled
-        if not built_text and isinstance(self.raw.get("output_text"), str):
-            return self.raw.get("output_text"), []
         return built_text, global_annotations
 
     def _resolve_annotation_urls(self, annotations: list[dict]) -> None:
@@ -156,12 +153,20 @@ class GeminiSearchEngine(Engine):
             self.model = kwargs["SEARCH_ENGINE_MODEL"]
 
     def forward(self, argument):
+        request = self.build_request(argument)
+        response = self.call_request(request)
+        return self.parse_response(response)
+
+    def build_request(self, argument) -> EngineAPIRequest:
         system_instruction, user_input = argument.prop.prepared_input
         kwargs = argument.kwargs
 
         self.model = kwargs.get(
             "model", self.model
         )  # Important for MetadataTracker to work correctly
+        # NOTE: resolve_urls steers result parsing (redirect resolution), not the wire
+        # payload; stash it for parse_response, which only receives the response.
+        self._resolve_urls = kwargs.get("resolve_urls", True)
 
         payload = GeminiInteractionRequest(
             model=self.model,
@@ -169,7 +174,7 @@ class GeminiSearchEngine(Engine):
             tools=[GeminiInteractionTool(type="google_search")],
             system_instruction=system_instruction or None,
         )
-        request = EngineAPIRequest(
+        return EngineAPIRequest(
             provider="google",
             operation="interactions.create",
             payload=payload,
@@ -178,23 +183,24 @@ class GeminiSearchEngine(Engine):
             headers={"x-goog-api-key": self.api_key},
             timeout=self.client_timeout,
         )
+
+    def call_request(self, request: EngineAPIRequest) -> GeminiInteractionResponse:
+        max_retries = (
+            self.client_max_retries if self.client_max_retries is not None else DEFAULT_RETRIES
+        )
         response = execute_engine_api_request(
             request,
             client=self.transport_client,
-            max_retries=self.client_max_retries
-            if self.client_max_retries is not None
-            else DEFAULT_RETRIES,
+            max_retries=max_retries,
         )
-        interaction = GeminiInteractionResponse.model_validate(response.json())
+        return GeminiInteractionResponse.model_validate(response.json())
 
-        resolve_urls = kwargs.get("resolve_urls", True)
+    def parse_response(self, response: GeminiInteractionResponse):
         res = GeminiSearchResult(
-            interaction.model_dump(exclude_none=True), resolve_urls=resolve_urls
+            response.model_dump(exclude_none=True), resolve_urls=self._resolve_urls
         )
-        metadata = {"raw_output": interaction}
-        output = [res]
-
-        return output, metadata
+        metadata = {"raw_output": response}
+        return [res], metadata
 
     def prepare(self, argument):
         system_message = (

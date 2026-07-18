@@ -38,7 +38,7 @@ def test_firecrawl_search_comprehensive():
         sources=["web"],
         formats=["markdown"],
         only_main_content=True,
-        proxy="auto"
+        proxy="auto",
     )
 
     assert res is not None
@@ -81,11 +81,7 @@ def test_firecrawl_search_domain_filter():
     query = f"({filters}) {base_query}"
 
     res = search.search(
-        query,
-        limit=10,
-        max_chars_per_result=500,
-        formats=["markdown"],
-        proxy="auto"
+        query, limit=10, max_chars_per_result=500, formats=["markdown"], proxy="auto"
     )
 
     assert isinstance(res._value, str)

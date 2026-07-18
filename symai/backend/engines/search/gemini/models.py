@@ -75,8 +75,7 @@ class GeminiInteractionUsage(EngineResponsePayload):
 
 
 class GeminiInteractionResponse(EngineResponsePayload):
+    # NOTE: the interactions wire carries no top-level `output_text` (verified live at
+    # API_PINNED); text is assembled from model_output steps only.
     steps: list[GeminiInteractionStep] | None = None
     usage: GeminiInteractionUsage | None = None
-    # NOTE: convenience text field the SDK surfaced; kept so GeminiSearchResult's
-    # output_text fallback keeps working when it appears on the wire.
-    output_text: str | None = None

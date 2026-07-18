@@ -5,7 +5,6 @@ import numpy as np
 import openai
 
 from symai.backend.base import Engine
-from symai.backend.mixin.openai import OpenAIMixin
 from symai.backend.settings import SYMAI_CONFIG
 from symai.utils import silence_noisy_loggers
 
@@ -13,8 +12,15 @@ silence_noisy_loggers("openai")
 
 logger = logging.getLogger(__name__)
 
+# model -> (context tokens, embedding dimensions)
+OPENAI_EMBEDDING_MODEL_SPECS = {
+    "text-embedding-ada-002": (8192, 1536),
+    "text-embedding-3-small": (8192, 1536),
+    "text-embedding-3-large": (8192, 3072),
+}
 
-class EmbeddingEngine(Engine, OpenAIMixin):
+
+class EmbeddingEngine(Engine):
     def __init__(self, api_key: str | None = None, model: str | None = None):
         super().__init__()
         logger = logging.getLogger("openai")
@@ -39,6 +45,12 @@ class EmbeddingEngine(Engine, OpenAIMixin):
         if self.api_key and self.model and self.model.startswith("text-embedding"):
             return "embedding"
         return super().id()
+
+    def api_max_context_tokens(self) -> int:
+        return OPENAI_EMBEDDING_MODEL_SPECS[self.model][0]
+
+    def api_embedding_dims(self) -> int:
+        return OPENAI_EMBEDDING_MODEL_SPECS[self.model][1]
 
     def command(self, *args, **kwargs):
         super().command(*args, **kwargs)

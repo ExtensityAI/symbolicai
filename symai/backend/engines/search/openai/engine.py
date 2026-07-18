@@ -16,7 +16,7 @@ from symai.backend.engines.search.openai.models import (
     OpenAISearchTool,
 )
 from symai.backend.engines.search.utils import (
-    CitationResultMixin,
+    CitationResult,
     insert_citation_markers,
     normalize_domains,
 )
@@ -34,7 +34,7 @@ silence_noisy_loggers()
 logger = logging.getLogger(__name__)
 
 
-class OpenAISearchResult(CitationResultMixin, Result):
+class OpenAISearchResult(CitationResult, Result):
     def __init__(self, value, **kwargs) -> None:
         super().__init__(value, **kwargs)
         if value.get("error"):
@@ -81,13 +81,10 @@ class OpenAISearchResult(CitationResultMixin, Result):
                 pos += len(seg_text)
 
         built_text = "".join(segments) if segments else None
-        # Prefer top-level output_text if present AND segments are empty (no way to compute indices)
-        if not built_text and isinstance(value.get("output_text"), str):
-            return value.get("output_text"), []
         return built_text, global_annotations
 
 
-class GPTXSearchEngine(Engine):
+class OpenAISearchEngine(Engine):
     MAX_ALLOWED_DOMAINS = 20
 
     def __init__(
@@ -132,6 +129,11 @@ class GPTXSearchEngine(Engine):
             self.model = kwargs["SEARCH_ENGINE_MODEL"]
 
     def forward(self, argument):
+        request = self.build_request(argument)
+        response = self.call_request(request)
+        return self.parse_response(response)
+
+    def build_request(self, argument) -> EngineAPIRequest:
         messages = argument.prop.prepared_input
         kwargs = argument.kwargs
 
@@ -159,7 +161,7 @@ class GPTXSearchEngine(Engine):
             if is_reasoning
             else None,
         )
-        request = EngineAPIRequest(
+        return EngineAPIRequest(
             provider="openai",
             operation="responses.create",
             payload=payload,
@@ -171,6 +173,8 @@ class GPTXSearchEngine(Engine):
             },
             timeout=self.client_timeout,
         )
+
+    def call_request(self, request: EngineAPIRequest) -> OpenAISearchResponse:
         max_retries = (
             self.client_max_retries if self.client_max_retries is not None else DEFAULT_RETRIES
         )
@@ -179,14 +183,12 @@ class GPTXSearchEngine(Engine):
             client=self.transport_client,
             max_retries=max_retries,
         )
-        search_response = OpenAISearchResponse.model_validate(response.json())
+        return OpenAISearchResponse.model_validate(response.json())
 
-        res = OpenAISearchResult(search_response.model_dump(exclude_none=True))
-
-        metadata = {"raw_output": search_response}
-        output = [res]
-
-        return output, metadata
+    def parse_response(self, response: OpenAISearchResponse):
+        res = OpenAISearchResult(response.model_dump(exclude_none=True))
+        metadata = {"raw_output": response}
+        return [res], metadata
 
     def prepare(self, argument):
         system_message = (

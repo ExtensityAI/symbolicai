@@ -80,7 +80,8 @@ class OpenAISearchUsage(EngineResponsePayload):
 
 
 class OpenAISearchResponse(EngineResponsePayload):
+    # NOTE: the REST wire carries no top-level `output_text` (verified live at API_PINNED);
+    # that convenience field is SDK-synthesized. Text is assembled from output[] content.
     output: list[OpenAISearchOutputItem] = Field(default_factory=list)
-    output_text: str | None = None
     usage: OpenAISearchUsage | None = None
     error: dict[str, JsonValue] | None = None

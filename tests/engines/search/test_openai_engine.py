@@ -4,7 +4,7 @@ from urllib.parse import urlparse
 
 import pytest
 
-from symai.backend.engines.search.openai import GPTXSearchEngine
+from symai.backend.engines.search.openai import OpenAISearchEngine
 from symai.backend.settings import SYMAI_CONFIG
 from symai.extended.interfaces.openai_search import openai_search
 from symai.functional import EngineRepository
@@ -24,7 +24,7 @@ def test_openai_search_citations_and_formatting_live(model):
     if not api_key:
         pytest.skip("OPENAI_API_KEY/SEARCH_ENGINE_API_KEY not set; live test skipped")
 
-    engine = GPTXSearchEngine(api_key=api_key, model=model)
+    engine = OpenAISearchEngine(api_key=api_key, model=model)
     EngineRepository.register("search", engine, allow_engine_override=True)
 
     # Keep the query stable but realistic to elicit citations
@@ -64,7 +64,7 @@ def test_openai_search_domain_filtering(model):
     if not api_key:
         pytest.skip("OPENAI_API_KEY/SEARCH_ENGINE_API_KEY not set; live test skipped")
 
-    engine = GPTXSearchEngine(api_key=api_key, model=model)
+    engine = OpenAISearchEngine(api_key=api_key, model=model)
     EngineRepository.register("search", engine, allow_engine_override=True)
 
     domains = [
