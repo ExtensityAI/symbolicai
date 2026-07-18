@@ -17,6 +17,7 @@ Live runs require `--engine-api=live` and the provider key in symai.config.json.
 from __future__ import annotations
 
 import json
+import uuid
 from types import SimpleNamespace
 from typing import ClassVar
 
@@ -29,6 +30,7 @@ from symai.backend.settings import SYMAI_CONFIG
 from symai.components import MetadataTracker
 from symai.core import Argument
 from symai.functional import EngineRepository
+from symai.prompts import CACHE_BREAKPOINT
 
 DUMMY_KEY = "sk-test-not-a-real-key"
 LIVE_PROMPT = "Reply with exactly: ok"
@@ -81,6 +83,19 @@ class EngineTestInterface:
     # NOTE: the wire key carrying the max-tokens kwarg differs per provider
     # (e.g. Groq remaps max_tokens -> max_completion_tokens at the engine).
     max_tokens_wire_key: ClassVar[str] = "max_tokens"
+    # NOTE: the kwarg name users pass for max tokens (OpenAI accepts max_output_tokens
+    # natively; chat-completions providers accept max_tokens).
+    request_max_tokens_kwarg: ClassVar[str] = "max_tokens"
+    # NOTE: the request-body key carrying the prepared input ("messages" for chat
+    # completions, "input" for the Responses API).
+    wire_input_key: ClassVar[str] = "messages"
+    # NOTE: stream options the engine must force on streaming requests; None when the
+    # provider's streams always carry usage (Responses API) or streaming is unsupported.
+    stream_options_expected: ClassVar = {"include_usage": True}
+    # NOTE: model used by the explicit-cache tests; None when the provider has no
+    # cache-breakpoint support (deepseek/cerebras/groq auto-cache only). The cache
+    # suite activates per provider by setting this (anthropic once migrated).
+    cache_test_model: ClassVar[str | None] = None
 
     # --- provider hooks (override) ---
     def mock_response_json(self) -> dict:
@@ -97,6 +112,37 @@ class EngineTestInterface:
 
     def vision_messages(self, _image_path: str) -> list | None:
         return None
+
+    def usage_prompt_tokens(self, usage: dict) -> int:
+        """Prompt/input token count in the provider's usage shape."""
+        return usage["prompt_tokens"]
+
+    def usage_completion_tokens(self, usage: dict) -> int:
+        """Completion/output token count in the provider's usage shape."""
+        return usage["completion_tokens"]
+
+    def inject_self_prompt_response(self, payload: dict, content: str) -> dict:
+        """Place the self-prompt JSON answer into the provider's mock response shape."""
+        payload["choices"][0]["message"] = {"role": "assistant", "content": content}
+        return payload
+
+    def assert_self_prompt_response_format(self, body: dict):
+        """What the provider does with the response_format kwarg on self-prompt calls."""
+        assert body["response_format"] == {"type": "json_object"}
+
+    def assert_cache_breakpoint_body(self, body: dict, segments: list[str]):
+        """Assert the provider transformed a two-segment marked prompt into cache
+        blocks honoring its wire convention (OpenAI: prompt_cache_breakpoint on the
+        first block; Anthropic: cache_control blocks once migrated)."""
+        raise NotImplementedError
+
+    def cache_write_tokens(self, usage: dict) -> int:
+        """Tokens written to cache per the provider's usage shape."""
+        raise NotImplementedError
+
+    def cache_read_tokens(self, usage: dict) -> int:
+        """Tokens read from cache per the provider's usage shape."""
+        raise NotImplementedError
 
     # --- shared helpers ---
     def spec_for(self, model: str):
@@ -149,11 +195,12 @@ class EngineTestInterface:
         if pricing.cached_input is not None:
             input_cost = (
                 usage.get("prompt_cache_hit_tokens", 0) * pricing.cached_input
-                + usage.get("prompt_cache_miss_tokens", usage["prompt_tokens"]) * pricing.input
+                + usage.get("prompt_cache_miss_tokens", self.usage_prompt_tokens(usage))
+                * pricing.input
             )
         else:
-            input_cost = usage["prompt_tokens"] * pricing.input
-        return (input_cost + usage["completion_tokens"] * pricing.output) / 1_000_000
+            input_cost = self.usage_prompt_tokens(usage) * pricing.input
+        return (input_cost + self.usage_completion_tokens(usage) * pricing.output) / 1_000_000
 
     @staticmethod
     def sse_body(chunks: list[dict]) -> bytes:
@@ -196,7 +243,7 @@ class EngineTestInterface:
         argument = self.make_prepared_argument(
             kwargs={
                 "temperature": 0.2,
-                "max_tokens": 32,
+                self.request_max_tokens_kwarg: 32,
                 "extra_headers": {"X-Test": "1"},
                 "extra_query": {"debug": "1"},
                 "extra_body": {"temperature": 9, "vendor_flag": True},
@@ -248,7 +295,9 @@ class EngineTestInterface:
         engine = self.make_engine()
 
         with pytest.raises(ValidationError):
-            engine.build_request(self.make_prepared_argument(kwargs={"max_tokens": "32"}))
+            engine.build_request(
+                self.make_prepared_argument(kwargs={self.request_max_tokens_kwarg: "32"})
+            )
 
         with pytest.raises(ValueError, match="Unsupported request kwargs"):
             engine.build_request(
@@ -260,7 +309,7 @@ class EngineTestInterface:
     def test_forward_mock_transport_returns_typed_response(self):
         engine = self.make_engine(client_max_retries=0)
         argument = self.make_query_argument(
-            "What is 1+1?", max_tokens=16, extra_query={"debug": "1"}
+            "What is 1+1?", **{self.request_max_tokens_kwarg: 16}, extra_query={"debug": "1"}
         )
 
         with MockAPI(
@@ -275,7 +324,7 @@ class EngineTestInterface:
         assert api.last_request.headers["authorization"] == f"Bearer {DUMMY_KEY}"
         assert api.last_body["model"] == self.expected_wire_model()
         assert api.last_body[self.max_tokens_wire_key] == 16
-        assert api.last_body["messages"] == argument.prop.prepared_input
+        assert api.last_body[self.wire_input_key] == argument.prop.prepared_input
         assert isinstance(output[0], str)
         assert "thinking" in metadata
         assert isinstance(metadata["raw_output"], self.response_cls)
@@ -320,8 +369,8 @@ class EngineTestInterface:
 
         details = usage[(self.engine_cls.__name__, self.default_model)]
         mock_usage = self.mock_response_json()["usage"]
-        assert details["usage"]["prompt_tokens"] == 2 * mock_usage["prompt_tokens"]
-        assert details["usage"]["completion_tokens"] == 2 * mock_usage["completion_tokens"]
+        assert details["usage"]["prompt_tokens"] == 2 * self.usage_prompt_tokens(mock_usage)
+        assert details["usage"]["completion_tokens"] == 2 * self.usage_completion_tokens(mock_usage)
         assert details["usage"]["total_tokens"] == 2 * mock_usage["total_tokens"]
         assert details["usage"]["total_calls"] == 2
         assert "thinking_content" not in details
@@ -381,6 +430,86 @@ class EngineTestInterface:
             with pytest.raises(ValidationError):
                 engine.forward(argument)
 
+    def test_cache_marker_never_reaches_wire_unsupported(self):
+        if self.cache_test_model is not None:
+            pytest.skip(f"{self.engine_cls.__name__} honors cache breakpoints")
+
+        engine = self.make_engine()
+        marked = [{"role": "user", "content": f"first part {CACHE_BREAKPOINT} second part"}]
+
+        body = engine.build_request(self.make_prepared_argument(messages=marked)).body()
+
+        assert CACHE_BREAKPOINT not in json.dumps(body)
+        assert "first part  second part" in json.dumps(
+            body
+        ) or "first part second part" in json.dumps(body)
+
+    def test_cache_breakpoint_blocks_built(self):
+        if self.cache_test_model is None:
+            pytest.skip(f"{self.engine_cls.__name__} has no explicit cache support")
+
+        engine = self.make_engine(model=self.cache_test_model)
+        marked = [{"role": "user", "content": f"cached prefix {CACHE_BREAKPOINT} fresh suffix"}]
+
+        body = engine.build_request(self.make_prepared_argument(messages=marked)).body()
+
+        self.assert_cache_breakpoint_body(body, ["cached prefix ", " fresh suffix"])
+
+    def test_cache_breakpoint_rejects_unsupported_model(self):
+        if self.cache_test_model is None:
+            pytest.skip(f"{self.engine_cls.__name__} has no explicit cache support")
+
+        engine = self.make_engine()
+        marked = [{"role": "user", "content": f"prefix {CACHE_BREAKPOINT} suffix"}]
+
+        with pytest.raises(ValueError, match="cache"):
+            engine.build_request(self.make_prepared_argument(messages=marked))
+
+    def test_cache_breakpoint_rejects_too_many(self):
+        if self.cache_test_model is None:
+            pytest.skip(f"{self.engine_cls.__name__} has no explicit cache support")
+
+        engine = self.make_engine(model=self.cache_test_model)
+        marked = [
+            {"role": "user", "content": CACHE_BREAKPOINT.join(["a", "b", "c", "d", "e", "f"])}
+        ]
+
+        with pytest.raises(ValueError, match="at most"):
+            engine.build_request(self.make_prepared_argument(messages=marked))
+
+    def test_cache_breakpoint_rejects_empty_segment(self):
+        if self.cache_test_model is None:
+            pytest.skip(f"{self.engine_cls.__name__} has no explicit cache support")
+
+        engine = self.make_engine(model=self.cache_test_model)
+        marked = [{"role": "user", "content": f"{CACHE_BREAKPOINT} suffix"}]
+
+        with pytest.raises(ValueError, match="non-empty"):
+            engine.build_request(self.make_prepared_argument(messages=marked))
+
+    @pytest.mark.engine_live
+    def test_live_cache_write_then_read(self, engine_api_mode):
+        if self.cache_test_model is None:
+            pytest.skip(f"{self.engine_cls.__name__} has no explicit cache support")
+        api_key = self.require_live(engine_api_mode)
+
+        engine = self.make_live_engine(self.cache_test_model, api_key)
+        # NOTE: provider caching engages only above a minimum prompt size; ~1500 tokens
+        # of prefix clears OpenAI's 1024-token floor for cache writes. A nonce prefix
+        # keeps the first call cold across runs (cache life is ~30 min), otherwise a
+        # warm cache turns the expected write into a read and flakes the assertion.
+        nonce = uuid.uuid4().hex
+        prefix = f"{nonce} lorem ipsum dolor sit amet " * 300
+        marked = [{"role": "user", "content": f"{prefix}{CACHE_BREAKPOINT} Reply with exactly: ok"}]
+
+        first = engine.forward(self.make_prepared_argument(messages=marked))[1]
+        first_writes = self.cache_write_tokens(first["raw_output"].usage.model_dump())
+        assert first_writes > 0, "first call should write cache"
+
+        second = engine.forward(self.make_prepared_argument(messages=marked))[1]
+        reads = self.cache_read_tokens(second["raw_output"].usage.model_dump())
+        assert reads > 0, "second call should read from cache"
+
     @pytest.mark.engine_live
     def test_live_smoke(self, engine_api_mode):
         api_key = self.require_live(engine_api_mode)
@@ -389,7 +518,7 @@ class EngineTestInterface:
             engine = self.make_live_engine(model, api_key)
             # NOTE: reasoning models spend budget on thinking first; 128 tokens is the
             # cheap floor that still guarantees visible content on trivial prompts.
-            argument = self.make_query_argument(LIVE_PROMPT, max_tokens=128)
+            argument = self.make_query_argument(LIVE_PROMPT, **{self.request_max_tokens_kwarg: 128})
 
             engine.prepare(argument)
             output, metadata = engine.forward(argument)
@@ -409,7 +538,9 @@ class EngineTestInterface:
         api_key = self.require_live(engine_api_mode)
 
         engine = self.make_live_engine(self.default_model, api_key)
-        argument = self.make_query_argument(LIVE_PROMPT, max_tokens=16, stream=True)
+        argument = self.make_query_argument(
+            LIVE_PROMPT, **{self.request_max_tokens_kwarg: 128}, stream=True
+        )
 
         engine.prepare(argument)
         output, metadata = engine.forward(argument)
@@ -499,11 +630,10 @@ class NeurosymbolicEngineTestInterface(EngineTestInterface):
 
     def test_engine_self_prompt_sends_prompt_object_as_raw_json(self):
         engine = self.make_engine(client_max_retries=0)
-        response_json = self.mock_response_json()
-        response_json["choices"][0]["message"] = {
-            "role": "assistant",
-            "content": json.dumps({"system": "new system prompt", "user": "new user prompt"}),
-        }
+        response_json = self.inject_self_prompt_response(
+            self.mock_response_json(),
+            json.dumps({"system": "new system prompt", "user": "new user prompt"}),
+        )
 
         with MockAPI(
             engine,
@@ -522,10 +652,10 @@ class NeurosymbolicEngineTestInterface(EngineTestInterface):
                 else:
                     repository._engines.pop("neurosymbolic", None)
 
-        messages = api.last_body["messages"]
+        messages = api.last_body[self.wire_input_key]
         assert result == {"system": "new system prompt", "user": "new user prompt"}
         assert messages[0]["role"] == "system"
         assert "Generate a new system or developer prompt" in messages[0]["content"]
         assert messages[1]["role"] == "user"
         assert json.loads(messages[1]["content"]) == {"system": "old system", "user": "old user"}
-        assert api.last_body["response_format"] == {"type": "json_object"}
+        self.assert_self_prompt_response_format(api.last_body)

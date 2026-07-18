@@ -14,18 +14,18 @@ from symai.backend.engines.neurosymbolic.engine_anthropic_claudeX_reasoning impo
 from symai.backend.engines.neurosymbolic.engine_google_geminiX_reasoning import (
     GeminiXReasoningEngine,
 )
-from symai.backend.engines.neurosymbolic.engine_openai_gptX import OpenAIResponsesEngine
 from symai.backend.engines.neurosymbolic.engine_openrouter import OpenRouterEngine
 from symai.backend.engines.neurosymbolic.groq import (
     SUPPORTED_REASONING_MODELS as GROQ_REASONING_MODELS,
 )
 from symai.backend.engines.neurosymbolic.groq import GroqEngine
+from symai.backend.engines.neurosymbolic.openai import SUPPORTED_OPENAI_MODELS as OPENAI_MODELS
+from symai.backend.engines.neurosymbolic.openai import OpenAIResponsesEngine
 from symai.backend.mixin import (
     ANTHROPIC_CHAT_MODELS,
     ANTHROPIC_REASONING_MODELS,
     GOOGLE_CHAT_MODELS,
     GOOGLE_REASONING_MODELS,
-    OPENAI_MODELS,
     OPENROUTER_CHAT_MODELS,
     OPENROUTER_REASONING_MODELS,
 )

@@ -11,6 +11,7 @@ from symai.backend.engines.neurosymbolic.deepseek.models import (
     DEEPSEEK_MODEL_SPECS,
     SUPPORTED_MODELS,
     DeepSeekResponse,
+    deepseek_strip_prefix,
 )
 from symai.components import MetadataTracker
 from tests.engines.interface import MockAPI, NeurosymbolicEngineTestInterface
@@ -20,13 +21,19 @@ class TestDeepSeekEngine(NeurosymbolicEngineTestInterface):
     engine_cls = DeepSeekXReasoningEngine
     supported_models = tuple(SUPPORTED_MODELS)
     model_specs = DEEPSEEK_MODEL_SPECS
-    default_model = "deepseek-v4-flash"
+    default_model = "deepseek:deepseek-v4-flash"
     response_cls = DeepSeekResponse
     wire_provider = "deepseek"
     wire_operation = "chat.completions.create"
     wire_url = DEEPSEEK_CHAT_COMPLETIONS_URL
     supports_streaming = True
     api_pinned = API_PINNED
+
+    def spec_for(self, model):
+        return self.model_specs[deepseek_strip_prefix(model)]
+
+    def expected_wire_model(self, model=None):
+        return deepseek_strip_prefix(model or self.default_model)
 
     def mock_response_json(self):
         return {
@@ -142,6 +149,11 @@ class TestDeepSeekEngine(NeurosymbolicEngineTestInterface):
             engine.build_request(
                 self.make_prepared_argument(messages=[{"role": "user", "content": 1}])
             )
+
+    def test_build_request_strips_provider_prefix_from_wire_model(self):
+        request = self.make_engine().build_request(self.make_prepared_argument())
+
+        assert request.body()["model"] == "deepseek-v4-flash"
 
     def test_build_request_treats_empty_stop_as_unset(self):
         engine = self.make_engine()

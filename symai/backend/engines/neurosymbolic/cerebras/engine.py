@@ -27,6 +27,7 @@ from symai.backend.transport import (
     execute_engine_api_stream_events,
 )
 from symai.backend.usage import EngineUsageRecord
+from symai.prompts import strip_cache_breakpoints_from_messages
 
 logger = logging.getLogger(__name__)
 
@@ -135,7 +136,9 @@ class CerebrasEngine(Engine):
             )
             raise ValueError(msg)
         payload_kwargs["model"] = model
-        payload_kwargs["messages"] = argument.prop.prepared_input
+        payload_kwargs["messages"] = strip_cache_breakpoints_from_messages(
+            argument.prop.prepared_input
+        )
         # NOTE: core decorators default stop="" (meaning unset); an empty stop on the wire
         # truncates generation at the first character. Cerebras omits stop when unset.
         if not payload_kwargs.get("stop"):

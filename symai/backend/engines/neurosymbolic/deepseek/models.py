@@ -43,12 +43,19 @@ DEEPSEEK_MODEL_SPECS = {
     ),
 }
 
-SUPPORTED_MODELS = list(DEEPSEEK_MODEL_SPECS)
+SUPPORTED_MODELS = [f"deepseek:{model}" for model in DEEPSEEK_MODEL_SPECS]
+
+
+def deepseek_strip_prefix(model_name: str) -> str:
+    if model_name.startswith("deepseek:"):
+        return model_name.removeprefix("deepseek:")
+    return model_name
 
 
 def deepseek_model_spec_for(model: str) -> DeepSeekModelSpec:
+    model_id = deepseek_strip_prefix(model)
     try:
-        return DEEPSEEK_MODEL_SPECS[model]
+        return DEEPSEEK_MODEL_SPECS[model_id]
     except KeyError as e:
         msg = f"Unsupported DeepSeek model: {model}"
         raise ValueError(msg) from e

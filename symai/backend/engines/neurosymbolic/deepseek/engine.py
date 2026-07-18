@@ -11,6 +11,7 @@ from symai.backend.engines.neurosymbolic.deepseek.models import (
     DeepSeekRequest,
     DeepSeekResponse,
     deepseek_model_spec_for,
+    deepseek_strip_prefix,
 )
 from symai.backend.engines.neurosymbolic.deepseek.stream import DeepSeekStreamAdapter
 from symai.backend.engines.neurosymbolic.prompts import render_chat_system_prompt
@@ -22,6 +23,7 @@ from symai.backend.transport import (
     execute_engine_api_stream_events,
 )
 from symai.backend.usage import EngineUsageRecord
+from symai.prompts import strip_cache_breakpoints_from_messages
 
 DEEPSEEK_CHAT_COMPLETIONS_URL = "https://api.deepseek.com/chat/completions"
 
@@ -95,9 +97,11 @@ class DeepSeekXReasoningEngine(Engine):
             for key in DeepSeekOptions.model_fields
             if key in payload_kwargs
         }
-        payload_kwargs["model"] = payload_kwargs.get("model", self.model)
+        payload_kwargs["model"] = deepseek_strip_prefix(payload_kwargs.get("model", self.model))
         deepseek_model_spec_for(payload_kwargs["model"])
-        payload_kwargs["messages"] = argument.prop.prepared_input
+        payload_kwargs["messages"] = strip_cache_breakpoints_from_messages(
+            argument.prop.prepared_input
+        )
         # NOTE: every core decorator signature defaults stop="" (meaning unset), so an
         # empty stop always arrives via argument.kwargs. Passing "" to the API truncates
         # generation at the first character, so only a non-empty user stop wins over the default.

@@ -12,6 +12,62 @@ from pydantic import BaseModel
 logger = logging.getLogger(__name__)
 
 
+# Provider-neutral, prompt-level cache-breakpoint control. A consumer embeds this
+# opaque reserved marker in prompt text to denote a manual cache breakpoint. Engines
+# that support explicit prompt caching (OpenAI 5.6 models today, Anthropic once
+# migrated) split the text on the marker into ordered content blocks and apply their
+# provider's cache-write directive to every block except the last; engines that do not
+# honor it strip the marker, so the token never reaches a provider. The namespaced
+# token makes collision with natural prompt text effectively impossible (and on
+# collision it is stripped before the request).
+CACHE_BREAKPOINT = "symai:cache_breakpoint"
+
+
+def split_cache_breakpoints(text: str) -> list[str]:
+    """Split ``text`` on :data:`CACHE_BREAKPOINT` markers into ordered segments, with
+    the markers removed. Joining the result (no separator) equals
+    :func:`strip_cache_breakpoints` of the input."""
+    if not text:
+        return [text]
+    return text.split(CACHE_BREAKPOINT)
+
+
+def strip_cache_breakpoints(text: str) -> str:
+    """Remove every :data:`CACHE_BREAKPOINT` marker from ``text`` (no-op when absent)."""
+    if not text:
+        return text
+    return text.replace(CACHE_BREAKPOINT, "")
+
+
+def strip_cache_breakpoints_from_messages(messages: list[dict]) -> list[dict]:
+    """Return ``messages`` with every cache-breakpoint marker removed from text content.
+
+    For providers without explicit caching: the marker is control syntax, never prompt
+    text, so it must not reach the wire. Handles string content and content block lists
+    (blocks with a ``text`` key)."""
+    stripped_messages = []
+    for message in messages:
+        content = message.get("content")
+        updated = message
+        if isinstance(content, str):
+            if CACHE_BREAKPOINT in content:
+                updated = {**message, "content": strip_cache_breakpoints(content)}
+        elif isinstance(content, list):
+            blocks = [
+                (
+                    {**block, "text": strip_cache_breakpoints(block["text"])}
+                    if isinstance(block, dict)
+                    and isinstance(block.get("text"), str)
+                    and CACHE_BREAKPOINT in block["text"]
+                    else block
+                )
+                for block in content
+            ]
+            updated = {**message, "content": blocks}
+        stripped_messages.append(updated)
+    return stripped_messages
+
+
 class Prompt:
     """Few-shot example container rendered by engines through ``str(examples)``."""
 

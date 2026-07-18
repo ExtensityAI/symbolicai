@@ -27,6 +27,7 @@ from symai.backend.transport import (
     execute_engine_api_stream_events,
 )
 from symai.backend.usage import EngineUsageRecord
+from symai.prompts import strip_cache_breakpoints_from_messages
 
 logger = logging.getLogger(__name__)
 
@@ -117,7 +118,9 @@ class GroqEngine(Engine):
         spec = groq_model_spec_for(model)
 
         payload_kwargs["model"] = model
-        payload_kwargs["messages"] = argument.prop.prepared_input
+        payload_kwargs["messages"] = strip_cache_breakpoints_from_messages(
+            argument.prop.prepared_input
+        )
         # NOTE: Groq deprecated max_tokens in favor of max_completion_tokens; accept the
         # legacy kwarg and remap it when the new one is absent.
         max_tokens = payload_kwargs.pop("max_tokens", None)
