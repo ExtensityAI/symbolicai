@@ -1,5 +1,5 @@
 from symai import core
-from symai.backend.engines.search.engine_openai import OpenAISearchResult
+from symai.backend.engines.search.openai import OpenAISearchResult
 from symai.symbol import Expression, Symbol
 
 

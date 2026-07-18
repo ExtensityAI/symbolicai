@@ -1,19 +1,33 @@
+from __future__ import annotations
+
 import logging
 from copy import deepcopy
-
-import httpx
-from openai import OpenAI
+from typing import TYPE_CHECKING
 
 from symai.backend.base import Engine
+from symai.backend.engines.neurosymbolic.openai.models import (
+    SUPPORTED_CHAT_MODELS,
+    SUPPORTED_REASONING_MODELS,
+)
+from symai.backend.engines.search.openai.models import (
+    OPENAI_RESPONSES_URL,
+    OpenAISearchRequestPayload,
+    OpenAISearchResponse,
+    OpenAISearchTool,
+)
 from symai.backend.engines.search.utils import (
     CitationResultMixin,
     insert_citation_markers,
     normalize_domains,
 )
-from symai.backend.mixin import OPENAI_CHAT_MODELS, OPENAI_REASONING_MODELS
+from symai.backend.request import EngineAPIRequest
 from symai.backend.settings import SYMAI_CONFIG
+from symai.backend.transport import DEFAULT_RETRIES, execute_engine_api_request
 from symai.symbol import Result
 from symai.utils import silence_noisy_loggers
+
+if TYPE_CHECKING:
+    from pydantic import JsonValue
 
 silence_noisy_loggers()
 
@@ -83,7 +97,8 @@ class GPTXSearchEngine(Engine):
         *,
         client_timeout: float | None = None,
     ):
-        super().__init__()
+        super().__init__(client_timeout=client_timeout)
+        self.name = self.__class__.__name__
         self.config = deepcopy(SYMAI_CONFIG)
         if api_key is not None and model is not None:
             self.config["SEARCH_ENGINE_API_KEY"] = api_key
@@ -92,34 +107,13 @@ class GPTXSearchEngine(Engine):
         self.model = self.config.get(
             "SEARCH_ENGINE_MODEL", "gpt-4.1"
         )  # Default to gpt-4.1 as per docs
-        self.client_timeout = client_timeout
-        self.name = self.__class__.__name__
-
-        if api_key is None and model is None and self.id() != "search":
-            return
-
-        try:
-            if self.client_timeout is not None:
-                # Socket-level timeout so a hung web_search call raises instead of blocking
-                # the caller indefinitely (the search engine otherwise has no timeout). Keep
-                # max_retries low so the timeout actually terminates the request rather than
-                # being retried away by the SDK's default retry loop.
-                self.client = OpenAI(
-                    api_key=self.api_key,
-                    timeout=httpx.Timeout(self.client_timeout, connect=10.0),
-                    max_retries=1,
-                )
-            else:
-                self.client = OpenAI(api_key=self.api_key)
-        except Exception as e:
-            msg = f"Failed to initialize OpenAI client: {e}"
-            raise ValueError(msg) from e
+        self.transport_client = None
 
     def id(self) -> str:
         if (
             self.config.get("SEARCH_ENGINE_API_KEY")
             and self.config.get("SEARCH_ENGINE_MODEL")
-            in OPENAI_CHAT_MODELS + OPENAI_REASONING_MODELS
+            in SUPPORTED_CHAT_MODELS + SUPPORTED_REASONING_MODELS
         ):
             return "search"
         return super().id()  # default to unregistered
@@ -131,6 +125,9 @@ class GPTXSearchEngine(Engine):
         super().command(*args, **kwargs)
         if "SEARCH_ENGINE_API_KEY" in kwargs:
             self.api_key = kwargs["SEARCH_ENGINE_API_KEY"]
+            # NOTE: auth headers are built per request on the shared transport, so a key
+            # change only needs the cached transport handle dropped, not a client rebuild.
+            self.transport_client = None
         if "SEARCH_ENGINE_MODEL" in kwargs:
             self.model = kwargs["SEARCH_ENGINE_MODEL"]
 
@@ -138,7 +135,7 @@ class GPTXSearchEngine(Engine):
         messages = argument.prop.prepared_input
         kwargs = argument.kwargs
 
-        tool_definition = {"type": "web_search"}
+        tool_definition: dict[str, JsonValue] = {"type": "web_search"}
         user_location = kwargs.get("user_location")
         if user_location:
             tool_definition["user_location"] = user_location
@@ -151,27 +148,42 @@ class GPTXSearchEngine(Engine):
             "model", self.model
         )  # Important for MetadataTracker to work correctly
 
-        payload = {
-            "model": self.model,
-            "input": messages,
-            "tools": [tool_definition],
-            "tool_choice": {"type": "web_search"}
-            if self.model not in OPENAI_REASONING_MODELS
-            else "auto",  # force the use of web search tool for non-reasoning models
-        }
+        is_reasoning = self.model in SUPPORTED_REASONING_MODELS
+        payload = OpenAISearchRequestPayload(
+            model=self.model,
+            input=messages,
+            tools=[OpenAISearchTool.model_validate(tool_definition)],
+            # force the use of web search tool for non-reasoning models
+            tool_choice="auto" if is_reasoning else {"type": "web_search"},
+            reasoning=kwargs.get("reasoning", {"effort": "low", "summary": "auto"})
+            if is_reasoning
+            else None,
+        )
+        request = EngineAPIRequest(
+            provider="openai",
+            operation="responses.create",
+            payload=payload,
+            method="POST",
+            url=OPENAI_RESPONSES_URL,
+            headers={
+                "Authorization": f"Bearer {self.api_key}",
+                "Content-Type": "application/json",
+            },
+            timeout=self.client_timeout,
+        )
+        max_retries = (
+            self.client_max_retries if self.client_max_retries is not None else DEFAULT_RETRIES
+        )
+        response = execute_engine_api_request(
+            request,
+            client=self.transport_client,
+            max_retries=max_retries,
+        )
+        search_response = OpenAISearchResponse.model_validate(response.json())
 
-        if self.model in OPENAI_REASONING_MODELS:
-            reasoning = kwargs.get("reasoning", {"effort": "low", "summary": "auto"})
-            payload["reasoning"] = reasoning
+        res = OpenAISearchResult(search_response.model_dump(exclude_none=True))
 
-        try:
-            res = self.client.responses.create(**payload)
-            res = OpenAISearchResult(res.dict())
-        except Exception as e:
-            msg = f"Failed to make request: {e}"
-            raise ValueError(msg) from e
-
-        metadata = {"raw_output": res.raw}
+        metadata = {"raw_output": search_response}
         output = [res]
 
         return output, metadata

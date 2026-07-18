@@ -1,5 +1,5 @@
 from symai import core
-from symai.backend.engines.search.engine_parallel import ParallelExtractResult, ParallelSearchResult
+from symai.backend.engines.search.parallel import ParallelExtractResult, ParallelSearchResult
 from symai.symbol import Expression, Symbol
 
 

@@ -1,29 +1,26 @@
+from __future__ import annotations
+
 import logging
 from copy import deepcopy
 
 import httpx
-from google import genai
-from google.genai import types
 
 from symai.backend.base import Engine
+from symai.backend.engines.search.gemini.models import (
+    DEFAULT_SEARCH_MODEL,
+    GEMINI_API_BASE,
+    SUPPORTED_SEARCH_MODELS,
+    GeminiInteractionRequest,
+    GeminiInteractionResponse,
+    GeminiInteractionTool,
+)
 from symai.backend.engines.search.utils import CitationResultMixin, insert_citation_markers
-from symai.backend.mixin.google import GoogleMixin
+from symai.backend.request import EngineAPIRequest
 from symai.backend.settings import SYMAI_CONFIG
+from symai.backend.transport import DEFAULT_RETRIES, execute_engine_api_request
 from symai.symbol import Result
-from symai.utils import silence_noisy_loggers
-
-logging.getLogger("google_genai").propagate = False
-silence_noisy_loggers("google.genai")
 
 logger = logging.getLogger(__name__)
-
-
-SUPPORTED_SEARCH_MODELS = [
-    "gemini-3.5-flash",
-    "gemini-3.1-pro-preview",
-    "gemini-3.1-flash-lite",
-]
-DEFAULT_SEARCH_MODEL = "gemini-3.5-flash"
 
 # Gemini grounding returns Vertex AI redirect URLs (vertexaisearch.cloud.google.com).
 # Real hostnames arrive in the annotation `title`; the redirect is followed on demand.
@@ -119,7 +116,7 @@ class GeminiSearchResult(CitationResultMixin, Result):
         return resolved
 
 
-class GeminiSearchEngine(Engine, GoogleMixin):
+class GeminiSearchEngine(Engine):
     def __init__(
         self,
         api_key: str | None = None,
@@ -141,11 +138,7 @@ class GeminiSearchEngine(Engine, GoogleMixin):
         if api_key is None and model is None and self.id() != "search":
             return  # do not initialize if not the active search engine
 
-        try:
-            self.client = self._build_client()
-        except Exception as e:
-            msg = f"Failed to initialize Gemini client: {e}"
-            raise ValueError(msg) from e
+        self.transport_client = None
 
     def id(self) -> str:
         model = self.config.get("SEARCH_ENGINE_MODEL")
@@ -153,31 +146,12 @@ class GeminiSearchEngine(Engine, GoogleMixin):
             return "search"
         return super().id()  # default to unregistered
 
-    def _build_client(self) -> genai.Client:
-        http_opts_kwargs = {}
-        if self.client_timeout is not None:
-            # NOTE: google-genai takes timeout in milliseconds (int), not seconds
-            http_opts_kwargs["timeout"] = int(self.client_timeout * 1000)
-        if self.client_max_retries is not None:
-            # NOTE: attempts includes the original request; our contract counts retries
-            # after the original, so add 1
-            http_opts_kwargs["retry_options"] = types.HttpRetryOptions(
-                attempts=self.client_max_retries + 1
-            )
-        return genai.Client(
-            api_key=self.api_key,
-            http_options=types.HttpOptions(**http_opts_kwargs),
-        )
-
     def command(self, *args, **kwargs):
         super().command(*args, **kwargs)
         if "SEARCH_ENGINE_API_KEY" in kwargs:
             self.api_key = kwargs["SEARCH_ENGINE_API_KEY"]
-            try:
-                self.client = self._build_client()
-            except Exception as e:
-                msg = f"Failed to re-initialize Gemini client: {e}"
-                raise ValueError(msg) from e
+            # NOTE: the shared transport is stateless (headers are built per request from
+            # self.api_key), so a key change needs no client rebuild.
         if "SEARCH_ENGINE_MODEL" in kwargs:
             self.model = kwargs["SEARCH_ENGINE_MODEL"]
 
@@ -189,23 +163,34 @@ class GeminiSearchEngine(Engine, GoogleMixin):
             "model", self.model
         )  # Important for MetadataTracker to work correctly
 
-        create_kwargs = {
-            "model": self.model,
-            "input": user_input,
-            "tools": [{"type": "google_search"}],
-        }
-        if system_instruction:
-            create_kwargs["system_instruction"] = system_instruction
-
-        interaction = None
-        try:
-            interaction = self.client.interactions.create(**create_kwargs)
-        except Exception as e:
-            msg = f"Failed to make request: {e}"
-            raise ValueError(msg) from e
+        payload = GeminiInteractionRequest(
+            model=self.model,
+            input=user_input,
+            tools=[GeminiInteractionTool(type="google_search")],
+            system_instruction=system_instruction or None,
+        )
+        request = EngineAPIRequest(
+            provider="google",
+            operation="interactions.create",
+            payload=payload,
+            method="POST",
+            url=f"{GEMINI_API_BASE}/interactions",
+            headers={"x-goog-api-key": self.api_key},
+            timeout=self.client_timeout,
+        )
+        response = execute_engine_api_request(
+            request,
+            client=self.transport_client,
+            max_retries=self.client_max_retries
+            if self.client_max_retries is not None
+            else DEFAULT_RETRIES,
+        )
+        interaction = GeminiInteractionResponse.model_validate(response.json())
 
         resolve_urls = kwargs.get("resolve_urls", True)
-        res = GeminiSearchResult(interaction.model_dump(), resolve_urls=resolve_urls)
+        res = GeminiSearchResult(
+            interaction.model_dump(exclude_none=True), resolve_urls=resolve_urls
+        )
         metadata = {"raw_output": interaction}
         output = [res]
 

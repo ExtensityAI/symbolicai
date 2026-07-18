@@ -1,5 +1,5 @@
 from symai import core
-from symai.backend.engines.search.engine_perplexity import PerplexitySearchResult
+from symai.backend.engines.search.perplexity import PerplexitySearchResult
 from symai.symbol import Expression, Symbol
 
 

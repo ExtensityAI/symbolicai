@@ -1,10 +1,15 @@
 import json
 import logging
 
-import httpx
-
 from symai.backend.base import Engine
+from symai.backend.engines.search.perplexity.models import (
+    PERPLEXITY_CHAT_COMPLETIONS_URL,
+    PerplexityRequestPayload,
+    PerplexityResponse,
+)
+from symai.backend.request import EngineAPIRequest
 from symai.backend.settings import SYMAI_CONFIG
+from symai.backend.transport import DEFAULT_RETRIES, execute_engine_api_request
 from symai.symbol import Result
 from symai.utils import silence_noisy_loggers
 
@@ -65,40 +70,40 @@ class PerplexityEngine(Engine):
         messages = argument.prop.prepared_input
         kwargs = argument.kwargs
 
-        payload = {
-            "model": self.model,
-            "messages": messages,
-            "max_tokens": kwargs.get("max_tokens", None),
-            "temperature": kwargs.get("temperature", 0.2),
-            "top_p": kwargs.get("top_p", 0.9),
-            "search_domain_filter": kwargs.get("search_domain_filter", []),
-            "return_images": kwargs.get("return_images", False),
-            "return_related_questions": kwargs.get("return_related_questions", False),
-            "search_recency_filter": kwargs.get("search_recency_filter", "month"),
-            "top_k": kwargs.get("top_k", 0),
-            "stream": kwargs.get("stream", False),
-            "presence_penalty": kwargs.get("presence_penalty", 0),
-            "frequency_penalty": kwargs.get("frequency_penalty", 1),
-            "response_format": kwargs.get("response_format", None),
-        }
-        web_search_options = kwargs.get("web_search_options", None)
-        if web_search_options is not None:
-            payload["web_search_options"] = web_search_options
+        payload = PerplexityRequestPayload(
+            model=self.model,
+            messages=messages,
+            max_tokens=kwargs.get("max_tokens", None),
+            temperature=kwargs.get("temperature", 0.2),
+            top_p=kwargs.get("top_p", 0.9),
+            top_k=kwargs.get("top_k", 0),
+            presence_penalty=kwargs.get("presence_penalty", 0),
+            frequency_penalty=kwargs.get("frequency_penalty", 1),
+            response_format=kwargs.get("response_format", None),
+            search_domain_filter=kwargs.get("search_domain_filter", []),
+            return_images=kwargs.get("return_images", False),
+            return_related_questions=kwargs.get("return_related_questions", False),
+            search_recency_filter=kwargs.get("search_recency_filter", "month"),
+            web_search_options=kwargs.get("web_search_options", None),
+        )
+        request = EngineAPIRequest(
+            provider="perplexity",
+            operation="chat.completions.create",
+            payload=payload,
+            method="POST",
+            url=PERPLEXITY_CHAT_COMPLETIONS_URL,
+            headers={
+                "Authorization": f"Bearer {self.api_key}",
+                "Content-Type": "application/json",
+            },
+        )
+        max_retries = (
+            self.client_max_retries if self.client_max_retries is not None else DEFAULT_RETRIES
+        )
+        response = execute_engine_api_request(request, max_retries=max_retries)
+        perplexity_response = PerplexityResponse.model_validate(response.json())
 
-        headers = {"Authorization": f"Bearer {self.api_key}", "Content-Type": "application/json"}
-
-        try:
-            res = httpx.post(
-                "https://api.perplexity.ai/chat/completions",
-                json=payload,
-                headers=headers,
-                timeout=None,
-                follow_redirects=True,
-            )
-            res = PerplexitySearchResult(res.json())
-        except Exception as e:
-            msg = f"Failed to make request: {e}"
-            raise ValueError(msg) from e
+        res = PerplexitySearchResult(perplexity_response.model_dump())
 
         metadata = {"raw_output": res.raw}
         output = [res]

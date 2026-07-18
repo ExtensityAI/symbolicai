@@ -5,7 +5,7 @@ import pytest
 from pydantic import BaseModel
 
 from symai import Interface
-from symai.backend.engines.search.engine_perplexity import PerplexitySearchResult
+from symai.backend.engines.search.perplexity import PerplexitySearchResult
 from symai.backend.settings import SYMAI_CONFIG
 
 API_KEY = bool(SYMAI_CONFIG.get("SEARCH_ENGINE_API_KEY", None))

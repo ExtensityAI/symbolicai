@@ -4,7 +4,7 @@ from urllib.parse import urlparse
 
 import pytest
 
-from symai.backend.engines.search.engine_openai import GPTXSearchEngine
+from symai.backend.engines.search.openai import GPTXSearchEngine
 from symai.backend.settings import SYMAI_CONFIG
 from symai.extended.interfaces.openai_search import openai_search
 from symai.functional import EngineRepository

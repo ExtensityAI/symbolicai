@@ -1,5 +1,5 @@
 from symai import core
-from symai.backend.engines.search.engine_gemini import GeminiSearchResult
+from symai.backend.engines.search.gemini import GeminiSearchResult
 from symai.symbol import Expression, Symbol
 
 

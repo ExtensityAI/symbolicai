@@ -817,24 +817,6 @@ wheels = [
 ]
 
 [[package]]
-name = "firecrawl-py"
-version = "4.30.2"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "aiohttp" },
-    { name = "httpx" },
-    { name = "nest-asyncio" },
-    { name = "pydantic" },
-    { name = "python-dotenv" },
-    { name = "requests" },
-    { name = "websockets" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/44/cb/5fce6a2fc05098822bc2b012b34c3b219c8252f9e87856b17eadfdde9795/firecrawl_py-4.30.2.tar.gz", hash = "sha256:e64bb4593e1659fdc92c04e7dc3bc870ba38579c85e02941d996c807e59d9f43", size = 198025, upload-time = "2026-06-19T15:45:45.99Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/3f/d8/c7de8b0601e65011e64e54d3dc14f285e21aee1d5ec84093616931399d14/firecrawl_py-4.30.2-py3-none-any.whl", hash = "sha256:c5985faba7d3772f6a97ebeb143f8782405dcc1b100419c4d0c904ca4256f3fb", size = 246665, upload-time = "2026-06-19T15:45:44.285Z" },
-]
-
-[[package]]
 name = "flatbuffers"
 version = "25.12.19"
 source = { registry = "https://pypi.org/simple" }
@@ -1966,15 +1948,6 @@ wheels = [
 ]
 
 [[package]]
-name = "nest-asyncio"
-version = "1.6.0"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/83/f8/51569ac65d696c8ecbee95938f89d4abf00f47d58d48f6fbabfe8f0baefe/nest_asyncio-1.6.0.tar.gz", hash = "sha256:6f172d5449aca15afd6c646851f4e31e02c598d553a667e38cafa997cfec55fe", size = 7418, upload-time = "2024-01-21T14:25:19.227Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/a0/c4/c2971a3ba4c6103a3d10c4b0f24f461ddc027f0f09763220cf35ca1401b3/nest_asyncio-1.6.0-py3-none-any.whl", hash = "sha256:87af6efd6b5e897c81050477ef65c62e2b2f35d51703cae01aff2905b1852e1c", size = 5195, upload-time = "2024-01-21T14:25:17.223Z" },
-]
-
-[[package]]
 name = "networkx"
 version = "3.6.1"
 source = { registry = "https://pypi.org/simple" }
@@ -2255,23 +2228,6 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/a4/1e/1bac1a839d12e6a82ec6cb40cda2edde64a2013a66963293696bbf31fbbb/pandas-2.3.3-cp314-cp314t-manylinux_2_24_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:2e3ebdb170b5ef78f19bfb71b0dc5dc58775032361fa188e814959b74d726dd5", size = 12121582, upload-time = "2025-09-29T23:30:43.391Z" },
     { url = "https://files.pythonhosted.org/packages/44/91/483de934193e12a3b1d6ae7c8645d083ff88dec75f46e827562f1e4b4da6/pandas-2.3.3-cp314-cp314t-musllinux_1_2_aarch64.whl", hash = "sha256:d051c0e065b94b7a3cea50eb1ec32e912cd96dba41647eb24104b6c6c14c5788", size = 12699963, upload-time = "2025-09-29T23:31:10.009Z" },
     { url = "https://files.pythonhosted.org/packages/70/44/5191d2e4026f86a2a109053e194d3ba7a31a2d10a9c2348368c63ed4e85a/pandas-2.3.3-cp314-cp314t-musllinux_1_2_x86_64.whl", hash = "sha256:3869faf4bd07b3b66a9f462417d0ca3a9df29a9f6abd5d0d0dbab15dac7abe87", size = 13202175, upload-time = "2025-09-29T23:31:59.173Z" },
-]
-
-[[package]]
-name = "parallel-web"
-version = "1.1.0"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "anyio" },
-    { name = "distro" },
-    { name = "httpx" },
-    { name = "pydantic" },
-    { name = "sniffio" },
-    { name = "typing-extensions" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/51/1d/fefb7d976d3ea2ae61b0d9d6d638c9f837cb9fb96532680b148f33f322a1/parallel_web-1.1.0.tar.gz", hash = "sha256:97d6dbe4aa49b8c2c93f71f818d8883bc45bee71928bd945b7f616cecaacec0d", size = 157720, upload-time = "2026-06-08T18:22:21.298Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/df/ec/276c02247c973b02e254c9daac1844ccd38f385850c50e00ad46548eb5db/parallel_web-1.1.0-py3-none-any.whl", hash = "sha256:598aa5613c1146a3880a41592c343b0b9c0f51cff7c1ea6d10bc586d2df5e2f9", size = 167673, upload-time = "2026-06-08T18:22:20.068Z" },
 ]
 
 [[package]]
@@ -3054,13 +3010,13 @@ resolution-markers = [
     "python_full_version >= '3.14' and sys_platform == 'darwin'",
 ]
 dependencies = [
-    { name = "grpcio", marker = "python_full_version >= '3.14'" },
-    { name = "httpx", extra = ["http2"], marker = "python_full_version >= '3.14'" },
-    { name = "numpy", marker = "python_full_version >= '3.14'" },
-    { name = "portalocker", marker = "python_full_version >= '3.14'" },
-    { name = "protobuf", marker = "python_full_version >= '3.14'" },
-    { name = "pydantic", marker = "python_full_version >= '3.14'" },
-    { name = "urllib3", marker = "python_full_version >= '3.14'" },
+    { name = "grpcio" },
+    { name = "httpx", extra = ["http2"] },
+    { name = "numpy" },
+    { name = "portalocker" },
+    { name = "protobuf" },
+    { name = "pydantic" },
+    { name = "urllib3" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/d9/68/fec3816a223c0b73b0e0036460be45c61ce2770ffb9197ac371e4f615ddc/qdrant_client-1.16.1.tar.gz", hash = "sha256:676c7c10fd4d4cb2981b8fcb32fd764f5f661b04b7334d024034d07212f971fd", size = 332130, upload-time = "2025-11-25T04:31:54.212Z" }
 wheels = [
@@ -3083,13 +3039,13 @@ resolution-markers = [
     "python_full_version < '3.12' and sys_platform == 'darwin'",
 ]
 dependencies = [
-    { name = "grpcio", marker = "python_full_version < '3.14'" },
-    { name = "httpx", extra = ["http2"], marker = "python_full_version < '3.14'" },
-    { name = "numpy", marker = "python_full_version < '3.14'" },
-    { name = "portalocker", marker = "python_full_version < '3.14'" },
-    { name = "protobuf", marker = "python_full_version < '3.14'" },
-    { name = "pydantic", marker = "python_full_version < '3.14'" },
-    { name = "urllib3", marker = "python_full_version < '3.14'" },
+    { name = "grpcio" },
+    { name = "httpx", extra = ["http2"] },
+    { name = "numpy" },
+    { name = "portalocker" },
+    { name = "protobuf" },
+    { name = "pydantic" },
+    { name = "urllib3" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/65/45/5b1bdd15a3c7730eefb9c113600829e20d689b82b5a23f9e07d107094004/qdrant_client-1.18.0.tar.gz", hash = "sha256:52e8ece1a7d40519801bf0b70713bfa0f6b7ae28c7275bbe0b0286fbed7f6db4", size = 352580, upload-time = "2026-05-11T14:12:38.702Z" }
 wheels = [
@@ -3357,7 +3313,7 @@ resolution-markers = [
     "python_full_version < '3.12' and sys_platform == 'darwin'",
 ]
 dependencies = [
-    { name = "numpy", marker = "python_full_version < '3.12'" },
+    { name = "numpy" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/7a/97/5a3609c4f8d58b039179648e62dd220f89864f56f7357f5d4f45c29eb2cc/scipy-1.17.1.tar.gz", hash = "sha256:95d8e012d8cb8816c226aef832200b1d45109ed4464303e997c5b13122b297c0", size = 30573822, upload-time = "2026-02-23T00:26:24.851Z" }
 wheels = [
@@ -3439,7 +3395,7 @@ resolution-markers = [
     "python_full_version == '3.12.*' and sys_platform == 'darwin'",
 ]
 dependencies = [
-    { name = "numpy", marker = "python_full_version >= '3.12'" },
+    { name = "numpy" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/a7/25/c2700dfaf6442b4effaa91af24ebce5dc9d31bb4a69706313aae70d72cd0/scipy-1.18.0.tar.gz", hash = "sha256:67b2ad2ad54c72ca6d04975a9b2df8c3638c34ddd5b28738e94fc2b57929d378", size = 30774447, upload-time = "2026-06-19T15:01:43.456Z" }
 wheels = [
@@ -3651,13 +3607,11 @@ all = [
     { name = "datasets" },
     { name = "docker" },
     { name = "fastapi" },
-    { name = "firecrawl-py" },
     { name = "llvmlite" },
     { name = "mistralai" },
     { name = "numba" },
     { name = "openai-whisper" },
     { name = "opencv-python" },
-    { name = "parallel-web" },
     { name = "pdfminer-six" },
     { name = "peft" },
     { name = "playwright" },
@@ -3714,14 +3668,11 @@ qdrant = [
 ]
 scrape = [
     { name = "beautifulsoup4" },
-    { name = "parallel-web" },
     { name = "pdfminer-six" },
     { name = "playwright" },
     { name = "trafilatura" },
 ]
 search = [
-    { name = "firecrawl-py" },
-    { name = "parallel-web" },
     { name = "tldextract" },
 ]
 services = [
@@ -3768,7 +3719,6 @@ requires-dist = [
     { name = "docker", marker = "extra == 'lean'", specifier = ">=7.0.0" },
     { name = "fastapi", marker = "extra == 'services'", specifier = ">=0.110.0" },
     { name = "filetype", specifier = ">=1.2.0" },
-    { name = "firecrawl-py", marker = "extra == 'search'", specifier = ">=4.12.0" },
     { name = "google-genai", specifier = ">=1.16.1" },
     { name = "httpx", specifier = ">=0.28.1" },
     { name = "jinja2", specifier = ">=3.1.0" },
@@ -3780,8 +3730,6 @@ requires-dist = [
     { name = "openai", specifier = ">=1.60.0" },
     { name = "openai-whisper", marker = "extra == 'whisper'", specifier = ">=20240930" },
     { name = "opencv-python", marker = "extra == 'video'", specifier = ">=4.8.1.78" },
-    { name = "parallel-web", marker = "extra == 'scrape'", specifier = ">=1.0.1" },
-    { name = "parallel-web", marker = "extra == 'search'", specifier = ">=1.0.1" },
     { name = "pdfminer-six", marker = "extra == 'scrape'" },
     { name = "peft", marker = "extra == 'hf'", specifier = ">=0.13.1" },
     { name = "pillow", specifier = ">=10.0.0" },
@@ -4004,13 +3952,13 @@ resolution-markers = [
     "python_full_version < '3.12' and sys_platform == 'darwin'",
 ]
 dependencies = [
-    { name = "filelock", marker = "sys_platform == 'darwin'" },
-    { name = "fsspec", marker = "sys_platform == 'darwin'" },
-    { name = "jinja2", marker = "sys_platform == 'darwin'" },
-    { name = "networkx", marker = "sys_platform == 'darwin'" },
-    { name = "setuptools", marker = "python_full_version >= '3.12' and sys_platform == 'darwin'" },
-    { name = "sympy", marker = "sys_platform == 'darwin'" },
-    { name = "typing-extensions", marker = "sys_platform == 'darwin'" },
+    { name = "filelock" },
+    { name = "fsspec" },
+    { name = "jinja2" },
+    { name = "networkx" },
+    { name = "setuptools", marker = "python_full_version >= '3.12'" },
+    { name = "sympy" },
+    { name = "typing-extensions" },
 ]
 wheels = [
     { url = "https://download-r2.pytorch.org/whl/cpu/torch-2.9.1-cp311-none-macosx_11_0_arm64.whl", hash = "sha256:a52952a8c90a422c14627ea99b9826b7557203b46b4d0772d3ca5c7699692425", upload-time = "2026-01-23T15:12:43Z" },
@@ -4036,13 +3984,13 @@ resolution-markers = [
     "python_full_version < '3.12' and sys_platform != 'darwin' and sys_platform != 'win32'",
 ]
 dependencies = [
-    { name = "filelock", marker = "sys_platform != 'darwin'" },
-    { name = "fsspec", marker = "sys_platform != 'darwin'" },
-    { name = "jinja2", marker = "sys_platform != 'darwin'" },
-    { name = "networkx", marker = "sys_platform != 'darwin'" },
-    { name = "setuptools", marker = "python_full_version >= '3.12' and sys_platform != 'darwin'" },
-    { name = "sympy", marker = "sys_platform != 'darwin'" },
-    { name = "typing-extensions", marker = "sys_platform != 'darwin'" },
+    { name = "filelock" },
+    { name = "fsspec" },
+    { name = "jinja2" },
+    { name = "networkx" },
+    { name = "setuptools", marker = "python_full_version >= '3.12'" },
+    { name = "sympy" },
+    { name = "typing-extensions" },
 ]
 wheels = [
     { url = "https://download-r2.pytorch.org/whl/cpu/torch-2.9.1%2Bcpu-cp311-cp311-manylinux_2_28_aarch64.whl", hash = "sha256:0e611cfb16724e62252b67d31073bc5c490cb83e92ecdc1192762535e0e44487", upload-time = "2026-01-23T15:12:54Z" },

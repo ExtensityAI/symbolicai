@@ -1,14 +1,9 @@
-import os
 import re
 from urllib.parse import urlparse
 
 import pytest
 
-from symai.backend.engines.search.engine_gemini import (
-    DEFAULT_SEARCH_MODEL,
-    SUPPORTED_SEARCH_MODELS,
-    GeminiSearchEngine,
-)
+from symai.backend.engines.search.gemini import GeminiSearchEngine
 from symai.backend.settings import SYMAI_CONFIG
 from symai.components import MetadataTracker
 from symai.extended.interfaces.gemini_search import gemini_search
@@ -110,4 +105,3 @@ def test_gemini_search_metadata_tracker_runtimeinfo_live(model):
     # reasoning_tokens come from Gemini's total_thought_tokens (may be 0 for non-thinking turns)
     assert info.reasoning_tokens >= 0
     assert info.cached_tokens >= 0
-

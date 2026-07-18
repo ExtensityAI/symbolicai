@@ -1,23 +1,25 @@
+from __future__ import annotations
+
 import json
 import logging
-import warnings
 from copy import deepcopy
 from typing import Any
 
-try:
-    with warnings.catch_warnings():
-        # firecrawl's pydantic models emit field-shadow UserWarnings at import; not actionable here
-        warnings.filterwarnings("ignore", category=UserWarning, module=r"firecrawl\..*")
-        from firecrawl import Firecrawl
-        from firecrawl.v2.types import ScrapeOptions
-except ImportError:
-    Firecrawl = None
-
 from symai.backend.base import Engine
+from symai.backend.engines.search.firecrawl.models import (
+    FIRECRAWL_API_BASE,
+    FirecrawlScrapeOptions,
+    FirecrawlScrapeRequest,
+    FirecrawlScrapeResponse,
+    FirecrawlSearchRequest,
+    FirecrawlSearchResponse,
+)
 from symai.backend.engines.search.utils import Citation, CitationResultMixin, normalize_url
+from symai.backend.request import EngineAPIRequest
 from symai.backend.settings import SYMAI_CONFIG
+from symai.backend.transport import DEFAULT_RETRIES, execute_engine_api_request
 from symai.symbol import Result
-from symai.utils import Extra, missing_dependency, silence_noisy_loggers
+from symai.utils import silence_noisy_loggers
 
 silence_noisy_loggers()
 
@@ -151,22 +153,14 @@ class FirecrawlEngine(Engine):
         self.api_key = api_key or self.config.get("SEARCH_ENGINE_API_KEY")
         self.model = self.config.get("SEARCH_ENGINE_MODEL")
         self.name = self.__class__.__name__
+        self.transport_client = None
 
         if api_key is None and self.id() != "search":
             return
 
-        if Firecrawl is None:
-            raise missing_dependency(Extra.SEARCH, "firecrawl", package="firecrawl-py")
-
         if not self.api_key:
             msg = "Firecrawl API key not found. Set SEARCH_ENGINE_API_KEY in config or environment."
             raise ValueError(msg)
-
-        try:
-            self.client = Firecrawl(api_key=self.api_key)
-        except Exception as e:
-            msg = f"Failed to initialize Firecrawl client: {e}"
-            raise ValueError(msg) from e
 
     def id(self) -> str:
         if (
@@ -190,88 +184,63 @@ class FirecrawlEngine(Engine):
 
         max_chars_per_result = kwargs.get("max_chars_per_result")
 
-        # Build search kwargs
         search_kwargs = {}
-        if "limit" in kwargs:
-            search_kwargs["limit"] = kwargs["limit"]
-        if "location" in kwargs:
-            search_kwargs["location"] = kwargs["location"]
-        if "tbs" in kwargs:
-            search_kwargs["tbs"] = kwargs["tbs"]
-        if "sources" in kwargs:
-            search_kwargs["sources"] = kwargs["sources"]
-        if "categories" in kwargs:
-            search_kwargs["categories"] = kwargs["categories"]
-        if "timeout" in kwargs:
-            search_kwargs["timeout"] = kwargs["timeout"]
+        for key in ("limit", "location", "tbs", "sources", "categories", "timeout"):
+            if key in kwargs:
+                search_kwargs[key] = kwargs[key]
 
-        # Build scrape options for search results content
         scrape_opts = {}
-        if "formats" in kwargs:
-            scrape_opts["formats"] = kwargs["formats"]
-        if "proxy" in kwargs:
-            scrape_opts["proxy"] = kwargs["proxy"]
-        if "only_main_content" in kwargs:
-            scrape_opts["only_main_content"] = kwargs["only_main_content"]
+        for key in ("formats", "proxy", "only_main_content", "include_tags", "exclude_tags"):
+            if key in kwargs:
+                scrape_opts[key] = kwargs[key]
         if "scrape_location" in kwargs:
             scrape_opts["location"] = kwargs["scrape_location"]
-        if "include_tags" in kwargs:
-            scrape_opts["include_tags"] = kwargs["include_tags"]
-        if "exclude_tags" in kwargs:
-            scrape_opts["exclude_tags"] = kwargs["exclude_tags"]
 
         if scrape_opts:
-            search_kwargs["scrape_options"] = ScrapeOptions(**scrape_opts)
+            search_kwargs["scrape_options"] = FirecrawlScrapeOptions.model_validate(scrape_opts)
 
-        try:
-            result = self.client.search(query, **search_kwargs)
-        except Exception as e:
-            msg = f"Failed to call Firecrawl Search API: {e}"
-            raise ValueError(msg) from e
+        payload = FirecrawlSearchRequest.model_validate({"query": query, **search_kwargs})
+        response = self._call_api(payload, "search")
+        result = FirecrawlSearchResponse.model_validate(response.json())
+        if not result.success:
+            msg = f"Failed to call Firecrawl Search API: {result.error or 'unknown error'}"
+            raise ValueError(msg)
 
-        raw = result.model_dump() if hasattr(result, "model_dump") else result
-        return [FirecrawlSearchResult(result, max_chars_per_result=max_chars_per_result)], {
-            "raw_output": raw
+        data = result.data.model_dump(exclude_none=True) if result.data is not None else {}
+        return [FirecrawlSearchResult(data, max_chars_per_result=max_chars_per_result)], {
+            "raw_output": data
         }
 
     def _extract(self, url: str, kwargs: dict[str, Any]):
         normalized_url = normalize_url(url)
 
-        # Build scrape kwargs
-        scrape_kwargs = {"formats": kwargs.get("formats", ["markdown"])}
-        if "only_main_content" in kwargs:
-            scrape_kwargs["only_main_content"] = kwargs["only_main_content"]
-        if "timeout" in kwargs:
-            scrape_kwargs["timeout"] = kwargs["timeout"]
-        if "proxy" in kwargs:
-            scrape_kwargs["proxy"] = kwargs["proxy"]
-        if "location" in kwargs:
-            scrape_kwargs["location"] = kwargs["location"]
-        if "max_age" in kwargs:
-            scrape_kwargs["max_age"] = kwargs["max_age"]
-        if "store_in_cache" in kwargs:
-            scrape_kwargs["store_in_cache"] = kwargs["store_in_cache"]
-        if "actions" in kwargs:
-            scrape_kwargs["actions"] = kwargs["actions"]
-        if "headers" in kwargs:
-            scrape_kwargs["headers"] = kwargs["headers"]
-        if "include_tags" in kwargs:
-            scrape_kwargs["include_tags"] = kwargs["include_tags"]
-        if "exclude_tags" in kwargs:
-            scrape_kwargs["exclude_tags"] = kwargs["exclude_tags"]
-        if "wait_for" in kwargs:
-            scrape_kwargs["wait_for"] = kwargs["wait_for"]
-        if "mobile" in kwargs:
-            scrape_kwargs["mobile"] = kwargs["mobile"]
+        scrape_kwargs: dict[str, Any] = {"formats": kwargs.get("formats", ["markdown"])}
+        for key in (
+            "only_main_content",
+            "timeout",
+            "proxy",
+            "location",
+            "max_age",
+            "store_in_cache",
+            "actions",
+            "headers",
+            "include_tags",
+            "exclude_tags",
+            "wait_for",
+            "mobile",
+        ):
+            if key in kwargs:
+                scrape_kwargs[key] = kwargs[key]
 
-        try:
-            result = self.client.scrape(normalized_url, **scrape_kwargs)
-        except Exception as e:
-            msg = f"Failed to call Firecrawl Scrape API: {e}"
-            raise ValueError(msg) from e
+        payload = FirecrawlScrapeRequest.model_validate({"url": normalized_url, **scrape_kwargs})
+        response = self._call_api(payload, "scrape")
+        result = FirecrawlScrapeResponse.model_validate(response.json())
+        if not result.success:
+            msg = f"Failed to call Firecrawl Scrape API: {result.error or 'unknown error'}"
+            raise ValueError(msg)
 
-        raw = result.model_dump() if hasattr(result, "model_dump") else result
-        return [FirecrawlExtractResult(result)], {"raw_output": raw, "final_url": normalized_url}
+        data = result.data.model_dump(exclude_none=True) if result.data is not None else {}
+        return [FirecrawlExtractResult(data)], {"raw_output": data, "final_url": normalized_url}
 
     def forward(self, argument):
         kwargs = argument.kwargs
@@ -302,3 +271,25 @@ class FirecrawlEngine(Engine):
             return
 
         argument.prop.prepared_input = str(query or "").strip()
+
+    def _call_api(self, payload: FirecrawlSearchRequest | FirecrawlScrapeRequest, operation: str):
+        max_retries = (
+            self.client_max_retries if self.client_max_retries is not None else DEFAULT_RETRIES
+        )
+        request = EngineAPIRequest(
+            provider="firecrawl",
+            operation=operation,
+            payload=payload,
+            method="POST",
+            url=f"{FIRECRAWL_API_BASE}/{operation}",
+            headers={
+                "Authorization": f"Bearer {self.api_key}",
+                "Content-Type": "application/json",
+            },
+            timeout=self.client_timeout,
+        )
+        return execute_engine_api_request(
+            request,
+            client=self.transport_client,
+            max_retries=max_retries,
+        )
