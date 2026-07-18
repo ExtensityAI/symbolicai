@@ -10,7 +10,8 @@ from symai.backend.engines.neurosymbolic.llama_cpp.models import (
 )
 from symai.backend.settings import SYMSERVER_CONFIG
 from symai.components import MetadataTracker
-from tests.engines.interface import MockAPI, NeurosymbolicEngineTestInterface
+from tests.engines.mock_api import MockAPI
+from tests.engines.neurosymbolic.interface import NeurosymbolicEngineTestInterface
 
 SERVER_ENDPOINT = f"http://{SYMSERVER_CONFIG.get('--host')}:{SYMSERVER_CONFIG.get('--port')}"
 

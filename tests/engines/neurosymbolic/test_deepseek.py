@@ -14,7 +14,8 @@ from symai.backend.engines.neurosymbolic.deepseek.models import (
     deepseek_strip_prefix,
 )
 from symai.components import MetadataTracker
-from tests.engines.interface import MockAPI, NeurosymbolicEngineTestInterface
+from tests.engines.mock_api import MockAPI
+from tests.engines.neurosymbolic.interface import NeurosymbolicEngineTestInterface
 
 
 class TestDeepSeekEngine(NeurosymbolicEngineTestInterface):

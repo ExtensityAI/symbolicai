@@ -1,7 +1,7 @@
-"""Shared test interface for migrated engines (see ENGINE_REFACTOR_RECIPE.md).
+"""Test interface for the neurosymbolic chat engines.
 
 One subclass per provider folder supplies provider facts and wire fixtures; the
-interface asserts the uniform engine contract:
+interface asserts the uniform neurosymbolic contract:
 
 - registration (id gate, ENGINE_MAPPING)
 - build_request wire shape (headers, params, timeout, body merge, kwarg validation)
@@ -12,6 +12,8 @@ interface asserts the uniform engine contract:
 - live smoke (intentionally short and cheap)
 
 Live runs require `--engine-api=live` and the provider key in symai.config.json.
+The mock transport harness lives in tests/engines/mock_api.py; the search engines
+have their own contract in tests/engines/search/interface.py.
 """
 
 from __future__ import annotations
@@ -31,37 +33,10 @@ from symai.components import MetadataTracker
 from symai.core import Argument
 from symai.functional import EngineRepository
 from symai.prompts import CACHE_BREAKPOINT
+from tests.engines.mock_api import DUMMY_KEY, MockAPI
 
-DUMMY_KEY = "sk-test-not-a-real-key"
 LIVE_PROMPT = "Reply with exactly: ok"
 LIVE_TIMEOUT = 30.0
-
-
-class MockAPI:
-    """Routes an engine's transport through httpx.MockTransport and records requests."""
-
-    def __init__(self, engine, handler):
-        def spy(request):
-            self.requests.append(request)
-            return handler(request)
-
-        self.requests = []
-        self.client = httpx.Client(transport=httpx.MockTransport(spy))
-        engine.transport_client = self.client
-
-    def __enter__(self):
-        return self
-
-    def __exit__(self, *exc_info):
-        self.client.close()
-
-    @property
-    def last_request(self) -> httpx.Request:
-        return self.requests[-1]
-
-    @property
-    def last_body(self) -> dict:
-        return json.loads(self.requests[-1].content.decode("utf-8"))
 
 
 class EngineTestInterface:

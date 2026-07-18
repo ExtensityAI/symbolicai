@@ -1,4 +1,4 @@
-"""Shared test interface for the migrated search engines (see ENGINE_REFACTOR_RECIPE.md).
+"""Shared test interface for the migrated search engines.
 
 One subclass per provider module supplies provider facts and wire fixtures; the
 interface asserts the uniform search-engine contract:
@@ -30,9 +30,8 @@ from pydantic import ValidationError
 
 from symai.backend.engines.search.utils import Citation, normalize_url
 from symai.backend.transport import EngineAuthenticationError
-from tests.engines.interface import MockAPI
+from tests.engines.mock_api import DUMMY_KEY, MockAPI
 
-DUMMY_KEY = "sk-test-not-a-real-key"
 MOCK_QUERY = "Who won the UEFA Euro 2024 final and what was the score?"
 KEYS_LOG = Path("api_keys.log")
 

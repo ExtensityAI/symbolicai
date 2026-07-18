@@ -15,7 +15,8 @@ from symai.backend.engines.neurosymbolic.openrouter.models import (
     openrouter_strip_prefix,
 )
 from symai.components import MetadataTracker
-from tests.engines.interface import MockAPI, NeurosymbolicEngineTestInterface
+from tests.engines.mock_api import MockAPI
+from tests.engines.neurosymbolic.interface import NeurosymbolicEngineTestInterface
 
 
 class TestOpenRouterEngine(NeurosymbolicEngineTestInterface):

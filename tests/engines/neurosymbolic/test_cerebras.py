@@ -13,7 +13,8 @@ from symai.backend.engines.neurosymbolic.cerebras.models import (
     cerebras_strip_prefix,
 )
 from symai.components import MetadataTracker
-from tests.engines.interface import MockAPI, NeurosymbolicEngineTestInterface
+from tests.engines.mock_api import MockAPI
+from tests.engines.neurosymbolic.interface import NeurosymbolicEngineTestInterface
 
 
 class TestCerebrasEngine(NeurosymbolicEngineTestInterface):

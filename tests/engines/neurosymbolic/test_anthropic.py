@@ -19,7 +19,8 @@ from symai.backend.engines.neurosymbolic.anthropic.models import (
 )
 from symai.components import MetadataTracker
 from symai.prompts import CACHE_BREAKPOINT
-from tests.engines.interface import MockAPI, NeurosymbolicEngineTestInterface
+from tests.engines.mock_api import MockAPI
+from tests.engines.neurosymbolic.interface import NeurosymbolicEngineTestInterface
 
 
 class TestAnthropicEngine(NeurosymbolicEngineTestInterface):
