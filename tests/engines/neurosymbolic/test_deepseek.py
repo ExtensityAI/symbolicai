@@ -4,7 +4,7 @@ from pydantic import ValidationError
 
 from symai.backend.engines.neurosymbolic.deepseek.engine import (
     DEEPSEEK_CHAT_COMPLETIONS_URL,
-    DeepSeekXReasoningEngine,
+    DeepseekEngine,
 )
 from symai.backend.engines.neurosymbolic.deepseek.models import (
     API_PINNED,
@@ -18,7 +18,7 @@ from tests.engines.interface import MockAPI, NeurosymbolicEngineTestInterface
 
 
 class TestDeepSeekEngine(NeurosymbolicEngineTestInterface):
-    engine_cls = DeepSeekXReasoningEngine
+    engine_cls = DeepseekEngine
     supported_models = tuple(SUPPORTED_MODELS)
     model_specs = DEEPSEEK_MODEL_SPECS
     default_model = "deepseek:deepseek-v4-flash"

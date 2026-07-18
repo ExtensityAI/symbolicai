@@ -6,7 +6,7 @@ from symai.backend.engines.neurosymbolic.cerebras import (
 )
 from symai.backend.engines.neurosymbolic.cerebras import CerebrasEngine
 from symai.backend.engines.neurosymbolic.deepseek import SUPPORTED_MODELS as DEEPSEEK_MODELS
-from symai.backend.engines.neurosymbolic.deepseek import DeepSeekXReasoningEngine
+from symai.backend.engines.neurosymbolic.deepseek import DeepseekEngine
 from symai.backend.engines.neurosymbolic.engine_anthropic_claudeX_chat import ClaudeXChatEngine
 from symai.backend.engines.neurosymbolic.engine_anthropic_claudeX_reasoning import (
     ClaudeXReasoningEngine,
@@ -19,7 +19,7 @@ from symai.backend.engines.neurosymbolic.groq import (
 )
 from symai.backend.engines.neurosymbolic.groq import GroqEngine
 from symai.backend.engines.neurosymbolic.openai import SUPPORTED_OPENAI_MODELS as OPENAI_MODELS
-from symai.backend.engines.neurosymbolic.openai import OpenAIResponsesEngine
+from symai.backend.engines.neurosymbolic.openai import OpenAIEngine
 from symai.backend.engines.neurosymbolic.openrouter import (
     SUPPORTED_CHAT_MODELS as OPENROUTER_CHAT_MODELS,
 )
@@ -40,10 +40,10 @@ ENGINE_MAPPING = {
     **dict.fromkeys(ANTHROPIC_REASONING_MODELS, ClaudeXReasoningEngine),
     **dict.fromkeys(CEREBRAS_CHAT_MODELS, CerebrasEngine),
     **dict.fromkeys(CEREBRAS_REASONING_MODELS, CerebrasEngine),
-    **dict.fromkeys(DEEPSEEK_MODELS, DeepSeekXReasoningEngine),
+    **dict.fromkeys(DEEPSEEK_MODELS, DeepseekEngine),
     **dict.fromkeys(GOOGLE_CHAT_MODELS, GeminiXReasoningEngine),
     **dict.fromkeys(GOOGLE_REASONING_MODELS, GeminiXReasoningEngine),
-    **dict.fromkeys(OPENAI_MODELS, OpenAIResponsesEngine),
+    **dict.fromkeys(OPENAI_MODELS, OpenAIEngine),
     **dict.fromkeys(GROQ_REASONING_MODELS, GroqEngine),
     **dict.fromkeys(OPENROUTER_CHAT_MODELS, OpenRouterEngine),
     **dict.fromkeys(OPENROUTER_REASONING_MODELS, OpenRouterEngine),
@@ -64,9 +64,9 @@ __all__ = [
     "OPENROUTER_REASONING_MODELS",
     "ClaudeXChatEngine",
     "ClaudeXReasoningEngine",
-    "DeepSeekXReasoningEngine",
+    "DeepseekEngine",
     "GeminiXReasoningEngine",
     "GroqEngine",
-    "OpenAIResponsesEngine",
+    "OpenAIEngine",
     "OpenRouterEngine",
 ]

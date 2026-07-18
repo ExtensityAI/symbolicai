@@ -8,7 +8,7 @@ from pydantic import ValidationError
 
 from symai.backend.engines.neurosymbolic.openai.engine import (
     OPENAI_RESPONSES_URL,
-    OpenAIResponsesEngine,
+    OpenAIEngine,
 )
 from symai.backend.engines.neurosymbolic.openai.models import (
     API_PINNED,
@@ -21,8 +21,8 @@ from symai.components import MetadataTracker
 from tests.engines.interface import MockAPI, NeurosymbolicEngineTestInterface
 
 
-class TestOpenAIResponsesEngine(NeurosymbolicEngineTestInterface):
-    engine_cls = OpenAIResponsesEngine
+class TestOpenAIEngine(NeurosymbolicEngineTestInterface):
+    engine_cls = OpenAIEngine
     supported_models = tuple(SUPPORTED_OPENAI_MODELS)
     model_specs = OPENAI_MODEL_SPECS
     # NOTE: gpt-4.1-mini is the non-reasoning default so the generic wire-shape checks

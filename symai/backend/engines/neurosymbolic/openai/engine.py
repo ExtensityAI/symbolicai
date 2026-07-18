@@ -50,7 +50,7 @@ class ResponsesTokenizer:
         return self._tiktoken.decode(tokens)
 
 
-class OpenAIResponsesEngine(Engine):
+class OpenAIEngine(Engine):
     def __init__(
         self,
         api_key: str | None = None,
@@ -286,7 +286,7 @@ class OpenAIResponsesEngine(Engine):
         key = "developer" if self.is_reasoning_model() else "system"
         res = self.self_prompt({"user": user_text, key: system})
         if res is None:
-            msg = "Self-prompting failed for OpenAIResponsesEngine."
+            msg = "Self-prompting failed for OpenAIEngine."
             raise ValueError(msg)
 
         return res[key], self._create_user_message(res["user"], image_files)
@@ -342,7 +342,7 @@ class OpenAIResponsesEngine(Engine):
     def _prepare_raw_input(self, argument):
         value = argument.prop.processed_input
         if not value:
-            msg = "A prompt instruction is required for OpenAIResponsesEngine when raw_input is enabled."
+            msg = "A prompt instruction is required for OpenAIEngine when raw_input is enabled."
             raise ValueError(msg)
         if isinstance(value, list):
             return value

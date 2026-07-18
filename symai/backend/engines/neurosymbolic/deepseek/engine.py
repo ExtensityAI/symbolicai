@@ -28,7 +28,7 @@ from symai.prompts import strip_cache_breakpoints_from_messages
 DEEPSEEK_CHAT_COMPLETIONS_URL = "https://api.deepseek.com/chat/completions"
 
 
-class DeepSeekXReasoningEngine(Engine):
+class DeepseekEngine(Engine):
     def __init__(
         self,
         api_key: str | None = None,
@@ -61,11 +61,11 @@ class DeepSeekXReasoningEngine(Engine):
         return deepseek_model_spec_for(self.model).context_tokens
 
     def compute_required_tokens(self, _messages: list[DeepSeekMessage]) -> int:
-        msg = 'Method "compute_required_tokens" not implemented for DeepSeekXReasoningEngine.'
+        msg = 'Method "compute_required_tokens" not implemented for DeepseekEngine.'
         raise NotImplementedError(msg)
 
     def compute_remaining_tokens(self, _prompts: list[DeepSeekMessage]) -> int:
-        msg = 'Method "compute_remaining_tokens" not implemented for DeepSeekXReasoningEngine.'
+        msg = 'Method "compute_remaining_tokens" not implemented for DeepseekEngine.'
         raise NotImplementedError(msg)
 
     def usage_record_from_metadata(self, metadata: dict) -> EngineUsageRecord:
@@ -185,7 +185,7 @@ class DeepSeekXReasoningEngine(Engine):
         if prop.instance._kwargs.get("self_prompt", False) or prop.self_prompt:
             res = self.self_prompt({"user": user_prompt["content"], "system": system})
             if res is None:
-                msg = "Self-prompting failed for DeepSeekXReasoningEngine."
+                msg = "Self-prompting failed for DeepseekEngine."
                 raise ValueError(msg)
 
             user_prompt = {"role": "user", "content": res["user"]}
@@ -227,7 +227,7 @@ class DeepSeekXReasoningEngine(Engine):
     def _prepare_raw_input(self, argument):
         value = argument.prop.processed_input
         if not value:
-            msg = "A prompt instruction is required for DeepSeekXReasoningEngine when raw_input is enabled."
+            msg = "A prompt instruction is required for DeepseekEngine when raw_input is enabled."
             raise ValueError(msg)
         if isinstance(value, list):
             return value
