@@ -6,6 +6,7 @@ import re
 from copy import deepcopy
 
 from symai.backend.base import Engine
+from symai.backend.engines.neurosymbolic._prompts import render_chat_system_prompt
 from symai.backend.engines.neurosymbolic.openrouter.models import (
     SUPPORTED_OPENROUTER_MODELS,
     OpenRouterOptions,
@@ -16,7 +17,6 @@ from symai.backend.engines.neurosymbolic.openrouter.models import (
     openrouter_strip_prefix,
 )
 from symai.backend.engines.neurosymbolic.openrouter.stream import OpenRouterStreamAdapter
-from symai.backend.engines.neurosymbolic.prompts import render_chat_system_prompt
 from symai.backend.settings import SYMAI_CONFIG
 from symai.backend.streaming import EngineStreamAccumulator
 from symai.backend.transport import (

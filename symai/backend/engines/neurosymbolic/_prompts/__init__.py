@@ -24,7 +24,7 @@ def render_chat_system_prompt(argument) -> str:
 
     static_context, dynamic_context = prop.instance.global_context
     return prompt_registry.render(
-        "chat.system",
+        "system",
         suppress_verbose_output=prop.suppress_verbose_output,
         response_format_type=response_format_type,
         static_context=static_context,

@@ -6,6 +6,7 @@ import re
 from copy import deepcopy
 
 from symai.backend.base import Engine
+from symai.backend.engines.neurosymbolic._prompts import render_chat_system_prompt
 from symai.backend.engines.neurosymbolic.cerebras.models import (
     SUPPORTED_CEREBRAS_MODELS,
     CerebrasOptions,
@@ -16,7 +17,6 @@ from symai.backend.engines.neurosymbolic.cerebras.models import (
     cerebras_strip_prefix,
 )
 from symai.backend.engines.neurosymbolic.cerebras.stream import CerebrasStreamAdapter
-from symai.backend.engines.neurosymbolic.prompts import render_chat_system_prompt
 from symai.backend.settings import SYMAI_CONFIG
 from symai.backend.streaming import EngineStreamAccumulator
 from symai.backend.transport import (

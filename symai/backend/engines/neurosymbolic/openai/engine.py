@@ -8,6 +8,7 @@ from copy import deepcopy
 import tiktoken
 
 from symai.backend.base import Engine
+from symai.backend.engines.neurosymbolic._prompts import render_chat_system_prompt
 from symai.backend.engines.neurosymbolic.openai.models import (
     SUPPORTED_OPENAI_MODELS,
     OpenAIOptions,
@@ -19,7 +20,6 @@ from symai.backend.engines.neurosymbolic.openai.models import (
     openai_strip_prefix,
 )
 from symai.backend.engines.neurosymbolic.openai.stream import OpenAIStreamAdapter
-from symai.backend.engines.neurosymbolic.prompts import render_chat_system_prompt
 from symai.backend.settings import SYMAI_CONFIG
 from symai.backend.streaming import EngineStreamAccumulator
 from symai.backend.transport import (

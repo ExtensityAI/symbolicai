@@ -161,12 +161,12 @@ class Engine(ABC):
     @classmethod
     def self_prompt(cls, existing_prompt: dict[str, str], **kwargs) -> dict[str, str]:
         from symai import core  # noqa: PLC0415
-        from symai.backend.engines.neurosymbolic.prompts import (  # noqa: PLC0415
+        from symai.backend.engines.neurosymbolic._prompts import (  # noqa: PLC0415
             prompt_registry,
         )
 
         messages = [
-            {"role": "system", "content": prompt_registry.render("chat.self_prompt")},
+            {"role": "system", "content": prompt_registry.render("self_prompt")},
             {"role": "user", "content": json.dumps(existing_prompt, ensure_ascii=False)},
         ]
 

@@ -25,7 +25,7 @@ import httpx
 import pytest
 from pydantic import ValidationError
 
-from symai.backend.engines.neurosymbolic.prompts import prompt_registry
+from symai.backend.engines.neurosymbolic._prompts import prompt_registry
 from symai.backend.settings import SYMAI_CONFIG
 from symai.components import MetadataTracker
 from symai.core import Argument
@@ -776,7 +776,7 @@ class NeurosymbolicEngineTestInterface(EngineTestInterface):
         assert user == {"role": "user", "content": "What changed?"}
 
     def test_neurosymbolic_self_prompt_template_uses_plain_output_examples(self):
-        prompt = prompt_registry.render("chat.self_prompt")
+        prompt = prompt_registry.render("self_prompt")
 
         assert '{"system": "<new system prompt>", "user": "<new user prompt>"}' in prompt
         assert '{"developer": "<new developer prompt>", "user": "<new user prompt>"}' in prompt

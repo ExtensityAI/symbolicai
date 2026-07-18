@@ -9,6 +9,7 @@ from copy import deepcopy
 import httpx
 
 from symai.backend.base import Engine
+from symai.backend.engines.neurosymbolic._prompts import render_chat_system_prompt
 from symai.backend.engines.neurosymbolic.google.models import (
     SUPPORTED_GOOGLE_MODELS,
     GoogleCountTokensPayload,
@@ -25,7 +26,6 @@ from symai.backend.engines.neurosymbolic.google.models import (
     google_strip_prefix,
 )
 from symai.backend.engines.neurosymbolic.google.stream import GoogleStreamAdapter
-from symai.backend.engines.neurosymbolic.prompts import render_chat_system_prompt
 from symai.backend.settings import SYMAI_CONFIG
 from symai.backend.streaming import EngineStreamAccumulator
 from symai.backend.transport import (

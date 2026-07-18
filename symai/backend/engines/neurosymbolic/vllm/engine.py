@@ -7,7 +7,7 @@ from copy import deepcopy
 import httpx
 
 from symai.backend.base import Engine
-from symai.backend.engines.neurosymbolic.prompts import render_chat_system_prompt
+from symai.backend.engines.neurosymbolic._prompts import render_chat_system_prompt
 from symai.backend.engines.neurosymbolic.vllm.models import (
     VLLMModelsResponse,
     VLLMOptions,

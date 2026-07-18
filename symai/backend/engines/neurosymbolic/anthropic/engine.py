@@ -6,6 +6,7 @@ import re
 from copy import deepcopy
 
 from symai.backend.base import Engine
+from symai.backend.engines.neurosymbolic._prompts import render_chat_system_prompt
 from symai.backend.engines.neurosymbolic.anthropic.models import (
     ANTHROPIC_VERSION,
     LONG_CONTEXT_1M_BETA_HEADER,
@@ -23,7 +24,6 @@ from symai.backend.engines.neurosymbolic.anthropic.models import (
     resolve_cache_control,
 )
 from symai.backend.engines.neurosymbolic.anthropic.stream import AnthropicStreamAdapter
-from symai.backend.engines.neurosymbolic.prompts import render_chat_system_prompt
 from symai.backend.settings import SYMAI_CONFIG
 from symai.backend.streaming import EngineStreamAccumulator
 from symai.backend.transport import (
