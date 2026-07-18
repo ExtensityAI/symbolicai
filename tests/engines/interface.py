@@ -105,6 +105,12 @@ class EngineTestInterface:
     # NOTE: whether the engine implements compute_required_tokens (openai/anthropic via
     # tiktoken or the count endpoint; deepseek/groq/openrouter raise NotImplementedError).
     supports_token_counting: ClassVar[bool] = False
+    # NOTE: whether the wire body always carries a model field (llama.cpp may omit it —
+    # the loaded model is fixed at server launch).
+    wire_model_present: ClassVar[bool] = True
+    # NOTE: token budget for the live smoke; reasoning-heavy small models (Qwen3) need
+    # more than the 128 default to leave room for visible content.
+    live_max_tokens: ClassVar[int] = 128
 
     # --- provider hooks (override) ---
     def mock_response_json(self) -> dict:
@@ -281,8 +287,11 @@ class EngineTestInterface:
             spec = self.spec_for(model)
             assert isinstance(spec.reasoning, bool)
             assert isinstance(spec.vision, bool)
-            assert spec.context_tokens > 0
-            assert spec.response_tokens > 0
+            # NOTE: llama.cpp fills context/response budgets from the running server;
+            # the registry carries 0 placeholders for server-determined values.
+            if spec.context_tokens > 0 or spec.response_tokens > 0:
+                assert spec.context_tokens > 0
+                assert spec.response_tokens > 0
             # NOTE: pricing may be None when the provider has not published per-token
             # prices for the model at API_PINNED (e.g. preview models).
             if spec.pricing is not None:
@@ -316,7 +325,8 @@ class EngineTestInterface:
         assert request.params == {"debug": "1"}
         assert request.timeout == 7.0
 
-        assert body["model"] == self.expected_wire_model()
+        if self.wire_model_present:
+            assert body["model"] == self.expected_wire_model()
         assert body["temperature"] == 0.2
         assert body[self.max_tokens_wire_key] == 32
         assert body["vendor_flag"] is True
@@ -381,7 +391,8 @@ class EngineTestInterface:
         assert api.last_request.method == "POST"
         assert str(api.last_request.url) == f"{self.wire_url}?debug=1"
         self.assert_auth_headers(dict(api.last_request.headers))
-        assert api.last_body["model"] == self.expected_wire_model()
+        if self.wire_model_present:
+            assert api.last_body["model"] == self.expected_wire_model()
         assert api.last_body[self.max_tokens_wire_key] == 16
         assert api.last_body[self.wire_input_key] == self.wire_input_expected(argument)
         assert isinstance(output[0], str)
@@ -439,11 +450,14 @@ class EngineTestInterface:
             "completion_tokens": details["usage"]["completion_tokens"],
             **details.get("extras", {}),
         }
-        cost = self.expected_cost_usd(self.default_model, summed)
-        assert cost > 0
-        # linear pricing: cost of two identical calls is exactly twice the single-call cost
-        single = self.expected_cost_usd(self.default_model, mock_usage)
-        assert cost == pytest.approx(2 * single)
+        # NOTE: local/server providers have no published pricing; cost checks run only
+        # when the spec carries prices.
+        if self.spec_for(self.default_model).pricing is not None:
+            cost = self.expected_cost_usd(self.default_model, summed)
+            assert cost > 0
+            # linear pricing: cost of two identical calls is exactly twice the single-call cost
+            single = self.expected_cost_usd(self.default_model, mock_usage)
+            assert cost == pytest.approx(2 * single)
 
     def test_forward_streams_sse_and_aggregates_response(self):
         if not self.supports_streaming:
@@ -640,7 +654,9 @@ class EngineTestInterface:
             engine = self.make_live_engine(model, api_key)
             # NOTE: reasoning models spend budget on thinking first; 128 tokens is the
             # cheap floor that still guarantees visible content on trivial prompts.
-            argument = self.make_query_argument(LIVE_PROMPT, **{self.request_max_tokens_kwarg: 128})
+            argument = self.make_query_argument(
+                LIVE_PROMPT, **{self.request_max_tokens_kwarg: self.live_max_tokens}
+            )
 
             engine.prepare(argument)
             output, metadata = engine.forward(argument)
@@ -661,7 +677,7 @@ class EngineTestInterface:
 
         engine = self.make_live_engine(self.default_model, api_key)
         argument = self.make_query_argument(
-            LIVE_PROMPT, **{self.request_max_tokens_kwarg: 128}, stream=True
+            LIVE_PROMPT, **{self.request_max_tokens_kwarg: self.live_max_tokens}, stream=True
         )
 
         engine.prepare(argument)

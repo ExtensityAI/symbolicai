@@ -3,7 +3,7 @@
 
 You can use a locally hosted instance for the Neuro-Symbolic Engine. We build on top of:
 - [llama.cpp](https://github.com/ggerganov/llama.cpp/tree/master) through the `llama-server` binary:
-    > ❗️**NOTE**❗️ Latest `llama.cpp` commit on `master` branch on November 5th, 2025 that we tested `symai` with is `a5c07dcd7b49`. We used the build [setup](https://github.com/ggml-org/llama.cpp/blob/master/docs/build.md).
+    > ❗️**NOTE**❗️ Latest `llama.cpp` commit on `master` branch that we tested `symai` with is `4937ca83f` (July 18th, 2026). We used the build [setup](https://github.com/ggml-org/llama.cpp/blob/master/docs/build.md). On macOS, if the build fails on missing OpenSSL headers (`openssl/err.h` in `vendor/cpp-httplib`), configure with `-DLLAMA_OPENSSL=OFF` — the local server does not need TLS.
 - [huggingface/transformers](https://huggingface.co/docs/transformers/en/index) through a custom FastAPI server.
 
 ### llama.cpp backend
