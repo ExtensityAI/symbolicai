@@ -286,11 +286,11 @@ class FirecrawlEngine(Engine):
         data = response.data.model_dump(exclude_none=True) if response.data is not None else {}
         if isinstance(response, FirecrawlScrapeResponse):
             return [FirecrawlExtractResult(data)], {
-                "raw_output": data,
+                "raw_output": response,
                 "final_url": self._final_url,
             }
         return [FirecrawlSearchResult(data, max_chars_per_result=self._max_chars_per_result)], {
-            "raw_output": data
+            "raw_output": response
         }
 
     def prepare(self, argument):

@@ -66,11 +66,12 @@ def normalize_domains(
     domains: list[str] | None,
     max_count: int,
 ) -> list[str]:
-    """Normalize a list of raw domain strings to deduped apex hosts, capped.
+    """Normalize a list of raw domain strings to deduped fqdn hosts, capped.
 
-    Each entry is reduced to its fqdn (apex, subdomains like ``www`` dropped) via
-    ``tldextract``; junk inputs (no registrable TLD) yield an empty fqdn and are
-    dropped. Duplicates are removed and the result is capped at ``max_count``.
+    Each entry is reduced to its fqdn via ``tldextract`` (registrable domain plus
+    any subdomains — ``www`` is kept); junk inputs (no registrable TLD) yield an
+    empty fqdn and are dropped. Duplicates are removed and the result is capped
+    at ``max_count``.
     """
     if not isinstance(domains, list):
         return []

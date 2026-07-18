@@ -66,6 +66,7 @@ class PerplexityEngine(Engine):
             self.config["SEARCH_ENGINE_MODEL"] = model
         self.api_key = self.config.get("SEARCH_ENGINE_API_KEY")
         self.model = self.config.get("SEARCH_ENGINE_MODEL")
+        self.transport_client = None
         self.name = self.__class__.__name__
 
     def id(self) -> str:
@@ -123,12 +124,14 @@ class PerplexityEngine(Engine):
         max_retries = (
             self.client_max_retries if self.client_max_retries is not None else DEFAULT_RETRIES
         )
-        response = execute_engine_api_request(request, max_retries=max_retries)
+        response = execute_engine_api_request(
+            request, client=self.transport_client, max_retries=max_retries
+        )
         return PerplexityResponse.model_validate(response.json())
 
     def parse_response(self, response: PerplexityResponse):
         res = PerplexitySearchResult(response.model_dump())
-        metadata = {"raw_output": res.raw}
+        metadata = {"raw_output": response}
         return [res], metadata
 
     def prepare(self, argument):
