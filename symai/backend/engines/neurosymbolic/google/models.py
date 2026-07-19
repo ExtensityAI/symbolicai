@@ -192,14 +192,3 @@ class GoogleResponse(EngineResponsePayload):
 
 class GoogleCountTokensResponse(EngineResponsePayload):
     total_tokens: int = Field(alias="totalTokens")
-
-
-def google_normalize_model(model: str | None) -> str | None:
-    """Canonicalize a bare model name to the prefixed form ('o3' -> 'gemini:o3').
-
-    DynamicEngine and explicit constructors accept both forms; the wire and the
-    supported-model lists use the prefixed form everywhere else.
-    """
-    if model and ":" not in model:
-        return f"gemini:{model}"
-    return model

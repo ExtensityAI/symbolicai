@@ -211,14 +211,3 @@ class CerebrasResponse(EngineResponsePayload):
     # requests force stream_options.include_usage so the final chunk carries it.
     usage: CerebrasUsage
     time_info: CerebrasTimeInfo | None = None
-
-
-def cerebras_normalize_model(model: str | None) -> str | None:
-    """Canonicalize a bare model name to the prefixed form ('o3' -> 'cerebras:o3').
-
-    DynamicEngine and explicit constructors accept both forms; the wire and the
-    supported-model lists use the prefixed form everywhere else.
-    """
-    if model and ":" not in model:
-        return f"cerebras:{model}"
-    return model

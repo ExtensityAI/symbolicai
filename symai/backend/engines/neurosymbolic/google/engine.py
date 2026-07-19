@@ -23,7 +23,6 @@ from symai.backend.engines.neurosymbolic.google.models import (
     GoogleSystemInstruction,
     GoogleTool,
     google_model_spec_for,
-    google_normalize_model,
     google_strip_prefix,
 )
 from symai.backend.engines.neurosymbolic.google.stream import GoogleStreamAdapter
@@ -60,7 +59,7 @@ class GoogleEngine(Engine):
         if model is not None:
             self.config["NEUROSYMBOLIC_ENGINE_MODEL"] = model
         self.api_key = self.config["NEUROSYMBOLIC_ENGINE_API_KEY"]
-        self.model = google_normalize_model(self.config["NEUROSYMBOLIC_ENGINE_MODEL"])
+        self.model = self.config["NEUROSYMBOLIC_ENGINE_MODEL"]
         if self.id() != "neurosymbolic":
             return
         self.tokenizer = None

@@ -19,7 +19,6 @@ from symai.backend.engines.neurosymbolic.anthropic.models import (
     AnthropicRequest,
     AnthropicResponse,
     anthropic_model_spec_for,
-    anthropic_normalize_model,
     anthropic_strip_prefix,
     build_cache_breakpoint_blocks,
     resolve_cache_control,
@@ -67,7 +66,7 @@ class AnthropicEngine(Engine):
         if model is not None:
             self.config["NEUROSYMBOLIC_ENGINE_MODEL"] = model
         self.api_key = self.config["NEUROSYMBOLIC_ENGINE_API_KEY"]
-        self.model = anthropic_normalize_model(self.config["NEUROSYMBOLIC_ENGINE_MODEL"])
+        self.model = self.config["NEUROSYMBOLIC_ENGINE_MODEL"]
         if self.id() != "neurosymbolic":
             return
         self.tokenizer = TokenizerWrapper(self.compute_required_tokens)

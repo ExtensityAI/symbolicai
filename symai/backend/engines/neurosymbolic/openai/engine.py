@@ -17,7 +17,6 @@ from symai.backend.engines.neurosymbolic.openai.models import (
     OpenAIResponse,
     build_cache_breakpoint_blocks,
     openai_model_spec_for,
-    openai_normalize_model,
     openai_strip_prefix,
 )
 from symai.backend.engines.neurosymbolic.openai.stream import OpenAIStreamAdapter
@@ -68,7 +67,7 @@ class OpenAIEngine(Engine):
         if model is not None:
             self.config["NEUROSYMBOLIC_ENGINE_MODEL"] = model
         self.api_key = self.config["NEUROSYMBOLIC_ENGINE_API_KEY"]
-        self.model = openai_normalize_model(self.config["NEUROSYMBOLIC_ENGINE_MODEL"])
+        self.model = self.config["NEUROSYMBOLIC_ENGINE_MODEL"]
         if self.id() != "neurosymbolic":
             return
         self.tokenizer = ResponsesTokenizer(

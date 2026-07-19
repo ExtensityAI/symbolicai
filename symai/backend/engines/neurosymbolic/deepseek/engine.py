@@ -14,7 +14,6 @@ from symai.backend.engines.neurosymbolic.deepseek.models import (
     DeepSeekRequest,
     DeepSeekResponse,
     deepseek_model_spec_for,
-    deepseek_normalize_model,
     deepseek_strip_prefix,
 )
 from symai.backend.engines.neurosymbolic.deepseek.stream import DeepSeekStreamAdapter
@@ -50,7 +49,7 @@ class DeepseekEngine(Engine):
         if model is not None:
             self.config["NEUROSYMBOLIC_ENGINE_MODEL"] = model
         self.api_key = self.config["NEUROSYMBOLIC_ENGINE_API_KEY"]
-        self.model = deepseek_normalize_model(self.config["NEUROSYMBOLIC_ENGINE_MODEL"])
+        self.model = self.config["NEUROSYMBOLIC_ENGINE_MODEL"]
         if self.id() != "neurosymbolic":
             return
         self.tokenizer = None

@@ -70,8 +70,8 @@ def test_dynamic_engine_switching():
             "Missing environment variables: OPENAI_API_KEY and/or ANTHROPIC_API_KEY"
         )
 
-    dynamic_engine1 = DynamicEngine('o3', openai_api_key)
-    dynamic_engine2 = DynamicEngine('claude-opus-4-6', anthropic_api_key)
+    dynamic_engine1 = DynamicEngine('openai:o3', openai_api_key)
+    dynamic_engine2 = DynamicEngine('anthropic:claude-opus-4-6', anthropic_api_key)
 
     # Test with dynamic_engine1
     with dynamic_engine1:

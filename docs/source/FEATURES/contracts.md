@@ -99,7 +99,7 @@ from symai.components import DynamicEngine
 from symai.strategy import contract
 
 repair_engine = DynamicEngine(
-    model="claude-opus-4-6",
+    model="anthropic:claude-opus-4-6",
     api_key=os.environ["ANTHROPIC_API_KEY"],
 )
 

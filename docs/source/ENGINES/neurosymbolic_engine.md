@@ -6,7 +6,7 @@ The **neuro-symbolic** engine is our generic wrapper around large language model
 
 Each provider lives in its own folder under `symai/backend/engines/neurosymbolic/<provider>/` with an `engine.py` (the `Engine` subclass), a `models.py` (pydantic wire models plus the model spec table), and a `stream.py` (SSE adapter). There are **no vendor SDKs**: every provider is called over raw REST through the shared `httpx` transport in `symai/backend/transport.py` (connection pooling, retries, SSE parsing). Every engine follows the same forward pipeline: `build_request` → `call_request` → `parse_response`, where the request/response payloads are validated against the pydantic wire models in `models.py` (subclasses of `EngineRequestPayload` / `EngineResponsePayload` from `symai/backend/request.py`).
 
-The neuro-symbolic engines are `OpenAIEngine`, `AnthropicEngine`, `GoogleEngine`, `DeepseekEngine`, `CerebrasEngine`, `GroqEngine`, and `OpenRouterEngine`, plus the local `LlamaCppEngine` and `VLLMEngine`. Engine selection is driven by the `NEUROSYMBOLIC_ENGINE_MODEL` config key: canonical model IDs are **provider-prefixed** (`openai:gpt-5.4`, `anthropic:claude-sonnet-4-6`, `gemini:gemini-2.5-pro`, `deepseek:deepseek-v4-pro`, `cerebras:gpt-oss-120b`, `groq:openai/gpt-oss-120b`, `openrouter:moonshotai/kimi-k2.5`), and bare aliases without the prefix (e.g. `gpt-4.1`, `claude-sonnet-4-6`) are accepted and normalized to the prefixed form.
+The neuro-symbolic engines are `OpenAIEngine`, `AnthropicEngine`, `GoogleEngine`, `DeepseekEngine`, `CerebrasEngine`, `GroqEngine`, and `OpenRouterEngine`, plus the local `LlamaCppEngine` and `VLLMEngine`. Engine selection is driven by the `NEUROSYMBOLIC_ENGINE_MODEL` config key: canonical model IDs are **provider-prefixed** (`openai:gpt-5.4`, `anthropic:claude-sonnet-4-6`, `gemini:gemini-2.5-pro`, `deepseek:deepseek-v4-pro`, `cerebras:gpt-oss-120b`, `groq:openai/gpt-oss-120b`, `openrouter:moonshotai/kimi-k2.5`). The prefix is required—it selects the provider; shared names like `gpt-oss-120b` exist on both Cerebras and Groq.
 
 Depending on which backend you configure (OpenAI/GPT, Claude, Gemini, Deepseek, Groq, Cerebras, …), a few things must be handled differently:
 
@@ -358,7 +358,7 @@ For more detailed tracking of API calls, token usage, and estimating costs, you 
 > - **Gemini (Google)**: `GoogleEngine` (e.g. `gemini:gemini-2.5-pro`, `gemini:gemini-2.5-flash`, `gemini:gemini-3.1-flash-lite`)
 > - **Deepseek / Cerebras / Groq / OpenRouter**: `DeepseekEngine`, `CerebrasEngine`, `GroqEngine`, `OpenRouterEngine`
 >
-> The model IDs that appear in `tracker.usage` keys are the normalized, provider-prefixed forms (`openai:gpt-4.1-mini`); `OpenAISearchEngine` keeps the bare `SEARCH_ENGINE_MODEL` string. For other engines, `tracker.metadata` will still contain raw outputs, but `tracker.usage` may be empty or partial.
+> The model IDs that appear in `tracker.usage` keys are the provider-prefixed forms (`openai:gpt-4.1-mini`); `OpenAISearchEngine` keeps the bare `SEARCH_ENGINE_MODEL` string. For other engines, `tracker.metadata` will still contain raw outputs, but `tracker.usage` may be empty or partial.
 
 `MetadataTracker` collects metadata from engine calls made within its context. `RuntimeInfo` then processes this raw metadata to provide a summary of token counts, number of API calls, elapsed time, and an estimated cost if pricing information is provided.
 

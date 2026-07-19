@@ -294,14 +294,3 @@ class AnthropicResponse(EngineResponsePayload):
 
 class AnthropicCountTokensResponse(EngineResponsePayload):
     input_tokens: int
-
-
-def anthropic_normalize_model(model: str | None) -> str | None:
-    """Canonicalize a bare model name to the prefixed form ('o3' -> 'anthropic:o3').
-
-    DynamicEngine and explicit constructors accept both forms; the wire and the
-    supported-model lists use the prefixed form everywhere else.
-    """
-    if model and ":" not in model:
-        return f"anthropic:{model}"
-    return model

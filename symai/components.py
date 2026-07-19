@@ -587,7 +587,10 @@ class DynamicEngine(Expression):
                     return engine_class(api_key=self.api_key, model=self.model)
 
             if engine_class is None:
-                msg = f"Unsupported model '{self.model}'"
+                msg = (
+                    f"Unsupported model '{self.model}'. Model names are provider-prefixed "
+                    "(e.g. 'openai:o3', 'anthropic:claude-opus-4-6')."
+                )
                 raise ValueError(msg)
             # Forward client-level HTTP settings to neurosymbolic engines (all accept
             # client_timeout / client_max_retries); the search/OCR engines above do not.

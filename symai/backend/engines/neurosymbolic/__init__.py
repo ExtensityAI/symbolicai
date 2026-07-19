@@ -48,13 +48,6 @@ ENGINE_MAPPING = {
     **dict.fromkeys(OPENROUTER_REASONING_MODELS, OpenRouterEngine),
 }
 
-# NOTE: DynamicEngine historically accepts bare model names ('o3', 'claude-opus-4-6');
-# the prefixed form ('openai:o3') disambiguates shared names. Bare aliases resolve to
-# the first provider claiming the model (e.g. 'gpt-oss-120b' -> cerebras, not groq).
-for _prefixed_name, _engine_class in list(ENGINE_MAPPING.items()):
-    ENGINE_MAPPING.setdefault(_prefixed_name.split(":", 1)[-1], _engine_class)
-del _prefixed_name, _engine_class
-
 __all__ = [
     "ANTHROPIC_CHAT_MODELS",
     "ANTHROPIC_REASONING_MODELS",

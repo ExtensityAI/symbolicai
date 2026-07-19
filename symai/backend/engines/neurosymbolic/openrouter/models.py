@@ -180,14 +180,3 @@ class OpenRouterResponse(EngineResponsePayload):
     # NOTE: MetadataTracker reads raw_output.usage for token accounting; streaming
     # requests force stream_options.include_usage so the final chunk carries it.
     usage: OpenRouterUsage
-
-
-def openrouter_normalize_model(model: str | None) -> str | None:
-    """Canonicalize a bare model name to the prefixed form ('o3' -> 'openrouter:o3').
-
-    DynamicEngine and explicit constructors accept both forms; the wire and the
-    supported-model lists use the prefixed form everywhere else.
-    """
-    if model and ":" not in model:
-        return f"openrouter:{model}"
-    return model

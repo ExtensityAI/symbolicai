@@ -16,7 +16,6 @@ from symai.backend.engines.neurosymbolic.groq.models import (
     GroqRequest,
     GroqResponse,
     groq_model_spec_for,
-    groq_normalize_model,
     groq_strip_prefix,
 )
 from symai.backend.engines.neurosymbolic.groq.stream import GroqStreamAdapter
@@ -52,7 +51,7 @@ class GroqEngine(Engine):
         if model is not None:
             self.config["NEUROSYMBOLIC_ENGINE_MODEL"] = model
         self.api_key = self.config["NEUROSYMBOLIC_ENGINE_API_KEY"]
-        self.model = groq_normalize_model(self.config["NEUROSYMBOLIC_ENGINE_MODEL"])
+        self.model = self.config["NEUROSYMBOLIC_ENGINE_MODEL"]
         if self.id() != "neurosymbolic":
             return
         self.tokenizer = None

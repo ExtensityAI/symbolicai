@@ -14,7 +14,6 @@ from symai.backend.engines.neurosymbolic.openrouter.models import (
     OpenRouterRequest,
     OpenRouterResponse,
     openrouter_model_spec_for,
-    openrouter_normalize_model,
     openrouter_strip_prefix,
 )
 from symai.backend.engines.neurosymbolic.openrouter.stream import OpenRouterStreamAdapter
@@ -50,7 +49,7 @@ class OpenRouterEngine(Engine):
         if model is not None:
             self.config["NEUROSYMBOLIC_ENGINE_MODEL"] = model
         self.api_key = self.config["NEUROSYMBOLIC_ENGINE_API_KEY"]
-        self.model = openrouter_normalize_model(self.config["NEUROSYMBOLIC_ENGINE_MODEL"])
+        self.model = self.config["NEUROSYMBOLIC_ENGINE_MODEL"]
         if self.id() != "neurosymbolic":
             return
         self.tokenizer = None
