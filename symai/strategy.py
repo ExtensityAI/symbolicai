@@ -113,7 +113,7 @@ def transform_schema(json_schema: type | dict[str, Any]) -> dict[str, Any]:
             strict_schema["items"] = transform_schema(items)
 
         min_items = json_schema.pop("minItems", None)
-        if min_items is not None and min_items == 0 or min_items == 1:
+        if (min_items is not None and min_items == 0) or min_items == 1:
             strict_schema["minItems"] = min_items
         elif min_items is not None:
             # add it back so it's treated as an extra property and appended to the description

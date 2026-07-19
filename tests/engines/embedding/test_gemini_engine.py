@@ -1,6 +1,5 @@
 import time
 from pathlib import Path
-from types import SimpleNamespace
 
 import httpx
 import pytest
@@ -87,47 +86,7 @@ class TestGeminiEmbeddingEngine(EmbeddingTestInterface):
         assert not hasattr(engine, "_new_dim")
         assert all(len(vector) == 4 for vector in output[0])
 
-    def test_call_request_honors_except_remedy(self):
-        # Regression: gemini call_request ignored except_remedy while the
-        # embedding/openai category reference honors it. On wire failure the remedy
-        # must be invoked with (exception, payload requests, retry callback, engine)
-        # and its return must flow into parse_response.
-        engine = self.make_engine()
-        calls = []
-        remedy_vectors = [normalized_vector(0.5), normalized_vector(0.25)]
-
-        def remedy(exception, payload_requests, callback, engine_instance, *_args, **_kwargs):
-            calls.append((exception, payload_requests, callback, engine_instance))
-            return GeminiBatchEmbedResponse.model_validate(
-                {"embeddings": [{"values": v} for v in remedy_vectors]}
-            )
-
-        argument = SimpleNamespace(
-            prop=SimpleNamespace(
-                entries=list(self.MOCK_ENTRIES), prepared_input=None, processed_input=None
-            ),
-            kwargs={"except_remedy": remedy},
-            args=(),
-        )
-        with MockAPI(
-            engine,
-            lambda request: httpx.Response(
-                500, json={"error": {"message": "boom"}}, request=request
-            ),
-        ):
-            engine.prepare(argument)
-            output, metadata = engine.forward(argument)
-
-        assert len(calls) == 1
-        exception, payload_requests, callback, engine_instance = calls[0]
-        assert isinstance(exception, Exception)
-        assert payload_requests is not None  # the batch entries, openai's `payload.input` analogue
-        assert callable(callback)  # retries the wire request verbatim
-        assert engine_instance is engine
-        assert output[0] == remedy_vectors
-        assert isinstance(metadata["raw_output"], GeminiBatchEmbedResponse)
-
-    def test_call_request_reraises_without_except_remedy(self):
+    def test_call_request_reraises_transport_error(self):
         engine = self.make_engine()
         argument = self.make_argument()
 

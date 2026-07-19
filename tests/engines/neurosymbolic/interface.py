@@ -601,57 +601,7 @@ class EngineTestInterface:
         assert isinstance(function_call["arguments"], dict)
         assert "location" in function_call["arguments"]
 
-    def test_forward_invokes_except_remedy_on_transport_error(self):
-        # Legacy contract: except_remedy(self, error, callback, argument) wraps the API
-        # call; its return value flows into parse_response.
-        engine = self.make_engine(client_max_retries=0)
-        seen = {}
-
-        def remedy(engine_self, error, callback, argument):
-            seen["engine"] = engine_self
-            seen["error"] = error
-            seen["callback"] = callback
-            seen["argument"] = argument
-            return self.response_cls.model_validate(self.mock_response_json())
-
-        argument = self.make_prepared_argument(
-            kwargs={"except_remedy": remedy, **self.default_forward_kwargs}
-        )
-        with MockAPI(
-            engine,
-            lambda request: httpx.Response(500, json={"error": "boom"}, request=request),
-        ):
-            output, metadata = engine.forward(argument)
-
-        assert seen["engine"] is engine
-        assert isinstance(seen["error"], Exception)
-        assert callable(seen["callback"])
-        assert seen["argument"] is argument
-        assert isinstance(output[0], str)
-        assert isinstance(metadata["raw_output"], self.response_cls)
-
-    def test_forward_except_remedy_callback_retries_wire_request(self):
-        engine = self.make_engine(client_max_retries=0)
-        calls = []
-
-        def handler(request):
-            calls.append(request)
-            if len(calls) == 1:
-                return httpx.Response(500, json={"error": "boom"}, request=request)
-            return httpx.Response(200, json=self.mock_response_json(), request=request)
-
-        def remedy(_engine, _error, callback, _argument):
-            return callback()
-
-        argument = self.make_prepared_argument(
-            kwargs={"except_remedy": remedy, **self.default_forward_kwargs}
-        )
-        with MockAPI(engine, handler):
-            engine.forward(argument)
-
-        assert len(calls) == 2
-
-    def test_forward_without_except_remedy_raises_transport_error(self):
+    def test_forward_raises_transport_error(self):
         engine = self.make_engine(client_max_retries=0)
 
         with (

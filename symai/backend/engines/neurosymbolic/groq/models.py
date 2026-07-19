@@ -198,3 +198,14 @@ class GroqResponse(EngineResponsePayload):
     choices: list[GroqChoice] = Field(min_length=1)
     # NOTE: MetadataTracker reads raw_output.usage for token accounting.
     usage: GroqUsage
+
+
+def groq_normalize_model(model: str | None) -> str | None:
+    """Canonicalize a bare model name to the prefixed form ('o3' -> 'groq:o3').
+
+    DynamicEngine and explicit constructors accept both forms; the wire and the
+    supported-model lists use the prefixed form everywhere else.
+    """
+    if model and ":" not in model:
+        return f"groq:{model}"
+    return model

@@ -37,9 +37,7 @@ try:
     from qdrant_client.http.models import (
         Distance,
         Filter,
-        NamedVector,
         PointStruct,
-        Query,
         ScoredPoint,
         VectorParams,
     )
@@ -50,8 +48,6 @@ except ImportError:
     VectorParams = None
     PointStruct = None
     Filter = None
-    Query = None
-    NamedVector = None
     ScoredPoint = None
 
 try:

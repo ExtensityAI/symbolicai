@@ -85,14 +85,8 @@ class GeminiImageEngine(Engine):
         argument.prop.prepared_input = str(argument.prop.processed_input)
 
     def forward(self, argument):
-        except_remedy = argument.kwargs.get("except_remedy", None)
         request = self.build_request(argument)
-        try:
-            response = self.call_request(request)
-        except Exception as e:
-            if except_remedy is None:
-                raise
-            response = except_remedy(self, e, None, argument)
+        response = self.call_request(request)
         return self.parse_response(response)
 
     def build_request(self, argument) -> EngineAPIRequest:

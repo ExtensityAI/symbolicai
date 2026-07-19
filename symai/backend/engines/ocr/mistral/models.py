@@ -84,6 +84,18 @@ class MistralOCRResponse(EngineResponsePayload):
     document_annotation: str | None = None
 
 
+class MistralFileUploadRequest(EngineRequestPayload):
+    """POST /v1/files scalar form fields (the binary rides in EngineAPIRequest.files)."""
+
+    purpose: str = "ocr"
+
+
+class MistralSignedURLRequest(EngineRequestPayload):
+    """GET /v1/files/{file_id}/url query params."""
+
+    expiry: int = 1
+
+
 class MistralFileSchema(EngineResponsePayload):
     """POST /v1/files response (only the fields the engine consumes are modeled)."""
 

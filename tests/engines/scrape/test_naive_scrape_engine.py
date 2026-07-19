@@ -2,6 +2,11 @@
 live hits stable sandbox sites (--engine-api=live). No provider key required.
 """
 
+import threading
+from functools import partial
+from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
+from pathlib import Path
+
 import httpx
 import pytest
 
@@ -159,10 +164,25 @@ class TestNaiveScrapeLive:
             assert content.startswith("<")
 
     def test_pdf_extraction(self):
-        engine = RequestsEngine(timeout=20)
-        url = "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf"
-        result, _ = run_scrape(engine, url)
-        assert len(str(result)) > 0
+        # w3.org intermittently 403s automated clients; serve the repo's own
+        # PDF fixture over local HTTP so the live fetch+extract path stays covered
+        data_dir = Path(__file__).parent.parent.parent / "data"
+
+        class QuietHandler(SimpleHTTPRequestHandler):
+            def log_message(self, *args):
+                pass
+
+        server = ThreadingHTTPServer(
+            ("127.0.0.1", 0), partial(QuietHandler, directory=str(data_dir))
+        )
+        threading.Thread(target=server.serve_forever, daemon=True).start()
+        try:
+            engine = RequestsEngine(timeout=20)
+            url = f"http://127.0.0.1:{server.server_address[1]}/sample.pdf"
+            result, _ = run_scrape(engine, url)
+            assert len(str(result)) > 0
+        finally:
+            server.shutdown()
 
     def test_render_js(self):
         pytest.importorskip("playwright.sync_api", reason="Playwright runtime required")

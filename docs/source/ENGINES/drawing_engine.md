@@ -146,7 +146,6 @@ print(paths)  # → ['/tmp/tmp1234.png']
 - `prompt_upsampling` (bool, default False)
 - `interval` (int)
 - `output_format` (str, default 'png')
-- `except_remedy` (callable)
 
 Under the hood Flux uses:
 
@@ -187,7 +186,6 @@ print(paths[0])  # → /tmp/tmpabcd.png
 - `model` (str, default from `SYMAI_CONFIG["DRAWING_ENGINE_MODEL"]`)
 - `response_modalities` (list[str], default `["IMAGE"]`)
 - `config` (optional): a `google.genai.types.GenerateContentConfig` instance
-- `except_remedy` (callable)
 
 ### Configuration
 

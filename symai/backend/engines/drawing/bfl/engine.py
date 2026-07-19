@@ -65,18 +65,11 @@ class DrawingEngine(Engine):
 
     def forward(self, argument):
         kwargs = argument.kwargs
-        except_remedy = kwargs.get("except_remedy", None)
 
         if kwargs.get("operation") == "create":
-            try:
-                request = self.build_request(argument)
-                response = self.call_request(request)
-                rsp, metadata = self.parse_response(response)
-            except Exception as e:
-                if except_remedy is None:
-                    raise e
-                rsp = except_remedy(self, e, None, argument)
-                metadata = {}
+            request = self.build_request(argument)
+            response = self.call_request(request)
+            rsp, metadata = self.parse_response(response)
             return [rsp], metadata
         msg = f"Unknown operation: {kwargs['operation']}"
         raise Exception(msg)

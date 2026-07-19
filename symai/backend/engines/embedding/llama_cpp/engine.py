@@ -132,7 +132,18 @@ class LlamaCppEmbeddingEngine(Engine):
 
         res = self._post_embeddings(inp, embd_normalize)
 
-        output = [item.embedding for item in res]  # B x 1 x D
+        # Unwrap the per-sequence nesting (exactly one inner vector for string
+        # content) so output matches the uniform B x D embedding contract.
+        output = []
+        for item in res:
+            if len(item.embedding) != 1:
+                msg = (
+                    f"llama.cpp server returned {len(item.embedding)} embedding vectors for a "
+                    f"single input (index {item.index}); expected exactly 1. Token-array content "
+                    "is not supported by this engine."
+                )
+                raise ValueError(msg)
+            output.append(item.embedding[0])  # B x D
         metadata = {"raw_output": res}
 
         return [output], metadata

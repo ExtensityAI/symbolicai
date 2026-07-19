@@ -197,7 +197,7 @@ class Engine(ABC):
 
     @abstractmethod
     def forward(self, *args: Any, **kwds: Any) -> list[str]:
-        raise NotADirectoryError
+        raise NotImplementedError
 
     @abstractmethod
     def prepare(self, argument):

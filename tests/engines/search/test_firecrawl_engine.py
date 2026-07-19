@@ -27,8 +27,7 @@ class TestFirecrawlEngine(SearchEngineTestInterface):
     auth_header_prefix = "Bearer "
     api_pinned = API_PINNED
     api_pinned_module = "symai.backend.engines.search.firecrawl.models"
-    # NOTE: no firecrawl key available — every live test skips without FIRECRAWL_API_KEY
-    # through require_live until one is added.
+    # Live tests skip through require_live when FIRECRAWL_API_KEY is absent.
     api_key_env = "FIRECRAWL_API_KEY"
     supports_scrape = True
     scrape_wire_url = f"{FIRECRAWL_API_BASE}/scrape"
@@ -151,8 +150,9 @@ class TestFirecrawlEngine(SearchEngineTestInterface):
         assert len(res._value) > 0
 
         raw = metadata["raw_output"]
-        assert isinstance(raw, dict)
-        assert "web" in raw
+        assert isinstance(raw, FirecrawlSearchResponse)
+        assert raw.data is not None
+        assert raw.data.web is not None
 
         assert hasattr(res, "get_citations")
         citations = res.get_citations()
@@ -187,7 +187,9 @@ class TestFirecrawlEngine(SearchEngineTestInterface):
         assert isinstance(res._value, str)
         assert len(res._value) > 0
 
-        web_results = metadata["raw_output"].get("web", [])
+        raw = metadata["raw_output"]
+        assert isinstance(raw, FirecrawlSearchResponse)
+        web_results = raw.data.web if raw.data else None
         assert isinstance(web_results, list)
         assert len(web_results) > 0
 

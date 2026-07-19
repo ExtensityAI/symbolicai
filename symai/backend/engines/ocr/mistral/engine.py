@@ -4,26 +4,22 @@ import logging
 from copy import deepcopy
 from pathlib import Path
 
-import httpx
-
 from symai.backend.base import Engine
 from symai.backend.engines.ocr.mistral.models import (
     MISTRAL_FILES_URL,
     MISTRAL_OCR_URL,
     MistralDocumentURLChunk,
     MistralFileSchema,
+    MistralFileUploadRequest,
     MistralImageURLChunk,
     MistralOCRRequest,
     MistralOCRResponse,
+    MistralSignedURLRequest,
     MistralSignedURLResponse,
 )
 from symai.backend.request import EngineAPIRequest
 from symai.backend.settings import SYMAI_CONFIG
-from symai.backend.transport import (
-    DEFAULT_RETRIES,
-    default_engine_api_client,
-    execute_engine_api_request,
-)
+from symai.backend.transport import DEFAULT_RETRIES, execute_engine_api_request
 from symai.symbol import Result
 from symai.utils import silence_noisy_loggers
 
@@ -169,13 +165,6 @@ class MistralOCREngine(Engine):
         assert document_url or image_url, "MistralOCREngine requires 'document_url' or 'image_url'."
         argument.prop.prepared_input = document_url or image_url
 
-    def _http_client(self) -> httpx.Client:
-        return (
-            self.transport_client
-            if self.transport_client is not None
-            else default_engine_api_client()
-        )
-
     def _resolve_local_file(self, url):
         """If url is a local file, upload to Mistral and return a signed HTTPS URL."""
         # already a remote URL or inline data — nothing to resolve
@@ -189,29 +178,29 @@ class MistralOCREngine(Engine):
 
     def _upload_file(self, path: Path) -> str:
         """POST /v1/files (multipart, purpose=ocr) and return the uploaded file id."""
-        try:
-            response = self._http_client().post(
-                MISTRAL_FILES_URL,
-                headers={"Authorization": f"Bearer {self.api_key}"},
-                files={"file": (path.name, path.read_bytes())},
-                data={"purpose": "ocr"},
-            )
-            response.raise_for_status()
-        except httpx.HTTPError as e:
-            msg = f"Mistral OCR file upload failed: {e}"
-            raise RuntimeError(msg) from e
+        payload = MistralFileUploadRequest()
+        request = EngineAPIRequest(
+            provider="mistral",
+            operation="files_upload",
+            payload=payload,
+            url=MISTRAL_FILES_URL,
+            headers={"Authorization": f"Bearer {self.api_key}"},
+            files=[("file", (path.name, path.read_bytes(), "application/octet-stream"))],
+        )
+        response = execute_engine_api_request(request, client=self.transport_client)
         return MistralFileSchema.model_validate(response.json()).id
 
     def _signed_url(self, file_id: str) -> str:
         """GET /v1/files/{file_id}/url and return the signed HTTPS URL."""
-        try:
-            response = self._http_client().get(
-                f"{MISTRAL_FILES_URL}/{file_id}/url",
-                headers={"Authorization": f"Bearer {self.api_key}"},
-                params={"expiry": 1},
-            )
-            response.raise_for_status()
-        except httpx.HTTPError as e:
-            msg = f"Mistral OCR signed-url request failed: {e}"
-            raise RuntimeError(msg) from e
+        params = MistralSignedURLRequest()
+        request = EngineAPIRequest(
+            provider="mistral",
+            operation="files_signed_url",
+            payload=params,
+            method="GET",
+            url=f"{MISTRAL_FILES_URL}/{file_id}/url",
+            headers={"Authorization": f"Bearer {self.api_key}"},
+            params=params.model_dump(exclude_none=True),
+        )
+        response = execute_engine_api_request(request, client=self.transport_client)
         return MistralSignedURLResponse.model_validate(response.json()).url

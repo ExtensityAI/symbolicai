@@ -66,7 +66,7 @@ class EmbeddingEngine(Engine):
 
     def forward(self, argument):
         request = self.build_request(argument)
-        response = self.call_request(request, argument)
+        response = self.call_request(request)
         return self.parse_response(response, argument)
 
     def prepare(self, argument):
@@ -103,22 +103,8 @@ class EmbeddingEngine(Engine):
             timeout=self.client_timeout,
         )
 
-    def call_request(self, request: EngineAPIRequest, argument) -> OpenAIEmbeddingResponse:
-        except_remedy = argument.kwargs.get("except_remedy")
-        try:
-            return self._execute(request)
-        except Exception as e:
-            if except_remedy is None:
-                raise
-
-            # NOTE: the callback retries the wire request verbatim (remedies may close
-            # over it); whatever the remedy returns flows into parse_response, as before.
-            def callback(*_args, **_kwargs):
-                return self._execute(request)
-
-            return except_remedy(
-                e, request.payload.input, callback, self, *argument.args, **argument.kwargs
-            )
+    def call_request(self, request: EngineAPIRequest) -> OpenAIEmbeddingResponse:
+        return self._execute(request)
 
     def _execute(self, request: EngineAPIRequest) -> OpenAIEmbeddingResponse:
         max_retries = (

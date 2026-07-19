@@ -185,3 +185,14 @@ class DeepSeekResponse(EngineResponsePayload):
     # NOTE: MetadataTracker reads raw_output.usage for token accounting; the API always
     # returns it (streaming requests force stream_options.include_usage).
     usage: DeepSeekUsage
+
+
+def deepseek_normalize_model(model: str | None) -> str | None:
+    """Canonicalize a bare model name to the prefixed form ('o3' -> 'deepseek:o3').
+
+    DynamicEngine and explicit constructors accept both forms; the wire and the
+    supported-model lists use the prefixed form everywhere else.
+    """
+    if model and ":" not in model:
+        return f"deepseek:{model}"
+    return model

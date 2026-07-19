@@ -78,7 +78,6 @@ class Argument(Expression):
             "prompt": None,
             "examples": None,
             "context": None,
-            "except_remedy": None,
             "strict_request_kwargs": False,
         }
 

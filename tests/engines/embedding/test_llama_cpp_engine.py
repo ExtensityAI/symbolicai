@@ -44,6 +44,11 @@ def engine(monkeypatch):
     return LlamaCppEmbeddingEngine()
 
 
+def nested_wire():
+    """Current llama.cpp wire shape: one item per input, vector nested per sequence."""
+    return [{"index": i, "embedding": [v]} for i, v in enumerate(MOCK_VECTORS)]
+
+
 @pytest.fixture
 def mock_wire(monkeypatch):
     """Route the engine's per-call httpx.Client through a MockTransport; record requests."""
@@ -53,9 +58,7 @@ def mock_wire(monkeypatch):
     def factory(*_args, **kwargs):
         def spy(request):
             requests.append(request)
-            return httpx.Response(
-                200, json=[{"embedding": v} for v in MOCK_VECTORS], request=request
-            )
+            return httpx.Response(200, json=nested_wire(), request=request)
 
         return real_client(transport=httpx.MockTransport(spy), timeout=kwargs.get("timeout"))
 
@@ -106,6 +109,42 @@ def test_forward_mock_returns_vectors(engine, mock_wire):
     assert all(isinstance(item, LlamaCppEmbeddingItem) for item in metadata["raw_output"])
 
 
+def test_forward_mock_accepts_legacy_flat_wire(engine, monkeypatch):
+    # Older llama.cpp builds answered {"embedding": [floats]} with no nesting;
+    # the item validator wraps the flat vector so both server generations parse.
+    requests = mock_wire_factory(
+        monkeypatch,
+        lambda request: httpx.Response(
+            200, json=[{"embedding": v} for v in MOCK_VECTORS], request=request
+        ),
+    )
+    argument = make_argument()
+    engine.prepare(argument)
+
+    output, _metadata = engine.forward(argument)
+
+    assert len(requests) == 1
+    assert output[0] == MOCK_VECTORS
+
+
+def test_forward_mock_rejects_multi_sequence_item(engine, monkeypatch):
+    # Token-array content would yield several inner vectors per item; the engine
+    # only sends strings and refuses to guess which vector to keep.
+    mock_wire_factory(
+        monkeypatch,
+        lambda request: httpx.Response(
+            200,
+            json=[{"index": 0, "embedding": [MOCK_VECTORS[0], MOCK_VECTORS[1]]}],
+            request=request,
+        ),
+    )
+    argument = make_argument(entries=["hello"])
+    engine.prepare(argument)
+
+    with pytest.raises(ValueError, match="expected exactly 1"):
+        engine.forward(argument)
+
+
 def test_new_dim_raises_not_implemented(engine):
     argument = make_argument(kwargs={"new_dim": 128})
     engine.prepare(argument)
@@ -149,7 +188,7 @@ def test_retries_transport_errors_then_succeeds(fast_retry_engine, monkeypatch):
             state["failures"] += 1
             msg = "connection refused"
             raise httpx.ConnectError(msg, request=request)
-        return httpx.Response(200, json=[{"embedding": v} for v in MOCK_VECTORS], request=request)
+        return httpx.Response(200, json=nested_wire(), request=request)
 
     requests = mock_wire_factory(monkeypatch, handler)
     argument = make_argument()
@@ -168,7 +207,7 @@ def test_retries_5xx_then_succeeds(fast_retry_engine, monkeypatch):
         state["calls"] += 1
         if state["calls"] == 1:
             return httpx.Response(500, json={"error": "model loading"}, request=request)
-        return httpx.Response(200, json=[{"embedding": v} for v in MOCK_VECTORS], request=request)
+        return httpx.Response(200, json=nested_wire(), request=request)
 
     requests = mock_wire_factory(monkeypatch, handler)
     argument = make_argument()

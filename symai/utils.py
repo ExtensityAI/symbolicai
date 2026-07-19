@@ -41,17 +41,13 @@ def silence_noisy_loggers(*extra_loggers: str) -> None:
 class Extra(StrEnum):
     """Optional-dependency extras; pass a member as the `extra` argument of `missing_dependency`."""
 
-    BITSANDBYTES = "bitsandbytes"
     HF = "hf"
     SCRAPE = "scrape"
-    WOLFRAMALPHA = "wolframalpha"
     LEAN = "lean"
     WHISPER = "whisper"
     VIDEO = "video"
     SEARCH = "search"
-    OCR = "ocr"
     SERVICES = "services"
-    SOLVER = "solver"
     QDRANT = "qdrant"
     CLUSTER = "cluster"
 

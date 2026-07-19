@@ -93,18 +93,8 @@ class GPTImageEngine(Engine):
         argument.prop.prepared_input = str(argument.prop.processed_input)
 
     def forward(self, argument):
-        except_remedy = argument.kwargs.get("except_remedy", None)
-
-        try:
-            request = self.build_request(argument)
-            response = self.call_request(request)
-        except Exception as e:
-            if except_remedy is None:
-                raise
-            # NOTE: the legacy engine passed the openai SDK callable as `callback`;
-            # the raw-REST engine has no SDK callable, so None takes its place.
-            response = except_remedy(self, e, None, argument)
-
+        request = self.build_request(argument)
+        response = self.call_request(request)
         return self.parse_response(response)
 
     def build_request(self, argument) -> EngineAPIRequest:

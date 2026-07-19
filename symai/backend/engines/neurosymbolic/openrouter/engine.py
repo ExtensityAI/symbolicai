@@ -14,6 +14,7 @@ from symai.backend.engines.neurosymbolic.openrouter.models import (
     OpenRouterRequest,
     OpenRouterResponse,
     openrouter_model_spec_for,
+    openrouter_normalize_model,
     openrouter_strip_prefix,
 )
 from symai.backend.engines.neurosymbolic.openrouter.stream import OpenRouterStreamAdapter
@@ -49,7 +50,7 @@ class OpenRouterEngine(Engine):
         if model is not None:
             self.config["NEUROSYMBOLIC_ENGINE_MODEL"] = model
         self.api_key = self.config["NEUROSYMBOLIC_ENGINE_API_KEY"]
-        self.model = self.config["NEUROSYMBOLIC_ENGINE_MODEL"]
+        self.model = openrouter_normalize_model(self.config["NEUROSYMBOLIC_ENGINE_MODEL"])
         if self.id() != "neurosymbolic":
             return
         self.tokenizer = None
@@ -159,17 +160,7 @@ class OpenRouterEngine(Engine):
             raise ValueError(msg)
 
         request = self.build_request(argument)
-        except_remedy = argument.kwargs.get("except_remedy")
-        try:
-            response = self.call_request(request)
-        except Exception as e:
-            if except_remedy is None:
-                raise
-            # NOTE: the legacy engine passed the SDK callable as `callback`; the
-            # raw-REST engine retries the wire request through this closure instead.
-            response = except_remedy(
-                self, e, lambda *_args, **_kwargs: self.call_request(request), argument
-            )
+        response = self.call_request(request)
         return self.parse_response(response)
 
     def call_request(self, request: OpenRouterRequest):
