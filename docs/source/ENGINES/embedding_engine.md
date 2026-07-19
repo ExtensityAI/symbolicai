@@ -61,35 +61,19 @@ The `gemini-embedding-2` model supports embedding images, video, audio, and docu
 
 ```python
 from pathlib import Path
-from google.genai.types import Content, Part
 from symai import Symbol
 
 # Image embedding from raw bytes
 image_bytes = Path("photo.png").read_bytes()
 result = Symbol(image_bytes).embed()
 
-# Image embedding from Google Part object
-image_part = Part.from_bytes(data=image_bytes, mime_type="image/png")
-result = Symbol(image_part).embed()
-
-# Combined text and image embedding
-content = Content(parts=[
-    Part.from_text(text="Describe this image"),
-    Part.from_bytes(data=image_bytes, mime_type="image/png"),
-])
-result = Symbol(content).embed()
-
 # Batch with mixed text and image inputs
-result = Symbol(["hello world", image_part]).embed()
+result = Symbol(["hello world", image_bytes]).embed()
 ```
-
-**Note:** When using `gemini-embedding-2` with multiple inputs in a single call, the model aggregates them into one embedding by default. For individual embeddings per input, wrap each in a `Content` object or use the Batch API.
 
 **Supported input types:**
 - `str` - Text input
 - `bytes` - Raw file bytes (MIME type auto-detected internally via [filetype](https://github.com/h2non/filetype.py), supports 100+ formats including images, audio, video, and documents)
-- `Part` - Google genai Part object (for explicit MIME type control)
-- `Content` - Google genai Content object (for mixed text+image)
 
 **Engine compatibility:** Each engine handles input types based on its capabilities. OpenAI engines only support text and will raise a clear error for non-text inputs.
 

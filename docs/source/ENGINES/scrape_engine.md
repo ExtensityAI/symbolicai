@@ -14,7 +14,7 @@ res = scraper(url)
 
 ## Parallel (Parallel.ai)
 
-The Parallel.ai integration routes scrape calls through the official `parallel-web` SDK and can handle PDFs, JavaScript-heavy feeds, and standard HTML pages in the same workflow. Instantiate the Parallel interface and call `.scrape(...)` with the target URL. The engine detects scrape requests automatically whenever a URL is supplied.
+The Parallel.ai integration routes scrape calls through Parallel's hosted Extract API and can handle PDFs, JavaScript-heavy feeds, and standard HTML pages in the same workflow. Instantiate the Parallel interface and call `.scrape(...)` with the target URL. The engine detects scrape requests automatically whenever a URL is supplied.
 
 ```python
 from symai import Interface
@@ -40,7 +40,7 @@ Configuration requires a Parallel API key and the Parallel model token. Add the 
 }
 ```
 
-When invoked with a URL, the engine hits Parallel's Extract API and returns an `ExtractResult`. The result string joins excerpts or the full content if requested. Because processing is offloaded to Parallel's hosted infrastructure, the engine remains reliable on dynamic pages that the naive scraper cannot render. Install the dependency with `pip install parallel-web` before enabling this engine.
+When invoked with a URL, the engine hits Parallel's Extract API and returns an `ExtractResult`. The result string joins excerpts or the full content if requested. Because processing is offloaded to Parallel's hosted infrastructure, the engine remains reliable on dynamic pages that the naive scraper cannot render.
 
 ## Firecrawl
 

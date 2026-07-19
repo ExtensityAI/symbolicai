@@ -1,7 +1,7 @@
 # Search Engine
 
 ## Parallel (Parallel.ai)
-Parallel.ai provides unified search and scrape capabilities through the `parallel-web` SDK. When you invoke `.search(...)` on the Parallel interface, responses are normalized into a `SearchResult` that flattens excerpt text and appends inline citation markers. All URLs are deduplicated and cleaned of tracking parameters, and you can access structured citations via `result.get_citations()`.
+Parallel.ai provides unified search and scrape capabilities. When you invoke `.search(...)` on the Parallel interface, responses are normalized into a `SearchResult` that flattens excerpt text and appends inline citation markers. All URLs are deduplicated and cleaned of tracking parameters, and you can access structured citations via `result.get_citations()`.
 
 ```python
 from symai import Interface
@@ -38,7 +38,7 @@ print(task_result.raw["task_output"])  # raw processor output payload
 
 Any `allowed_domains` filters are forwarded via `source_policy` to the task run. You can also provide `task_timeout` (client-side polling window) or `task_api_timeout` (server-side execution window) for long-running tasks. When no processor is supplied, the engine uses the standard Parallel search route described above.
 
-Enable the engine by installing `parallel-web` and configuring the Parallel credentials in your settings:
+Enable the engine by configuring the Parallel credentials in your settings:
 
 ```bash
 {
@@ -112,7 +112,7 @@ res = search("Explain quantum computing developments")
 # Enable a reasoning model via the Responses API
 res = search(
     "Summarize the latest research on quantum error correction",
-    model="o4-mini",
+    model="o3",
     reasoning={
         "effort": "medium",
         "summary": "auto"
@@ -134,7 +134,7 @@ Here's how to configure the OpenAI search engine:
 This engine calls the OpenAI Responses API under the hood. When you target a reasoning-capable model, pass a `reasoning` dictionary matching the Responses payload schema (for example `{"effort": "low", "summary": "auto"}`). If omitted, the engine falls back to the default effort/summary settings shown above.
 
 ## Gemini Search
-You can also use Google's Gemini grounding (via the `google-genai` interactions API with the `google_search` tool) to answer queries with inline citations:
+You can also use Google's Gemini grounding (via the Gemini interactions API with the `google_search` tool) to answer queries with inline citations:
 
 ```python
 from symai import Interface

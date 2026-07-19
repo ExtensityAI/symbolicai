@@ -1,15 +1,18 @@
 # Neuro-Symbolic Engine
 
 The **neuro-symbolic** engine is our generic wrapper around large language models (LLMs) that support prompts, function/tool calls, vision tokens, token‐counting/truncation, etc.
-Depending on which backend you configure (OpenAI/GPT, Claude, Gemini, Deepseek, Groq, Cerebras, llama.cpp, HuggingFace, …), a few things must be handled differently:
 
-* GPT-family (OpenAI) and most backends accept the usual `max_tokens`, `temperature`, etc., out of the box.
-* Claude (Anthropic), Gemini (Google), Deepseek, Cerebras, and Qwen (Groq) can return an internal "thinking trace" when you enable it.
-* Local engines (llamacpp, HuggingFace) do *not* yet support token counting, JSON format enforcement, or vision inputs in the same way.
-* Groq engine requires a special format for the `NEUROSYMBOLIC_ENGINE_MODEL` key: `groq:model_id`. E.g., `groq:qwen/qwen3-32b`.
-* Cerebras engine requires a special format for the `NEUROSYMBOLIC_ENGINE_MODEL` key: `cerebras:model_id`. E.g., `cerebras:gpt-oss-120b`.
-* OpenRouter engine requires a special format for the `NEUROSYMBOLIC_ENGINE_MODEL` key: `openrouter:model_id`. E.g., `openrouter:moonshotai/kimi-k2.5`.
-* OpenAI Responses API engine requires the `responses:` prefix: `responses:model_id`. E.g., `responses:gpt-4.1`, `responses:o3-mini`. This uses OpenAI's newer `/v1/responses` endpoint instead of `/v1/chat/completions`.
+## v2 Architecture
+
+Each provider lives in its own folder under `symai/backend/engines/neurosymbolic/<provider>/` with an `engine.py` (the `Engine` subclass), a `models.py` (pydantic wire models plus the model spec table), and a `stream.py` (SSE adapter). There are **no vendor SDKs**: every provider is called over raw REST through the shared `httpx` transport in `symai/backend/transport.py` (connection pooling, retries, SSE parsing). Every engine follows the same forward pipeline: `build_request` → `call_request` → `parse_response`, where the request/response payloads are validated against the pydantic wire models in `models.py` (subclasses of `EngineRequestPayload` / `EngineResponsePayload` from `symai/backend/request.py`).
+
+The neuro-symbolic engines are `OpenAIEngine`, `AnthropicEngine`, `GoogleEngine`, `DeepseekEngine`, `CerebrasEngine`, `GroqEngine`, and `OpenRouterEngine`, plus the local `LlamaCppEngine` and `VLLMEngine`. Engine selection is driven by the `NEUROSYMBOLIC_ENGINE_MODEL` config key: canonical model IDs are **provider-prefixed** (`openai:gpt-5.4`, `anthropic:claude-sonnet-4-6`, `gemini:gemini-2.5-pro`, `deepseek:deepseek-v4-pro`, `cerebras:gpt-oss-120b`, `groq:openai/gpt-oss-120b`, `openrouter:moonshotai/kimi-k2.5`), and bare aliases without the prefix (e.g. `gpt-4.1`, `claude-sonnet-4-6`) are accepted and normalized to the prefixed form.
+
+Depending on which backend you configure (OpenAI/GPT, Claude, Gemini, Deepseek, Groq, Cerebras, …), a few things must be handled differently:
+
+* GPT-family (OpenAI) and most backends accept the usual `max_tokens`, `temperature`, etc., out of the box. Reasoning models (picked by name, e.g. `openai:o3`) drop sampling parameters and default to a `reasoning` effort instead.
+* Claude (Anthropic), Gemini (Google), Deepseek, Groq, and Cerebras can return an internal "thinking trace" when you enable it.
+* Local engines (`llama.cpp`, vLLM) do *not* support token counting, JSON format enforcement, or vision inputs in the same way as the hosted backends.
 * Token‐truncation and streaming are handled automatically but may vary in behavior by engine.
 
 > ❗️**NOTE**❗️the most accurate documentation is the _code_, so be sure to check out the tests. Look for the `mandatory` mark since those are the features that were tested and are guaranteed to work.
@@ -33,20 +36,21 @@ Under the hood this uses the `neurosymbolic` engine.
 
 ## Raw LLM Response
 
-If you need the raw LLM objects (e.g. `openai.ChatCompletion`, `anthropic.types.Message`/`anthropic.Stream`, or `google.genai.types.GenerateContentResponse`), use `raw_output=True`:
+If you need the raw LLM response object, use `raw_output=True`. The raw output is the engine's validated pydantic wire model (a subclass of `EngineResponsePayload` from `symai/backend/request.py`) — e.g. `OpenAIResponse`, `AnthropicResponse`, or `GoogleResponse` from the provider's `models.py`:
 
 ```python
 from symai import Expression
 
 raw = Expression.prompt("What is the capital of France?", raw_output=True)
-# raw.value is the LLM response object
+# raw.value is the provider's wire response model, e.g. OpenAIResponse
+# (with .output items and .usage) or AnthropicResponse (with .content blocks)
 ```
 
 ---
 
 ## Function/Tool Calls
 
-Models that support function calls (OpenAI GPT-4, Claude, Gemini, …) can dispatch to your `symai.components.Function` definitions:
+Models that support function calls (OpenAI, Claude, Gemini, …) can dispatch to your `symai.components.Function` definitions:
 
 ```python
 from symai.components import Function
@@ -71,17 +75,16 @@ fn = Function(
   tools=tools
 )
 
-# GPT-style tool call
+# OpenAI-style tool call (Responses API wire shape)
 resp = fn("What's the temperature in Bogotá, Colombia?", raw_output=True)
-# resp.choices[0].finish_reason == "tool_calls"
-# resp.choices[0].message.tool_calls[0].function.name == "get_weather"
+# resp is an OpenAIResponse; tool calls appear as output items:
+calls = [item for item in resp.output if item.type == "function_call"]
+assert calls[0].name == "get_weather"
 ```
 
 For Claude the API shapes differ slightly:
 
 ```python
-from anthropic.types import ToolUseBlock
-
 tools = [
   {
     "name": "get_stock_price",
@@ -93,15 +96,16 @@ fn = Function("Pick a function", tools=tools)
 
 # Enable thinking trace (see next section) if needed
 resp = fn("What's the S&P 500 today?", raw_output=True, thinking=thinking, max_tokens=16000)
-blocks = [b for b in resp.content if isinstance(b, ToolUseBlock)]
+# resp is an AnthropicResponse; tool calls are content blocks of type "tool_use":
+blocks = [b for b in resp.content if b.type == "tool_use"]
 assert blocks[0].name == "get_stock_price"
 ```
 
 ---
 
-## Thinking Trace (Claude, Gemini, Deepseek, Groq, OpenAI Responses)
+## Thinking Trace (Claude, Gemini, Deepseek, Groq, Cerebras, OpenAI, OpenRouter)
 
-Some engines (Anthropic's Claude, Google's Gemini, Deepseek, OpenAI Responses API with reasoning models) can return an internal **thinking trace** that shows how they arrived at an answer. To get it, you must:
+Some engines (Anthropic's Claude, Google's Gemini, Deepseek, Groq, Cerebras, OpenAI reasoning models, OpenRouter) can return an internal **thinking trace** that shows how they arrived at an answer. To get it, you must:
 
 1. Pass `return_metadata=True`.
 2. Pass a `thinking=` configuration if required.
@@ -114,7 +118,7 @@ from symai import Symbol
 
 thinking = {"budget_tokens": 4092}
 
-# claude-sonnet-4-6
+# anthropic:claude-sonnet-4-6
 res, metadata = Symbol("Topic: Disneyland") \
     .query(
       "Write a dystopic take on the topic.",
@@ -128,8 +132,10 @@ print(metadata["thinking"])
 
 ### Claude Adaptive Thinking (Runtime)
 
-Anthropic adaptive thinking is available at runtime for:
+Anthropic adaptive thinking (`thinking={"type": "adaptive", "effort": ...}`) is available at runtime for models whose spec enables it:
 
+- `claude-fable-5`
+- `claude-sonnet-5`
 - `claude-opus-4-8`
 - `claude-opus-4-7`
 - `claude-opus-4-6`
@@ -140,7 +146,7 @@ from symai import Symbol
 
 res, metadata = Symbol("Topic: Disneyland").query(
     "Write a dystopic take on the topic.",
-    model="claude-opus-4-6",
+    model="anthropic:claude-opus-4-6",
     return_metadata=True,
     thinking={"type": "adaptive", "effort": "medium"},
 )
@@ -148,34 +154,33 @@ print(res)
 print(metadata["thinking"])
 ```
 
-If `thinking={"type":"adaptive"}` is used on an unsupported model alias, SymbolicAI logs a
+If `thinking={"type":"adaptive"}` is used on a model that does not support it, SymbolicAI logs a
 warning through the `symai` logger and falls back to manual thinking
 (`{"type":"enabled","budget_tokens":...}`). This is runtime behavior and not a
 `symai.config.json` key.
 
-### Claude 1M Context (Reasoning Models, Runtime Opt-In)
+### Claude 1M Context (Runtime Opt-In)
 
-For Anthropic reasoning models, you can opt into 1M context per request using `long_context_1m=True`.
+The newer Claude reasoning models (`claude-fable-5`, `claude-sonnet-5`, `claude-opus-4-8`, `claude-opus-4-7`) default to a 1M token context window. For the following models you can opt into 1M context per request using `long_context_1m=True` (this sends the Anthropic beta header):
+
+- `claude-opus-4-6`
+- `claude-sonnet-4-6`
+- `claude-sonnet-4-5`
+
 This is runtime-only and is not configured via `symai.config.json`.
 
 ```python
 from symai import Symbol
 
-# Supported aliases in this mode:
-# - claude-opus-4-8
-# - claude-opus-4-7
-# - claude-opus-4-6
-# - claude-sonnet-4-6
-# - claude-sonnet-4-5
 res = Symbol("Analyze this very long corpus...").query(
     "Extract a structured timeline of key events.",
-    model="claude-opus-4-6",
+    model="anthropic:claude-opus-4-6",
     long_context_1m=True,
 )
 print(res)
 ```
 
-If `long_context_1m=True` is used with an unsupported model alias, SymbolicAI logs a warning
+If `long_context_1m=True` is used with a model that does not support it, SymbolicAI logs a warning
 through the `symai` logger and falls back to the standard 200K context behavior.
 
 ### Gemini (Google)
@@ -188,10 +193,11 @@ from symai import Symbol
 # Option 1: token budget (fine-grained control)
 thinking = {"thinking_budget": 1024}
 
-# Option 2: preset level (simpler, recommended for gemini-3.1+)
+# Option 2: preset level (simpler, recommended for gemini-3+)
 thinking = {"thinking_level": "high"}
 
-# gemini-2.5-pro, gemini-2.5-flash, gemini-3.1-flash-lite-preview
+# gemini:gemini-2.5-pro, gemini:gemini-2.5-flash, gemini:gemini-3.5-flash,
+# gemini:gemini-3.1-pro-preview, gemini:gemini-3-flash-preview
 res, metadata = Symbol("Topic: Disneyland") \
     .query(
       "Write a dystopic take on the topic.",
@@ -207,7 +213,7 @@ print(metadata["thinking"])
 ```python
 from symai import Symbol
 
-# deepseek-reasoner
+# deepseek:deepseek-v4-pro or deepseek:deepseek-v4-flash
 res, metadata = Symbol("Topic: Disneyland") \
     .query(
       "Write a dystopic take on the topic.",
@@ -217,11 +223,13 @@ print(res)
 print(metadata["thinking"])
 ```
 
+Deepseek models return the trace in the message's `reasoning_content` field, which the engine surfaces as `metadata["thinking"]`.
+
 ### Groq
 ```python
 from symai import Symbol
 
-# groq:qwen/qwen3-32b
+# groq:openai/gpt-oss-120b or groq:openai/gpt-oss-20b
 res, metadata = Symbol("Topic: Disneyland") \
     .query(
       "Write a dystopic take on the topic.",
@@ -236,7 +244,7 @@ print(metadata["thinking"])
 ```python
 from symai import Symbol
 
-# cerebras:gpt-oss-120b
+# cerebras:gpt-oss-120b, cerebras:gemma-4-31b, cerebras:zai-glm-4.7
 res, metadata = Symbol("Topic: Disneyland") \
     .query(
       "Write a dystopic take on the topic.",
@@ -248,17 +256,20 @@ print(res)
 print(metadata["thinking"])
 ```
 
-For Cerebras backends, `symai` collects the reasoning trace from either the dedicated `reasoning` field on the message (when present) or from `<think>…</think>` blocks embedded in the content. In both cases the trace is exposed as `metadata["thinking"]` and removed from the final user-facing text.
+`reasoning_effort` is validated against the model's supported values (`("low", "medium", "high")` for `gpt-oss-120b` and `gemma-4-31b`; `("none", "low", "medium", "high")` for `zai-glm-4.7`) and raises `ValueError` on an unsupported value. For Cerebras backends, `symai` collects the reasoning trace from either the dedicated `reasoning` field on the message (when present) or from `<think>…</think>` blocks embedded in the content. In both cases the trace is exposed as `metadata["thinking"]` and removed from the final user-facing text.
 
-### OpenAI Responses API (reasoning models)
+### OpenAI (reasoning models)
+
+OpenAI reasoning models are picked by name — there is a single `OpenAIEngine` talking to the `/v1/responses` endpoint:
 
 ```python
 from symai import Symbol
 
-# responses:o3-mini or responses:gpt-5
+# openai:o3, openai:o3-pro, openai:gpt-5.4, openai:gpt-5.5, openai:gpt-5.6-sol, ...
 res, metadata = Symbol("Topic: Disneyland") \
     .query(
       "Write a dystopic take on the topic.",
+      model="openai:o3",
       return_metadata=True,
       reasoning={"effort": "medium"}  # optional: low, medium, or high
     )
@@ -266,7 +277,7 @@ print(res)
 print(metadata["thinking"])
 ```
 
-For OpenAI Responses API with reasoning models (e.g., `o3-mini`, `o3`, `o4-mini`, `gpt-5`, `gpt-5.1`), the thinking trace is extracted from the reasoning summary in the response output.
+For reasoning models (`o3`, `o3-pro`, `gpt-5.4*`, `gpt-5.5*`, `gpt-5.6-*`), the thinking trace is extracted from the reasoning summary items in the response output. Sampling parameters (`temperature`, `top_p`) are dropped for these models; the `pro` models (`o3-pro`, `gpt-5.4-pro`, `gpt-5.5-pro`) default to `{"effort": "high"}`, all other reasoning models to `{"effort": "medium"}`.
 
 ### OpenRouter
 
@@ -327,9 +338,9 @@ This happens because JSON Object Mode internally invokes a JSON “constrainer�
 ## Token Counting & Truncation
 
 The default pipeline will automatically estimate token usage and truncate conversation as needed.
-On GPT-family backends, raw API usage in `response.usage` matches what `symai` computes.
+On GPT-family backends, raw API usage in `response.usage` matches what `symai` computes (tokenization is local via `tiktoken`).
 For Gemini, an API call is made to retrieve token counts.
-For Claude / llama.cpp / HuggingFace, skip token‐comparison tests as they are not uniformly supported yet.
+For Claude / llama.cpp / vLLM, skip token‐comparison tests as they are not uniformly supported yet.
 
 If a tokenizer is available for the current engine, you can easily count tokens in a string via `Symbol`:
 ```python
@@ -340,13 +351,14 @@ print(Symbol(string).tokens)
 ### Tracking Usage and Estimating Costs with `MetadataTracker`
 
 For more detailed tracking of API calls, token usage, and estimating costs, you can use the `MetadataTracker` in conjunction with `RuntimeInfo`. This is particularly useful for monitoring multiple calls within a specific code block.
-> ❗️**NOTE**❗️`MetadataTracker` collects raw per-call metadata for any `Engine`, but **token usage extraction** (i.e. `tracker.usage` → `RuntimeInfo`) is currently implemented for:
+> ❗️**NOTE**❗️`MetadataTracker` collects raw per-call metadata for any `Engine`. **Token usage extraction** (i.e. `tracker.usage` → `RuntimeInfo`) works through each engine's `usage_record_from_metadata` and is available for:
 >
-> - **OpenAI**: `GPTXChatEngine`, `GPTXReasoningEngine`, `OpenAIResponsesEngine`, `OpenAISearchEngine` (eg. `gpt-5-chat-latest`)
-> - **Claude (Anthropic)**: `ClaudeXChatEngine`, `ClaudeXReasoningEngine` (eg. `claude-sonnet-4-5`)
-> - **Gemini (Google)**: `GeminiXReasoningEngine` (e.g. `gemini-2.5-pro`, `gemini-2.5-flash`, `gemini-3.1-flash-lite-preview`)
+> - **OpenAI**: `OpenAIEngine` (e.g. `openai:gpt-4.1`, `openai:o3`) and `OpenAISearchEngine`
+> - **Claude (Anthropic)**: `AnthropicEngine` (e.g. `anthropic:claude-sonnet-4-6`)
+> - **Gemini (Google)**: `GoogleEngine` (e.g. `gemini:gemini-2.5-pro`, `gemini:gemini-2.5-flash`, `gemini:gemini-3.1-flash-lite`)
+> - **Deepseek / Cerebras / Groq / OpenRouter**: `DeepseekEngine`, `CerebrasEngine`, `GroqEngine`, `OpenRouterEngine`
 >
-> For other engines, `tracker.metadata` will still contain raw outputs, but `tracker.usage` may be empty or partial.
+> The model IDs that appear in `tracker.usage` keys are the normalized, provider-prefixed forms (`openai:gpt-4.1-mini`); `OpenAISearchEngine` keeps the bare `SEARCH_ENGINE_MODEL` string. For other engines, `tracker.metadata` will still contain raw outputs, but `tracker.usage` may be empty or partial.
 
 `MetadataTracker` collects metadata from engine calls made within its context. `RuntimeInfo` then processes this raw metadata to provide a summary of token counts, number of API calls, elapsed time, and an estimated cost if pricing information is provided.
 
@@ -378,7 +390,7 @@ end_time = time.perf_counter()
 # that appear in the tracker.usage dictionary. These depend on your SYMAI_CONFIG
 # and the models used by the engines.
 dummy_pricing = {
-    ("GPTXChatEngine", "gpt-4.1-mini"): {
+    ("OpenAIEngine", "openai:gpt-4.1-mini"): {
         "input": 0.000002,
         "cached_input": 0.000001,
         "output": 0.000002

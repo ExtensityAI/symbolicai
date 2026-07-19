@@ -169,7 +169,7 @@ result = reader(files, workers=4)
 Image files and PowerPoint slides can include
 LLM-generated descriptions. This routes through SymAI's neurosymbolic engine
 using your configured `NEUROSYMBOLIC_ENGINE_MODEL` and API key -- any vision-
-capable backend works (OpenAI GPT-4o, Anthropic Claude, Google Gemini, etc.).
+capable backend works (OpenAI GPT-5.4, Anthropic Claude, Google Gemini, etc.).
 If the configured engine doesn't support vision, these converters still extract
 metadata (EXIF) and text content without LLM descriptions.
 

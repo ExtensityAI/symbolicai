@@ -4,7 +4,6 @@
 You can use a locally hosted instance for the Neuro-Symbolic Engine. We build on top of:
 - [llama.cpp](https://github.com/ggerganov/llama.cpp/tree/master) through the `llama-server` binary:
     > ❗️**NOTE**❗️ Latest `llama.cpp` commit on `master` branch that we tested `symai` with is `4937ca83f` (July 18th, 2026). We used the build [setup](https://github.com/ggml-org/llama.cpp/blob/master/docs/build.md). On macOS, if the build fails on missing OpenSSL headers (`openssl/err.h` in `vendor/cpp-httplib`), configure with `-DLLAMA_OPENSSL=OFF` — the local server does not need TLS.
-- [huggingface/transformers](https://huggingface.co/docs/transformers/en/index) through a custom FastAPI server.
 
 ### llama.cpp backend
 For instance, let's suppose you want to set up the Neuro-Symbolic Engine with the `gpt-oss-120b` model. Download the GGUF shards you need (e.g. the `Q4_1` variant).
@@ -169,47 +168,6 @@ print(sym)
   VLLM_SHM_RING_BUFFER_WAIT_SECS=600 symserver --vllm-python-path …
   ```
 - **Performance on Apple Silicon is poor.** vLLM's CPU backend primarily targets x86 AVX-512, falls back to generic PyTorch ops on ARM, and has no Metal backend. Per-token latency on macOS CPU is typically 3-10× slower than `llama.cpp` on the same hardware. vLLM's value is GPU serving with continuous batching; on a single-user macOS workstation, prefer the llama.cpp backend for actual use and reserve vLLM for CUDA hosts.
-
-### HuggingFace backend
-Let's suppose we want to use `dolphin-2.9.3-mistral-7B-32k` from HuggingFace. First, download the model with the HuggingFace CLI:
-```bash
-huggingface-cli download cognitivecomputations/dolphin-2.9.3-mistral-7B-32k --local-dir ./dolphin-2.9.3-mistral-7B-32k
-```
-
-For the HuggingFace server, you have to set the `NEUROSYMBOLIC_ENGINE_MODEL` to `huggingface`:
-```json
-{
-  "NEUROSYMBOLIC_ENGINE_API_KEY": "",
-  "NEUROSYMBOLIC_ENGINE_MODEL": "huggingface",
-  ...
-}
-```
-
-Then, run `symserver` with the following options:
-```bash
-symserver --model ./dolphin-2.9.3-mistral-7B-32k --attn_implementation flash_attention_2
-```
-
-To see all the available options we support for HuggingFace, run:
-```bash
-symserver --help
-```
-
-Now you are set to use the local engine.
-
-```python
-# do some symbolic computation with the local engine
-sym = Symbol('Kitties are cute!').compose()
-print(sym)
-
-# :Output:
-# Kittens are known for their adorable nature and fluffy appearance, making them a favorite addition to many homes across the world. They possess a strong bond with
-# their owners, providing companionship and comfort that can ease stress and anxiety. With their playful personalities, they are often seen as a symbol of happiness
-# and joy, and their unique characteristics such as purring, kneading, and head butts bring warmth to our hearts. Cats also have a natural instinct to groom, which
-# helps them maintain their clean and soft fur. Not only do they bring comfort and love to their owners, but they also have some practical benefits, such as reducing
-# allergens, deterring pests, and even reducing stress in their surroundings. Overall, it is no surprise that pets have a long history of providing both emotional
-# and physical comfort and happiness to their owners, making them a much-loved member of families around the world.
-```
 
 ## Local Embedding Engine
 

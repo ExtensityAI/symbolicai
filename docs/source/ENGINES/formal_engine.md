@@ -2,7 +2,7 @@
 
 The formal engine provides Lean4 formal verification with two backends:
 
-- **Axiom** (cloud) -- full-featured via the Axle SDK: proof checking, repair, theorem extraction, and more.
+- **Axiom** (cloud) -- full-featured via the Axle API: proof checking, repair, theorem extraction, and more.
 - **Local** (Docker) -- runs the `lean` binary in a Docker container for type-checking and proof verification, with no cloud dependency.
 
 Both register as `engine="formal"`. Which one activates depends on the `FORMAL_ENGINE` config value.
@@ -11,18 +11,15 @@ Both register as `engine="formal"`. Which one activates depends on the `FORMAL_E
 
 ### Setup
 
-1. Install the lean extras:
-   ```bash
-   pip install symbolicai[lean]
-   ```
+Set your API key and engine in `symai.config.json`:
+```json
+{
+  "FORMAL_ENGINE_API_KEY": "your-axle-api-key",
+  "FORMAL_ENGINE": "axiom"
+}
+```
 
-2. Set your API key and engine in `symai.config.json`:
-   ```json
-   {
-     "FORMAL_ENGINE_API_KEY": "your-axle-api-key",
-     "FORMAL_ENGINE": "axiom"
-   }
-   ```
+The engine calls the Axle API over raw REST; no extra dependencies are required.
 
 ### Basic Usage
 

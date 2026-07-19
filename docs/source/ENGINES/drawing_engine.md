@@ -4,7 +4,7 @@ We now expose three distinct high-level drawing interfaces:
 
 1. **`gpt_image`** – a unified wrapper around OpenAI’s Images API (DALL·E 2/3 and `gpt-image-*`).
 2. **`flux`** – Black Forest Labs’ Flux text-to-image models via api.bfl.ai.
-3. **`nanobanana`** – Google Gemini image generation models via `google-genai`.
+3. **`nanobanana`** – Google Gemini image generation models via the Gemini API.
 
 Both return a list of local PNG file paths.
 
@@ -36,8 +36,8 @@ paths = gpt_image(
     # Extra for gpt-image-*:
     moderation="auto",            # "auto" | "strict"
     background="transparent",     # "auto" | "transparent"
-    output_compression="png",     # "png" | "jpeg" | "webp"
-    # if jpeg/webp you can also pass `output_compression=80` for quality
+    output_format="png",          # "png" | "jpeg" | "webp"
+    # if jpeg/webp you can also pass `output_compression=80` for quality (0-100)
 )
 
 print(paths[0])  # → /tmp/tmpabcd.png
@@ -97,7 +97,8 @@ paths = gpt_image(
   - `quality` (`"auto"`|`"low"`|`"medium"`|`"high"`)
   - `moderation` (`"auto"`|`"strict"`)
   - `background` (`"auto"`|`"transparent"`)
-  - `output_compression` (`"png"`|`"jpeg"`|`"webp"` or integer)
+  - `output_format` (`"png"`|`"jpeg"`|`"webp"`)
+  - `output_compression` (int 0-100, jpeg/webp only)
 
 **Variation / Edit**:
 
@@ -158,7 +159,7 @@ and writes out local PNG file(s).
 
 ## 3. Google “nanobanana” (Gemini Image) Interface
 
-Use `Interface("nanobanana")` to generate images with Gemini image models (via the `google-genai` SDK).
+Use `Interface("nanobanana")` to generate images with Gemini image models.
 This interface currently supports **create-only** generation.
 
 Supported models (as of this release):
@@ -185,7 +186,7 @@ print(paths[0])  # → /tmp/tmpabcd.png
 - `operation` (`"create"`)
 - `model` (str, default from `SYMAI_CONFIG["DRAWING_ENGINE_MODEL"]`)
 - `response_modalities` (list[str], default `["IMAGE"]`)
-- `config` (optional): a `google.genai.types.GenerateContentConfig` instance
+- `config` (optional): a dict of wire-format `generationConfig` fields (camelCase), merged over the `responseModalities` default
 
 ### Configuration
 
