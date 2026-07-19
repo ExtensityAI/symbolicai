@@ -1,13 +1,14 @@
 from pathlib import Path
 
 import pytest
-from openai.types.chat.chat_completion import ChatCompletion
-from openai.types.responses import Response
 
 from symai import EngineRepository, Expression, Symbol
 from symai.backend.engines.neurosymbolic.anthropic.models import AnthropicResponse
 from symai.backend.engines.neurosymbolic.google.models import GoogleResponse
-from symai.backend.engines.neurosymbolic.openai.models import SUPPORTED_REASONING_MODELS
+from symai.backend.engines.neurosymbolic.openai.models import (
+    SUPPORTED_REASONING_MODELS,
+    OpenAIResponse,
+)
 from symai.backend.settings import SYMAI_CONFIG
 from symai.components import Function
 
@@ -371,16 +372,13 @@ def test_raw_output():
             assert len(event_types & expected_types) > 0, (
                 f"Expected streaming events but got: {event_types}"
             )
-    elif IS_OPENAI_API:
-        S = Expression.prompt("What is the capital of France?", raw_output=True)
-        assert isinstance(S.value, Response)
-    elif (
+    elif IS_OPENAI_API or (
         NEUROSYMBOLIC.startswith("gpt")
         or NEUROSYMBOLIC.startswith("o1")
         or NEUROSYMBOLIC.startswith("o3")
     ):
         S = Expression.prompt("What is the capital of France?", raw_output=True)
-        assert isinstance(S.value, ChatCompletion)
+        assert isinstance(S.value, OpenAIResponse)
     elif "gemini" in NEUROSYMBOLIC:
         S = Expression.prompt("What is the capital of France?", raw_output=True)
         assert isinstance(S.value, GoogleResponse)

@@ -14,12 +14,6 @@ Set in your `symai.config.json`:
 }
 ```
 
-## Installation
-
-```bash
-pip install symbolicai[ocr]
-```
-
 ## Usage
 
 ```python

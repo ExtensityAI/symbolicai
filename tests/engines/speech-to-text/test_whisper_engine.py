@@ -2,15 +2,14 @@ from pathlib import Path
 
 import pytest
 
+# the engine hard-imports torch and whisper is the engine itself; guard before importing it
+pytest.importorskip("torch", reason="torch is not installed (whisper extra)")
+pytest.importorskip("whisper", reason="whisper is not installed (whisper extra)")
+
 from symai.backend.engines.speech_to_text.local.engine import WhisperResult
 from symai.backend.settings import SYMAI_CONFIG
 from symai.components import Interface
 from symai.utils import semassert
-
-try:
-    import whisper  # noqa: F401
-except ImportError:
-    pytest.skip("whisper is not installed", allow_module_level=True)
 
 if SYMAI_CONFIG.get("SPEECH_TO_TEXT_ENGINE_MODEL") not in [
     "tiny",
