@@ -52,6 +52,8 @@ class ParallelSearchRequest(EngineRequestPayload):
     objective: str | None = None
     search_queries: list[str] = Field(min_length=1)
     max_chars_total: int | None = Field(default=None, gt=0)
+    session_id: str | None = Field(default=None, max_length=1000)
+    client_model: str | None = None
     advanced_settings: ParallelSearchAdvancedSettings | None = None
 
 
@@ -70,6 +72,8 @@ class ParallelExtractRequest(EngineRequestPayload):
     objective: str | None = None
     search_queries: list[str] | None = None
     max_chars_total: int | None = Field(default=None, gt=0)
+    session_id: str | None = Field(default=None, max_length=1000)
+    client_model: str | None = None
     advanced_settings: ParallelExtractAdvancedSettings | None = None
 
 
@@ -92,12 +96,17 @@ class ParallelMCPServer(EngineRequestPayload):
     allowed_tools: list[str] | None = None
 
 
+class ParallelTaskAdvancedSettings(EngineRequestPayload):
+    location: str | None = None
+
+
 class ParallelTaskRunCreateRequest(EngineRequestPayload):
     processor: str
     input: str | dict[str, JsonValue]
     task_spec: ParallelTaskSpec | str | None = None
     metadata: dict[str, str] | None = None
     source_policy: ParallelSourcePolicy | None = None
+    advanced_settings: ParallelTaskAdvancedSettings | None = None
     previous_interaction_id: str | None = None
     mcp_servers: list[ParallelMCPServer] | None = None
 
@@ -117,12 +126,24 @@ class ParallelSearchResultItem(EngineResponsePayload):
     excerpts: list[str] | None = None
 
 
+class ParallelUsageItem(EngineResponsePayload):
+    """Usage entry for a single billed SKU, e.g. {"name": "sku_search", "count": 1}.
+
+    NOTE: components.py MetadataTracker's ParallelEngine branch reads item.name /
+    item.count via getattr — typing this (instead of JsonValue) is what keeps SKU
+    accounting live.
+    """
+
+    name: str
+    count: int
+
+
 class ParallelSearchResponse(EngineResponsePayload):
     search_id: str | None = None
     session_id: str
     results: list[ParallelSearchResultItem] = Field(default_factory=list)
     warnings: list[JsonValue] | None = None
-    usage: JsonValue = None
+    usage: list[ParallelUsageItem] | None = None
 
 
 class ParallelExtractResultItem(EngineResponsePayload):
@@ -146,6 +167,7 @@ class ParallelExtractResponse(EngineResponsePayload):
     results: list[ParallelExtractResultItem] = Field(default_factory=list)
     errors: list[ParallelExtractError]
     warnings: list[JsonValue] | None = None
+    usage: list[ParallelUsageItem] | None = None
 
 
 class ParallelTaskRun(EngineResponsePayload):

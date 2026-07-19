@@ -151,6 +151,18 @@ class TestGroqEngine(NeurosymbolicEngineTestInterface):
         )
         assert explicit.body()["max_completion_tokens"] == 64
 
+    def test_deprecated_upstream_models_are_not_supported(self):
+        # NOTE: kimi-k2-instruct, qwen3-32b, and deepseek-r1-distill-llama-70b were
+        # shut down by Groq (2025-10-10, 2026-07-17, 2025-10-02); keeping them in the
+        # catalog would register dead model IDs. See models.py NOTE + Groq deprecations.
+        for dead in (
+            "groq:moonshotai/kimi-k2-instruct",
+            "groq:moonshotai/kimi-k2-instruct-0905",
+            "groq:qwen/qwen3-32b",
+            "groq:deepseek-r1-distill-llama-70b",
+        ):
+            assert dead not in SUPPORTED_GROQ_MODELS
+
     def test_build_request_drops_unsupported_kwargs_with_warning(self):
         request = self.make_engine().build_request(
             self.make_prepared_argument(kwargs={"logprobs": True, "search_settings": {}, "seed": 7})

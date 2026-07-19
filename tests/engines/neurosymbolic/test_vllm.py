@@ -10,7 +10,7 @@ from symai.backend.engines.neurosymbolic.vllm.models import (
 )
 from symai.backend.settings import SYMSERVER_CONFIG
 from symai.components import MetadataTracker
-from tests.engines.mock_api import MockAPI
+from tests.engines.mock_api import DUMMY_KEY, MockAPI
 from tests.engines.neurosymbolic.interface import NeurosymbolicEngineTestInterface
 
 SERVER_ENDPOINT = f"http://{SYMSERVER_CONFIG.get('--host') or 'localhost'}:{SYMSERVER_CONFIG.get('--port') or 8001}"
@@ -40,6 +40,8 @@ class TestVLLMEngine(NeurosymbolicEngineTestInterface):
     def assert_auth_headers(self, headers):
         content_type = headers.get("content-type") or headers.get("Content-Type")
         assert content_type == "application/json"
+        auth = headers.get("authorization") or headers.get("Authorization")
+        assert auth == f"Bearer {DUMMY_KEY}"
 
     def spec_for(self, _model="vllm"):
         return self.model_specs["vllm"]
@@ -174,3 +176,29 @@ class TestVLLMEngine(NeurosymbolicEngineTestInterface):
             tokens = engine.compute_required_tokens([{"role": "user", "content": "one two"}])
 
         assert tokens == 2 + 6  # tokenized words plus template overhead estimate
+
+    def test_server_helper_requests_send_bearer(self):
+        # NOTE: --api-key deployments 401 on unauthenticated helper/discovery calls too.
+        engine = self.make_engine(client_max_retries=0)
+
+        def handler(request):
+            if request.url.path == "/tokenize":
+                return httpx.Response(200, json={"count": 2, "tokens": [1, 2]}, request=request)
+            if request.url.path == "/v1/models":
+                return httpx.Response(
+                    200,
+                    json={"data": [{"id": "qwen", "max_model_len": 8192}]},
+                    request=request,
+                )
+            msg = f"unexpected request: {request.url.path}"
+            raise AssertionError(msg)
+
+        with MockAPI(engine, handler) as api:
+            tokens = engine._tokenize("hello")
+            model_id = engine._server_model_id()
+
+        assert tokens == 2
+        assert model_id == "qwen"
+        assert {request.headers["authorization"] for request in api.requests} == {
+            f"Bearer {DUMMY_KEY}"
+        }

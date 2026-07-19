@@ -7,7 +7,7 @@ Verified live at API_PINNED (see engine module for usage).
 
 from __future__ import annotations
 
-from pydantic import Field
+from pydantic import ConfigDict, Field
 
 from symai.backend.request import EngineRequestPayload, EngineResponsePayload
 
@@ -28,7 +28,11 @@ class GeminiImageContent(EngineRequestPayload):
 
 class GeminiImageGenerationConfig(EngineRequestPayload):
     # NOTE: camelCase wire (verified at API_PINNED); IMAGE-only requests suppress the
-    # conversational text parts the model emits by default.
+    # conversational text parts the model emits by default. Extra keys are allowed so
+    # callers can pass additional wire-format generationConfig fields through
+    # (the legacy kwargs['config'] GenerateContentConfig pass-through, as a plain dict).
+    model_config = ConfigDict(extra="allow", strict=True, populate_by_name=True)
+
     response_modalities: list[str] = Field(alias="responseModalities", min_length=1)
 
 

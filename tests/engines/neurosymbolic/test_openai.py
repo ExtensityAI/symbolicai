@@ -58,8 +58,8 @@ class TestOpenAIEngine(NeurosymbolicEngineTestInterface):
         return payload
 
     def assert_self_prompt_response_format(self, body: dict):
-        # NOTE: the Responses API has no response_format field; the kwarg is dropped.
-        assert "response_format" not in body
+        # NOTE: the Responses API carries JSON mode in text.format, not response_format.
+        assert body["text"]["format"] == {"type": "json_object"}
 
     def assert_cache_breakpoint_body(self, body, segments):
         texts = []
@@ -298,6 +298,51 @@ class TestOpenAIEngine(NeurosymbolicEngineTestInterface):
         )
 
         assert request.body()["max_output_tokens"] < huge
+
+    def test_build_request_aliases_max_tokens_to_max_output_tokens(self):
+        # NOTE: the legacy chat-completions engine accepted max_tokens; keep it working.
+        request = self.make_engine().build_request(
+            self.make_prepared_argument(kwargs={"max_tokens": 32})
+        )
+        body = request.body()
+
+        assert body["max_output_tokens"] == 32
+        assert "max_tokens" not in body
+
+    def test_build_request_max_output_tokens_wins_over_max_tokens(self):
+        request = self.make_engine().build_request(
+            self.make_prepared_argument(kwargs={"max_tokens": 32, "max_output_tokens": 64})
+        )
+
+        assert request.body()["max_output_tokens"] == 64
+
+    def test_build_request_maps_response_format_to_text_format(self):
+        request = self.make_engine().build_request(
+            self.make_prepared_argument(kwargs={"response_format": {"type": "json_object"}})
+        )
+
+        assert request.body()["text"] == {"format": {"type": "json_object"}}
+
+    def test_build_request_flattens_json_schema_response_format(self):
+        # NOTE: the chat-completions nested form flattens into Responses text.format.
+        schema = {"type": "object", "properties": {"answer": {"type": "string"}}}
+
+        request = self.make_engine().build_request(
+            self.make_prepared_argument(
+                kwargs={
+                    "response_format": {
+                        "type": "json_schema",
+                        "json_schema": {"name": "Answer", "schema": schema},
+                    }
+                }
+            )
+        )
+
+        assert request.body()["text"]["format"] == {
+            "type": "json_schema",
+            "name": "Answer",
+            "schema": schema,
+        }
 
     def test_prepare_maps_vision_markers_to_input_image_parts(self):
         engine = self.make_engine()

@@ -10,7 +10,7 @@ from symai.backend.engines.neurosymbolic.llama_cpp.models import (
 )
 from symai.backend.settings import SYMSERVER_CONFIG
 from symai.components import MetadataTracker
-from tests.engines.mock_api import MockAPI
+from tests.engines.mock_api import DUMMY_KEY, MockAPI
 from tests.engines.neurosymbolic.interface import NeurosymbolicEngineTestInterface
 
 SERVER_ENDPOINT = f"http://{SYMSERVER_CONFIG.get('--host')}:{SYMSERVER_CONFIG.get('--port')}"
@@ -41,6 +41,8 @@ class TestLlamaCppEngine(NeurosymbolicEngineTestInterface):
     def assert_auth_headers(self, headers):
         content_type = headers.get("content-type") or headers.get("Content-Type")
         assert content_type == "application/json"
+        auth = headers.get("authorization") or headers.get("Authorization")
+        assert auth == f"Bearer {DUMMY_KEY}"
 
     def test_id_requires_supported_model_and_api_key(self):
         # NOTE: llama.cpp has no API key; the gate is the llama* model name.
@@ -177,3 +179,47 @@ class TestLlamaCppEngine(NeurosymbolicEngineTestInterface):
             tokens = engine.compute_required_tokens([{"role": "user", "content": "one two"}])
 
         assert tokens == 7
+
+    def test_server_helper_requests_send_bearer(self):
+        # NOTE: --api-key deployments 401 on unauthenticated helper/discovery calls too.
+        engine = self.make_engine(client_max_retries=0)
+
+        def handler(request):
+            if request.url.path == "/props":
+                return httpx.Response(
+                    200,
+                    json={"default_generation_settings": {"n_ctx": 8192}},
+                    request=request,
+                )
+            if request.url.path == "/apply-template":
+                return httpx.Response(200, json={"prompt": "rendered"}, request=request)
+            if request.url.path == "/tokenize":
+                return httpx.Response(200, json={"tokens": [1, 2, 3]}, request=request)
+            if request.url.path == "/detokenize":
+                return httpx.Response(200, json={"content": "abc"}, request=request)
+            msg = f"unexpected request: {request.url.path}"
+            raise AssertionError(msg)
+
+        with MockAPI(engine, handler) as api:
+            n_ctx = engine._server_context_tokens()
+            prompt = engine._apply_template([{"role": "user", "content": "hi"}])
+            tokens = engine._tokenize("hi")
+            text = engine._detokenize([1, 2, 3])
+
+        assert n_ctx == 8192
+        assert prompt == "rendered"
+        assert tokens == [1, 2, 3]
+        assert text == "abc"
+        assert {request.headers["authorization"] for request in api.requests} == {
+            f"Bearer {DUMMY_KEY}"
+        }
+
+    def test_init_discovery_failure_raises_clear_error(self, monkeypatch):
+        def refused(*_args, **_kwargs):
+            msg = "connection refused"
+            raise httpx.ConnectError(msg)
+
+        monkeypatch.setattr(httpx, "get", refused)
+
+        with pytest.raises(ValueError, match=r"llama\.cpp server"):
+            self.engine_cls(api_key=DUMMY_KEY, model="llamacpp")

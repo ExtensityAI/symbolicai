@@ -109,6 +109,18 @@ class TestPerplexityEngine(SearchEngineTestInterface):
         assert body["search_recency_filter"] == "week"
         assert body["web_search_options"] == {"search_context_size": "high"}
 
+    def test_extra_error_field_on_200_is_ignored(self):
+        # Pins the removal of the old dict-era `value.get("error")` check: the typed
+        # PerplexityResponse has no error field and ignores extras, so an error key
+        # smuggled into a 200 body can never reach the Result — API errors surface
+        # as non-200 EngineAPIError from the shared transport instead.
+        payload = {**self.mock_response_json(), "error": {"message": "should be ignored"}}
+
+        _api, output, metadata = self.forward_through_mock(payload=payload)
+
+        assert "Spain" in output[0].value
+        assert "error" not in metadata["raw_output"].model_dump()
+
     def test_prepare_honors_custom_system_message(self):
         engine = self.make_engine()
         argument = self.make_argument(kwargs={"system_message": "Explain like I'm five years old."})

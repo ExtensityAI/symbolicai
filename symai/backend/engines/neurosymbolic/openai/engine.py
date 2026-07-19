@@ -146,7 +146,15 @@ class OpenAIEngine(Engine):
         )
 
     def build_request(self, argument) -> OpenAIRequest:
-        allowed_request_kwargs = set(OpenAIPayload.model_fields).union(OpenAIOptions.model_fields)
+        allowed_request_kwargs = set(OpenAIPayload.model_fields).union(
+            OpenAIOptions.model_fields
+        ) | {
+            # symai kwargs handled outside the payload models: "response_format" maps
+            # onto the Responses API text.format field; "max_tokens" is the legacy
+            # symai kwarg aliased to max_output_tokens.
+            "response_format",
+            "max_tokens",
+        }
         payload_kwargs = self.collect_request_kwargs(argument, allowed_request_kwargs)
         option_kwargs = {
             key: payload_kwargs.pop(key)
@@ -160,6 +168,20 @@ class OpenAIEngine(Engine):
         payload_kwargs["input"] = self._apply_cache_breakpoints(
             messages, model_spec, payload_kwargs["model"]
         )
+
+        # NOTE: the legacy chat-completions engine accepted max_tokens; alias it to the
+        # Responses API max_output_tokens when the new kwarg is absent.
+        max_tokens = payload_kwargs.pop("max_tokens", None)
+        if max_tokens is not None and "max_output_tokens" not in payload_kwargs:
+            payload_kwargs["max_output_tokens"] = max_tokens
+
+        response_format = self._normalize_response_format(
+            payload_kwargs.pop("response_format", None)
+        )
+        if response_format is not None:
+            text = dict(payload_kwargs.get("text") or {})
+            text["format"] = response_format
+            payload_kwargs["text"] = text
 
         if self.is_reasoning_model():
             payload_kwargs.pop("temperature", None)
@@ -222,7 +244,17 @@ class OpenAIEngine(Engine):
             raise ValueError(msg)
 
         request = self.build_request(argument)
-        response = self.call_request(request)
+        except_remedy = argument.kwargs.get("except_remedy")
+        try:
+            response = self.call_request(request)
+        except Exception as e:
+            if except_remedy is None:
+                raise
+            # NOTE: the legacy engine passed the SDK callable as `callback`; the
+            # raw-REST engine retries the wire request through this closure instead.
+            response = except_remedy(
+                self, e, lambda *_args, **_kwargs: self.call_request(request), argument
+            )
         return self.parse_response(response)
 
     def call_request(self, request: OpenAIRequest):
@@ -430,6 +462,17 @@ class OpenAIEngine(Engine):
                     blocks.append(block)
             prepared.append({**message, "content": blocks})
         return prepared
+
+    @staticmethod
+    def _normalize_response_format(response_format):
+        # NOTE: the chat-completions nested form {"type": "json_schema", "json_schema": {...}}
+        # flattens to {"type": "json_schema", "name": ..., "schema": ...} in the Responses
+        # API text.format field.
+        if isinstance(response_format, dict) and response_format.get("type") == "json_schema":
+            nested = response_format.get("json_schema")
+            if isinstance(nested, dict):
+                return {"type": "json_schema", **nested}
+        return response_format
 
     def _convert_tools(self, tools: list) -> list:
         converted = []

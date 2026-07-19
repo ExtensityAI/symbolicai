@@ -28,9 +28,10 @@ _MARKER_RE = re.compile(r"\[(\d+)\]")
 class PerplexitySearchResult(CitationResult, Result):
     def __init__(self, value, **kwargs) -> None:
         super().__init__(value, **kwargs)
-        if value.get("error"):
-            msg = value["error"]
-            raise ValueError(msg)
+        # NOTE: no `error` check here (the old dict-based engine had one): value is a
+        # PerplexityResponse.model_dump(), whose model has no error field and ignores
+        # extras, so the key can never be present. API errors arrive as non-200 and
+        # are raised by the shared transport as EngineAPIError before parsing.
         try:
             self._value = value["choices"][0]["message"]["content"]
             self._citations = self._extract_citations(self._value, value.get("citations") or [])

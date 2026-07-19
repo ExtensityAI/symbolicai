@@ -159,7 +159,17 @@ class OpenRouterEngine(Engine):
             raise ValueError(msg)
 
         request = self.build_request(argument)
-        response = self.call_request(request)
+        except_remedy = argument.kwargs.get("except_remedy")
+        try:
+            response = self.call_request(request)
+        except Exception as e:
+            if except_remedy is None:
+                raise
+            # NOTE: the legacy engine passed the SDK callable as `callback`; the
+            # raw-REST engine retries the wire request through this closure instead.
+            response = except_remedy(
+                self, e, lambda *_args, **_kwargs: self.call_request(request), argument
+            )
         return self.parse_response(response)
 
     def call_request(self, request: OpenRouterRequest):

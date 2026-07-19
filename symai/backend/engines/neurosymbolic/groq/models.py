@@ -28,6 +28,11 @@ class GroqModelSpec:
     pricing: ModelPricing | None
 
 
+# NOTE: main's catalog also listed groq:moonshotai/kimi-k2-instruct, groq:qwen/qwen3-32b,
+# and groq:deepseek-r1-distill-llama-70b. Groq shut all three down (2025-10-10, 2026-07-17,
+# and 2025-10-02 respectively; kimi-k2-instruct-0905, the interim replacement, followed on
+# 2026-04-15 — see https://console.groq.com/docs/deprecations), so they are intentionally
+# absent here: registering dead model IDs would 400 on every request.
 GROQ_MODEL_SPECS = {
     "openai/gpt-oss-120b": GroqModelSpec(
         context_tokens=131_072,

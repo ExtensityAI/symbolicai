@@ -1,6 +1,7 @@
 import base64
 import json
 from pathlib import Path
+from typing import ClassVar
 
 import httpx
 
@@ -38,6 +39,8 @@ class TestAnthropicEngine(NeurosymbolicEngineTestInterface):
     cache_unsupported_model_raises = False
     max_tokens_required = True
     supports_token_counting = True
+    # NOTE: Anthropic streams by default (legacy contract); JSON-mock tests opt out.
+    default_forward_kwargs: ClassVar[dict] = {"stream": False}
 
     def spec_for(self, model):
         return self.model_specs[anthropic_strip_prefix(model)]
@@ -100,6 +103,22 @@ class TestAnthropicEngine(NeurosymbolicEngineTestInterface):
         payload["content"] = [{"type": "text", "text": content}]
         return payload
 
+    def mock_forward_response(self, request, payload):
+        body = json.loads(request.content.decode())
+        if not body.get("stream"):
+            return httpx.Response(200, json=payload, request=request)
+        text = "".join(
+            block.get("text", "")
+            for block in payload.get("content", [])
+            if block.get("type") == "text"
+        )
+        return httpx.Response(
+            200,
+            content=self._sse_body(text),
+            headers={"content-type": "text/event-stream"},
+            request=request,
+        )
+
     def vision_messages(self, image_path):
         encoded = base64.b64encode(Path(image_path).read_bytes()).decode()
         return [
@@ -147,6 +166,9 @@ class TestAnthropicEngine(NeurosymbolicEngineTestInterface):
         return payload
 
     def mock_sse_body(self):
+        return self._sse_body("2", thinking="Add one and one.")
+
+    def _sse_body(self, text, thinking=None):
         chunks = [
             (
                 "message_start",
@@ -157,22 +179,31 @@ class TestAnthropicEngine(NeurosymbolicEngineTestInterface):
                     }
                 },
             ),
+        ]
+        index = 0
+        if thinking:
+            chunks += [
+                (
+                    "content_block_start",
+                    {"index": index, "content_block": {"type": "thinking", "thinking": ""}},
+                ),
+                (
+                    "content_block_delta",
+                    {"index": index, "delta": {"type": "thinking_delta", "thinking": thinking}},
+                ),
+                ("content_block_stop", {"index": index}),
+            ]
+            index += 1
+        chunks += [
             (
                 "content_block_start",
-                {"index": 0, "content_block": {"type": "thinking", "thinking": ""}},
+                {"index": index, "content_block": {"type": "text", "text": ""}},
             ),
             (
                 "content_block_delta",
-                {"index": 0, "delta": {"type": "thinking_delta", "thinking": "Add one "}},
+                {"index": index, "delta": {"type": "text_delta", "text": text}},
             ),
-            (
-                "content_block_delta",
-                {"index": 0, "delta": {"type": "thinking_delta", "thinking": "and one."}},
-            ),
-            ("content_block_stop", {"index": 0}),
-            ("content_block_start", {"index": 1, "content_block": {"type": "text", "text": ""}}),
-            ("content_block_delta", {"index": 1, "delta": {"type": "text_delta", "text": "2"}}),
-            ("content_block_stop", {"index": 1}),
+            ("content_block_stop", {"index": index}),
             (
                 "message_delta",
                 {"delta": {"stop_reason": "end_turn"}, "usage": {"output_tokens": 5}},
@@ -243,7 +274,7 @@ class TestAnthropicEngine(NeurosymbolicEngineTestInterface):
             lambda request: httpx.Response(200, json=self.mock_response_json(), request=request),
         ):
             with MetadataTracker() as tracker:
-                engine.forward(self.make_prepared_argument())
+                engine.forward(self.make_prepared_argument(kwargs={"stream": False}))
             details = tracker.usage[(self.engine_cls.__name__, self.default_model)]
 
         assert details["usage"]["prompt_tokens"] == 10
@@ -273,6 +304,44 @@ class TestAnthropicEngine(NeurosymbolicEngineTestInterface):
         request = self.make_engine().build_request(self.make_prepared_argument())
 
         assert request.body()["max_tokens"] == self.spec_for(self.default_model).response_tokens
+
+    def test_build_request_streams_by_default(self):
+        # NOTE: legacy contract — stream defaults to True because non-streamed requests
+        # >10m error out at the API; users opt out with stream=False.
+        request = self.make_engine().build_request(self.make_prepared_argument())
+        assert request.body()["stream"] is True
+
+        opt_out = self.make_engine().build_request(
+            self.make_prepared_argument(kwargs={"stream": False})
+        )
+        assert opt_out.body()["stream"] is False
+
+    def test_build_request_maps_json_schema_response_format_to_output_config(self):
+        schema = {"type": "object", "properties": {"answer": {"type": "string"}}}
+
+        request = self.make_engine().build_request(
+            self.make_prepared_argument(
+                kwargs={
+                    "response_format": {
+                        "type": "json_schema",
+                        "json_schema": {"name": "Answer", "schema": schema},
+                    }
+                }
+            )
+        )
+
+        assert request.body()["output_config"]["format"] == {
+            "type": "json_schema",
+            "schema": schema,
+        }
+
+    def test_build_request_json_object_response_format_emits_no_output_config(self):
+        # NOTE: json_object mode is prompt-instructed on Anthropic; no wire field.
+        request = self.make_engine().build_request(
+            self.make_prepared_argument(kwargs={"response_format": {"type": "json_object"}})
+        )
+
+        assert "output_config" not in request.body()
 
     def test_build_request_treats_empty_stop_as_unset(self):
         engine = self.make_engine()

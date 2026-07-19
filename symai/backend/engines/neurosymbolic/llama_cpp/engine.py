@@ -82,16 +82,37 @@ class LlamaCppEngine(Engine):
         return llamacpp_model_spec_for(self.model).context_tokens
 
     def _server_context_tokens(self) -> int:
-        props = self._server_get("/props")
+        try:
+            props = self._server_get("/props")
+        except Exception as e:
+            msg = (
+                f"Failed to query the llama.cpp server at {self.server_endpoint}/props "
+                "during engine initialization. Ensure the server is running "
+                f"(`symserver [--args]`) and reachable. Caused by: {e}"
+            )
+            raise ValueError(msg) from e
         n_ctx = (props.get("default_generation_settings") or {}).get("n_ctx")
         return n_ctx or 4096
 
+    def _server_headers(self) -> dict[str, str]:
+        # NOTE: llama-server runs without auth by default but supports --api-key; send
+        # the Bearer token on every server request (discovery, template, tokenize,
+        # detokenize, chat) so keyed deployments don't 401 on the helper calls.
+        headers = {"Content-Type": "application/json"}
+        if self.api_key:
+            headers["Authorization"] = f"Bearer {self.api_key}"
+        return headers
+
     def _server_get(self, path: str) -> dict:
         if self.transport_client is not None:
-            response = self.transport_client.get(f"{self.server_endpoint}{path}")
+            response = self.transport_client.get(
+                f"{self.server_endpoint}{path}", headers=self._server_headers()
+            )
             return response.json()
 
-        response = httpx.get(f"{self.server_endpoint}{path}", timeout=10.0)
+        response = httpx.get(
+            f"{self.server_endpoint}{path}", headers=self._server_headers(), timeout=10.0
+        )
         return response.json()
 
     def compute_required_tokens(self, messages: list[dict]) -> int:
@@ -111,7 +132,7 @@ class LlamaCppEngine(Engine):
             payload=LlamaCppApplyTemplatePayload(messages=messages),
             method="POST",
             url=f"{self.server_endpoint}/apply-template",
-            headers={"Content-Type": "application/json"},
+            headers=self._server_headers(),
         )
         response = execute_engine_api_request(request, client=self.transport_client)
         return LlamaCppApplyTemplateResponse.model_validate(response.json()).prompt
@@ -123,7 +144,7 @@ class LlamaCppEngine(Engine):
             payload=LlamaCppTokenizePayload(content=text),
             method="POST",
             url=f"{self.server_endpoint}/tokenize",
-            headers={"Content-Type": "application/json"},
+            headers=self._server_headers(),
         )
         response = execute_engine_api_request(request, client=self.transport_client)
         return LlamaCppTokenizeResponse.model_validate(response.json()).tokens
@@ -135,7 +156,7 @@ class LlamaCppEngine(Engine):
             payload=LlamaCppDetokenizePayload(tokens=tokens),
             method="POST",
             url=f"{self.server_endpoint}/detokenize",
-            headers={"Content-Type": "application/json"},
+            headers=self._server_headers(),
         )
         response = execute_engine_api_request(request, client=self.transport_client)
         return LlamaCppDetokenizeResponse.model_validate(response.json()).content
@@ -193,9 +214,7 @@ class LlamaCppEngine(Engine):
         options = LlamaCppOptions.model_validate(option_kwargs)
         request_options = options.model_dump(exclude_none=True)
 
-        headers = {"Content-Type": "application/json"}
-        if self.api_key:
-            headers["Authorization"] = f"Bearer {self.api_key}"
+        headers = self._server_headers()
         headers.update(request_options.get("extra_headers", {}))
 
         return LlamaCppRequest(
@@ -220,7 +239,17 @@ class LlamaCppEngine(Engine):
             raise ValueError(msg)
 
         request = self.build_request(argument)
-        response = self.call_request(request)
+        except_remedy = argument.kwargs.get("except_remedy")
+        try:
+            response = self.call_request(request)
+        except Exception as e:
+            if except_remedy is None:
+                raise
+            # NOTE: the legacy engine passed the SDK callable as `callback`; the
+            # raw-REST engine retries the wire request through this closure instead.
+            response = except_remedy(
+                self, e, lambda *_args, **_kwargs: self.call_request(request), argument
+            )
         return self.parse_response(response)
 
     def call_request(self, request: LlamaCppRequest):

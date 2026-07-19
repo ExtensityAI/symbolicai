@@ -20,6 +20,13 @@ import trafilatura
 from bs4 import BeautifulSoup
 from pdfminer.high_level import extract_text
 
+try:
+    # Optional: legacy-charset detection for pages whose Content-Type omits a
+    # charset (rides transitively with trafilatura).
+    import charset_normalizer
+except ImportError:
+    charset_normalizer = None
+
 from symai.backend.base import Engine
 from symai.symbol import Result
 from symai.utils import Extra, missing_dependency
@@ -275,8 +282,15 @@ class RequestsEngine(Engine):
         ctype = resp.headers.get("Content-Type", "")
         if "text/html" not in ctype.lower():
             return resp
-        # Use apparent encoding to decode legacy charsets
-        soup = BeautifulSoup(resp.text, "html.parser")
+        # Use apparent encoding to decode legacy charsets when the Content-Type
+        # header declares none (httpx otherwise defaults to utf-8 with replacement,
+        # mangling the refresh URL).
+        html = resp.text
+        if charset_normalizer is not None and "charset=" not in ctype.lower():
+            detected = charset_normalizer.from_bytes(resp.content).best()
+            if detected is not None:
+                html = str(detected)
+        soup = BeautifulSoup(html, "html.parser")
         meta = soup.find("meta", attrs={"http-equiv": re.compile("^refresh$", re.I)})
         if not meta or "content" not in meta.attrs:
             return resp

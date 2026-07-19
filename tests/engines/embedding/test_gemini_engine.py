@@ -1,6 +1,8 @@
 import time
 from pathlib import Path
+from types import SimpleNamespace
 
+import httpx
 import pytest
 
 from symai.backend.engines.embedding.gemini import GeminiEmbeddingEngine
@@ -14,6 +16,7 @@ from tests.engines.embedding.interface import (
     EmbeddingTestInterface,
     normalized_vector,
 )
+from tests.engines.mock_api import MockAPI
 
 SAMPLE_IMAGE = Path(__file__).parent.parent.parent / "data" / "sample.png"
 MULTIMODAL_MODEL = "gemini-embedding-2"
@@ -70,6 +73,73 @@ class TestGeminiEmbeddingEngine(EmbeddingTestInterface):
         for entry in api.last_body["requests"]:
             assert entry["outputDimensionality"] == 4
         assert all(len(vector) == 4 for vector in output[0])
+
+    def test_no_mutable_new_dim_stash(self):
+        # Regression: build_request used to stash new_dim on self._new_dim for
+        # parse_response — a reentrancy hazard on a shared engine instance. new_dim
+        # is now read back from the call argument in parse_response (like the old
+        # SDK engine and the embedding/openai reference).
+        engine = self.make_engine()
+        assert not hasattr(engine, "_new_dim")
+
+        _api, output, _metadata = self.forward_through_mock(new_dim=4)
+
+        assert not hasattr(engine, "_new_dim")
+        assert all(len(vector) == 4 for vector in output[0])
+
+    def test_call_request_honors_except_remedy(self):
+        # Regression: gemini call_request ignored except_remedy while the
+        # embedding/openai category reference honors it. On wire failure the remedy
+        # must be invoked with (exception, payload requests, retry callback, engine)
+        # and its return must flow into parse_response.
+        engine = self.make_engine()
+        calls = []
+        remedy_vectors = [normalized_vector(0.5), normalized_vector(0.25)]
+
+        def remedy(exception, payload_requests, callback, engine_instance, *_args, **_kwargs):
+            calls.append((exception, payload_requests, callback, engine_instance))
+            return GeminiBatchEmbedResponse.model_validate(
+                {"embeddings": [{"values": v} for v in remedy_vectors]}
+            )
+
+        argument = SimpleNamespace(
+            prop=SimpleNamespace(
+                entries=list(self.MOCK_ENTRIES), prepared_input=None, processed_input=None
+            ),
+            kwargs={"except_remedy": remedy},
+            args=(),
+        )
+        with MockAPI(
+            engine,
+            lambda request: httpx.Response(
+                500, json={"error": {"message": "boom"}}, request=request
+            ),
+        ):
+            engine.prepare(argument)
+            output, metadata = engine.forward(argument)
+
+        assert len(calls) == 1
+        exception, payload_requests, callback, engine_instance = calls[0]
+        assert isinstance(exception, Exception)
+        assert payload_requests is not None  # the batch entries, openai's `payload.input` analogue
+        assert callable(callback)  # retries the wire request verbatim
+        assert engine_instance is engine
+        assert output[0] == remedy_vectors
+        assert isinstance(metadata["raw_output"], GeminiBatchEmbedResponse)
+
+    def test_call_request_reraises_without_except_remedy(self):
+        engine = self.make_engine()
+        argument = self.make_argument()
+
+        with MockAPI(
+            engine,
+            lambda request: httpx.Response(
+                500, json={"error": {"message": "boom"}}, request=request
+            ),
+        ):
+            engine.prepare(argument)
+            with pytest.raises(Exception, match="boom"):
+                engine.forward(argument)
 
     @pytest.mark.engine_live
     def test_live_single_embedding(self, engine_api_mode):

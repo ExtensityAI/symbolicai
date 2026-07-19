@@ -87,6 +87,30 @@ class TestNaiveScrapeMock:
         assert "Neurosymbolic programming" in str(result)
         assert metadata["final_url"] == "https://example.com/final"
 
+    def test_follows_meta_refresh_legacy_charset(self):
+        # No charset in Content-Type and legacy single-byte (cp1252) content *inside
+        # the refresh URL*: apparent-encoding detection must decode the page well
+        # enough to find the right target (httpx alone defaults to utf-8-with-
+        # replacement and would mangle the URL).
+        refresh_html = """
+        <html><head><meta http-equiv="refresh" content="0;url=/caf\xe9"></head>
+        <body><h1>Cr\xe9dit agr\xe9\xe9</h1>
+        <p>Le caf\xe9 \xe0 la fa\xe7on de No\xebl, na\xefve r\xe9sum\xe9, gar\xe7on, fran\xe7ais, tr\xe8s bien, d\xe9j\xe0 vu.</p>
+        </body></html>
+        """.encode("cp1252")
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            if request.url.path != "/start":
+                return httpx.Response(
+                    200, content=ARTICLE_HTML, headers={"Content-Type": "text/html"}
+                )
+            return httpx.Response(200, content=refresh_html, headers={"Content-Type": "text/html"})
+
+        result, metadata = run_scrape(mock_engine(handler), "https://example.com/start")
+        assert "Neurosymbolic programming" in str(result)
+        # legacy byte 0xE9 decodes to '\xe9'; httpx percent-encodes it as UTF-8 on the wire.
+        assert metadata["final_url"] == "https://example.com/caf%C3%A9"
+
     def test_retries_then_succeeds(self):
         calls = []
 

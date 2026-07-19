@@ -239,7 +239,17 @@ class GoogleEngine(Engine):
             raise ValueError(msg)
 
         request = self.build_request(argument)
-        response = self.call_request(request)
+        except_remedy = argument.kwargs.get("except_remedy")
+        try:
+            response = self.call_request(request)
+        except Exception as e:
+            if except_remedy is None:
+                raise
+            # NOTE: the legacy engine passed the SDK callable as `callback`; the
+            # raw-REST engine retries the wire request through this closure instead.
+            response = except_remedy(
+                self, e, lambda *_args, **_kwargs: self.call_request(request), argument
+            )
         return self.parse_response(response, argument)
 
     def call_request(self, request: GoogleRequest):
@@ -398,15 +408,20 @@ class GoogleEngine(Engine):
         return image_parts
 
     def _remove_media_patterns(self, text: str) -> str:
-        # NOTE: strips media markers (vision/video/audio/document) from text.
-        for pattern in (
-            r"<<vision:(.*?):>>",
-            r"<<video:(.*?):>>",
-            r"<<audio:(.*?):>>",
-            r"<<document:(.*?):>>",
-        ):
-            text = re.sub(pattern, "", text)
-        return text
+        # NOTE: strips <<vision:...:>> markers after image extraction. Video, audio,
+        # and document markers require Gemini's Files API upload flow, which the
+        # raw-REST engine does not implement — refuse loudly instead of silently
+        # dropping the user's media.
+        unsupported = sorted(set(re.findall(r"<<(video|audio|document):(.*?):>>", text)))
+        if unsupported:
+            kinds = ", ".join(f"<<{kind}:...:>>" for kind, _ in unsupported)
+            msg = (
+                f"GoogleEngine does not support {kinds} media markers: the Gemini Files "
+                "API upload flow used by the legacy engine is not implemented over raw "
+                "REST. Remove the marker or use <<vision:...:>> image markers."
+            )
+            raise NotImplementedError(msg)
+        return re.sub(r"<<vision:(.*?):>>", "", text)
 
     def _convert_tools(self, tools) -> list[GoogleTool]:
         # NOTE: only dict function declarations are supported over the wire; local

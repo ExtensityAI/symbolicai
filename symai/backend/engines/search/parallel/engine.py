@@ -23,6 +23,7 @@ from symai.backend.engines.search.parallel.models import (
     ParallelSearchResponse,
     ParallelSourceItem,
     ParallelSourcePolicy,
+    ParallelTaskAdvancedSettings,
     ParallelTaskOutput,
     ParallelTaskOutputSchema,
     ParallelTaskPollOptions,
@@ -292,6 +293,8 @@ class ParallelEngine(Engine):
             objective=kwargs.get("objective"),
             search_queries=queries,
             max_chars_total=kwargs.get("max_chars_total"),
+            session_id=kwargs.get("session_id"),
+            client_model=kwargs.get("client_model"),
             advanced_settings=self._build_search_advanced_settings(kwargs),
         )
         return EngineAPIRequest(
@@ -317,6 +320,8 @@ class ParallelEngine(Engine):
                 else None
             ),
             max_chars_total=kwargs.get("max_chars_total"),
+            session_id=kwargs.get("session_id"),
+            client_model=kwargs.get("client_model"),
             advanced_settings=self._build_extract_advanced_settings(kwargs),
         )
         return EngineAPIRequest(
@@ -355,12 +360,16 @@ class ParallelEngine(Engine):
                 for server in mcp_servers
             ]
 
+        location = kwargs.get("location")
         payload = ParallelTaskRunCreateRequest(
             processor=processor.strip(),
             input=task_input,
             task_spec=self._build_task_spec(kwargs),
             metadata=metadata,
             source_policy=self._build_source_policy(kwargs),
+            advanced_settings=(
+                ParallelTaskAdvancedSettings(location=location) if location else None
+            ),
             previous_interaction_id=kwargs.get("previous_interaction_id"),
             mcp_servers=mcp_servers,
         )
@@ -471,7 +480,13 @@ class ParallelEngine(Engine):
 
     @staticmethod
     def _build_task_spec(kwargs: dict) -> ParallelTaskSpec | None:
-        output_schema = kwargs.get("output_schema")
+        # NOTE: output_schema aliases mirror the old SDK-based engine's fallback chain.
+        output_schema = (
+            kwargs.get("task_output_schema")
+            or kwargs.get("task_output")
+            or kwargs.get("output_schema")
+            or kwargs.get("output")
+        )
         if output_schema is None:
             return None
         if isinstance(output_schema, dict):
@@ -492,13 +507,19 @@ class ParallelEngine(Engine):
 
     @staticmethod
     def _build_task_poll_options(kwargs: dict) -> ParallelTaskPollOptions:
+        # NOTE: `timeout` / `api_timeout` are the old SDK-based engine's aliases for
+        # the task-poll knobs; the explicit task_* names win when both are given.
         task_timeout = kwargs.get("task_timeout")
+        if task_timeout is None:
+            task_timeout = kwargs.get("timeout")
         if task_timeout is not None and (
             isinstance(task_timeout, bool) or not isinstance(task_timeout, (int, float))
         ):
             msg = f"task_timeout must be a number of seconds, got {type(task_timeout).__name__}."
             raise TypeError(msg)
         task_api_timeout = kwargs.get("task_api_timeout")
+        if task_api_timeout is None:
+            task_api_timeout = kwargs.get("api_timeout")
         if task_api_timeout is not None and (
             isinstance(task_api_timeout, bool) or not isinstance(task_api_timeout, int)
         ):

@@ -136,7 +136,9 @@ class AnthropicEngine(Engine):
         allowed_request_kwargs = (
             set(AnthropicPayload.model_fields)
             | set(AnthropicOptions.model_fields)
-            | {"stop"}  # symai kwarg aliased to the stop_sequences wire field
+            # symai kwargs handled outside the payload models: "stop" aliases the
+            # stop_sequences wire field; "response_format" feeds _build_output_config.
+            | {"stop", "response_format"}
         )
         payload_kwargs = self.collect_request_kwargs(argument, allowed_request_kwargs)
         option_kwargs = {
@@ -191,6 +193,9 @@ class AnthropicEngine(Engine):
         if output_config is not None:
             payload_kwargs["output_config"] = output_config
         payload_kwargs["stop_sequences"] = stop
+        # Do NOT remove this default value! Getting tons of API errors because they
+        # can't process requests >10m.
+        payload_kwargs.setdefault("stream", True)
 
         payload = AnthropicPayload.model_validate(payload_kwargs)
         options = AnthropicOptions.model_validate(option_kwargs)
@@ -226,7 +231,17 @@ class AnthropicEngine(Engine):
             raise ValueError(msg)
 
         request = self.build_request(argument)
-        response = self.call_request(request)
+        except_remedy = argument.kwargs.get("except_remedy")
+        try:
+            response = self.call_request(request)
+        except Exception as e:
+            if except_remedy is None:
+                raise
+            # NOTE: the legacy engine passed the SDK callable as `callback`; the
+            # raw-REST engine retries the wire request through this closure instead.
+            response = except_remedy(
+                self, e, lambda *_args, **_kwargs: self.call_request(request), argument
+            )
         return self.parse_response(response, argument)
 
     def call_request(self, request: AnthropicRequest):

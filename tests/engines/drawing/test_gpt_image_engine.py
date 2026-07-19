@@ -25,7 +25,12 @@ from symai.backend.engines.drawing.openai.models import (
 )
 from symai.backend.settings import SYMAI_CONFIG
 from symai.functional import EngineRepository
-from tests.engines.drawing.interface import MOCK_PNG_BYTES, MOCK_PROMPT, DrawingEngineTestInterface
+from tests.engines.drawing.interface import (
+    MOCK_PNG_BYTES,
+    MOCK_PROMPT,
+    DrawingEngineTestInterface,
+    assert_image_paths,
+)
 from tests.engines.mock_api import DUMMY_KEY, MockAPI
 
 MOCK_EDIT_PROMPT = "give the cat a medieval helmet"
@@ -111,8 +116,6 @@ class TestGPTImageEngine(DrawingEngineTestInterface):
 
         engine = self.make_engine(api_key=DUMMY_KEY)
 
-        # NOTE: GPTImageResult downloads url responses with plain httpx.get (not the
-        # engine transport); mock with b64_json to keep the variation assertion local.
         def handler(request: httpx.Request) -> httpx.Response:
             return httpx.Response(200, json=mock_images_response_json(), request=request)
 
@@ -198,7 +201,65 @@ class TestGPTImageEngine(DrawingEngineTestInterface):
 
         request = engine.build_request(argument)
 
-        assert [field for field, _part in request.files] == ["image", "image", "mask"]
+        # Multiple source images ride as repeated `image[]` parts (SDK brackets
+        # array format); a single image would use the bare `image` field.
+        assert [field for field, _part in request.files] == ["image[]", "image[]", "mask"]
+
+    def test_edit_multiple_images_multipart_wire(self, tmp_path):
+        """Multi-image edits must send repeated `image[]` parts (never bare `image`)."""
+        image_a = tmp_path / "a.png"
+        image_b = tmp_path / "b.png"
+        for path in (image_a, image_b):
+            path.write_bytes(MOCK_PNG_BYTES)
+
+        engine = self.make_engine(api_key=DUMMY_KEY)
+        with MockAPI(
+            engine,
+            lambda request: httpx.Response(200, json=mock_images_response_json(), request=request),
+        ) as api:
+            argument = self.make_argument(
+                kwargs={
+                    "operation": "edit",
+                    "model": "gpt-image-1",
+                    "image_path": [str(image_a), str(image_b)],
+                }
+            )
+            engine.prepare(argument)
+            engine.forward(argument)
+
+        request = api.last_request
+        assert str(request.url) == OPENAI_IMAGES_EDITS_URL
+        body = request.content
+        assert body.count(b'name="image[]"; filename=') == 2
+        assert b'name="image"; filename=' not in body
+
+    def test_url_response_downloads_through_transport(self):
+        """url responses are downloaded via the engine transport (mockable, bounded)."""
+        image_url = "https://oai.example.com/generated.png"
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            if request.method == "GET":
+                return httpx.Response(200, content=MOCK_PNG_BYTES, request=request)
+            payload = mock_images_response_json()
+            payload["data"] = [{"url": image_url}]
+            return httpx.Response(200, json=payload, request=request)
+
+        engine = self.make_engine(api_key=DUMMY_KEY)
+        with MockAPI(engine, handler) as api:
+            argument = self.make_argument(kwargs=self.mock_forward_kwargs())
+            engine.prepare(argument)
+            output, _metadata = engine.forward(argument)
+
+        assert [request.method for request in api.requests] == ["POST", "GET"]
+        assert str(api.last_request.url) == image_url
+        paths = assert_image_paths(output[0].value)
+        assert paths[0].read_bytes() == MOCK_PNG_BYTES
+
+    def test_empty_data_fails_typed_parsing(self):
+        # data is min_length=1 by contract: a successful images response always
+        # carries at least one image; an empty list must fail typed parsing.
+        with pytest.raises(ValidationError):
+            OpenAIImagesResponse.model_validate({"created": 1752700000, "data": []})
 
     def test_missing_operation_raises(self):
         engine = self.make_engine()

@@ -67,8 +67,8 @@ class GeminiEmbeddingEngine(Engine):
 
     def forward(self, argument):
         request = self.build_request(argument)
-        response = self.call_request(request)
-        return self.parse_response(response)
+        response = self.call_request(request, argument)
+        return self.parse_response(response, argument)
 
     def build_request(self, argument) -> EngineAPIRequest:
         prepared_input = argument.prop.prepared_input
@@ -77,10 +77,6 @@ class GeminiEmbeddingEngine(Engine):
         inp = prepared_input if isinstance(prepared_input, list) else [prepared_input]
         new_dim = kwargs.get("new_dim")
         task_type = kwargs.get("task_type", "SEMANTIC_SIMILARITY")
-        # NOTE: new_dim steers response post-processing (client-side L2 truncate +
-        # normalize), not the typed response; stash it for parse_response, which only
-        # receives the response.
-        self._new_dim = new_dim
 
         # NOTE: The batch endpoint embeds every request entry separately, so a list
         # input becomes one entry per item (matching the old SDK-based engine, which
@@ -105,7 +101,25 @@ class GeminiEmbeddingEngine(Engine):
             timeout=self.client_timeout,
         )
 
-    def call_request(self, request: EngineAPIRequest) -> GeminiBatchEmbedResponse:
+    def call_request(self, request: EngineAPIRequest, argument) -> GeminiBatchEmbedResponse:
+        except_remedy = argument.kwargs.get("except_remedy")
+        try:
+            return self._execute(request)
+        except Exception as e:
+            if except_remedy is None:
+                raise
+
+            # NOTE: mirrors the embedding/openai reference — the callback retries the
+            # wire request verbatim (remedies may close over it); whatever the remedy
+            # returns flows into parse_response, as before.
+            def callback(*_args, **_kwargs):
+                return self._execute(request)
+
+            return except_remedy(
+                e, request.payload.requests, callback, self, *argument.args, **argument.kwargs
+            )
+
+    def _execute(self, request: EngineAPIRequest) -> GeminiBatchEmbedResponse:
         max_retries = (
             self.client_max_retries if self.client_max_retries is not None else DEFAULT_RETRIES
         )
@@ -116,7 +130,7 @@ class GeminiEmbeddingEngine(Engine):
         )
         return GeminiBatchEmbedResponse.model_validate(response.json())
 
-    def parse_response(self, response: GeminiBatchEmbedResponse):
+    def parse_response(self, response: GeminiBatchEmbedResponse, argument):
         output = [emb.values for emb in response.embeddings]
 
         if output and isinstance(output[0], list):
@@ -126,7 +140,9 @@ class GeminiEmbeddingEngine(Engine):
         # (requires client-side L2 normalization); gemini-embedding-2 returns ||v||=1.0 at
         # dim=768 (auto-normalized server-side). Re-normalizing a unit vector is idempotent
         # (v / ||v|| = v when ||v|| = 1), so this is safe for both models.
-        new_dim = self._new_dim
+        # new_dim is read back from the call argument (like the old engine did), not
+        # stashed on self — a shared engine instance must stay reentrant.
+        new_dim = argument.kwargs.get("new_dim")
         if new_dim:
             mn = min(new_dim, self.embedding_dim)
             output = [self._normalize_l2(emb[:mn]) for emb in output]

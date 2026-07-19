@@ -108,11 +108,19 @@ class GeminiImageEngine(Engine):
             raise ValueError(msg)
 
         response_modalities = kwargs.get("response_modalities", ["IMAGE"])
+        # NOTE: the legacy engine passed an SDK GenerateContentConfig via kwargs['config'];
+        # post-SDK-removal it is a plain dict of wire-format generationConfig fields
+        # (camelCase), merged over the responseModalities default.
+        extra_config = kwargs.get("config")
+        if extra_config is not None and not isinstance(extra_config, dict):
+            msg = "config must be a dict of wire-format generationConfig fields (camelCase)"
+            raise TypeError(msg)
+        generation_config = {"responseModalities": list(response_modalities)}
+        if extra_config:
+            generation_config.update(extra_config)
         payload = GeminiImageGenerateRequest(
             contents=[GeminiImageContent(parts=[GeminiImagePart(text=prompt)])],
-            generation_config=GeminiImageGenerationConfig(
-                response_modalities=list(response_modalities)
-            ),
+            generation_config=GeminiImageGenerationConfig.model_validate(generation_config),
         )
         return EngineAPIRequest(
             provider="google",

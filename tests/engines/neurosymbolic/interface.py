@@ -29,6 +29,7 @@ from pydantic import ValidationError
 
 from symai.backend.engines.neurosymbolic._prompts import prompt_registry
 from symai.backend.settings import SYMAI_CONFIG
+from symai.backend.transport import EngineAPIError
 from symai.components import MetadataTracker
 from symai.core import Argument
 from symai.functional import EngineRepository
@@ -92,6 +93,9 @@ class EngineTestInterface:
     # NOTE: token budget for the live smoke; reasoning-heavy small models (Qwen3) need
     # more than the 128 default to leave room for visible content.
     live_max_tokens: ClassVar[int] = 128
+    # NOTE: kwargs merged into every forward-driving mock test. Anthropic restores the
+    # legacy stream-by-default contract, so its JSON-mock tests pin stream=False here.
+    default_forward_kwargs: ClassVar[dict] = {}
 
     # --- provider hooks (override) ---
     def mock_response_json(self) -> dict:
@@ -137,6 +141,11 @@ class EngineTestInterface:
         """Place the self-prompt JSON answer into the provider's mock response shape."""
         payload["choices"][0]["message"] = {"role": "assistant", "content": content}
         return payload
+
+    def mock_forward_response(self, request, payload: dict) -> httpx.Response:
+        """The provider's HTTP response for a forward request. Anthropic's
+        stream-by-default contract requires an SSE body when the request streams."""
+        return httpx.Response(200, json=payload, request=request)
 
     def assert_self_prompt_response_format(self, body: dict):
         """What the provider does with the response_format kwarg on self-prompt calls."""
@@ -367,7 +376,10 @@ class EngineTestInterface:
     def test_forward_mock_transport_returns_typed_response(self):
         engine = self.make_engine(client_max_retries=0)
         argument = self.make_query_argument(
-            "What is 1+1?", **{self.request_max_tokens_kwarg: 16}, extra_query={"debug": "1"}
+            "What is 1+1?",
+            **{self.request_max_tokens_kwarg: 16},
+            **self.default_forward_kwargs,
+            extra_query={"debug": "1"},
         )
 
         with MockAPI(
@@ -397,7 +409,11 @@ class EngineTestInterface:
                 200, json=self.response_dropping_content(self.mock_response_json()), request=request
             ),
         ):
-            request = engine.build_request(self.make_prepared_argument(kwargs={"max_tokens": 16}))
+            request = engine.build_request(
+                self.make_prepared_argument(
+                    kwargs={"max_tokens": 16, **self.default_forward_kwargs}
+                )
+            )
             with pytest.raises(ValidationError):
                 engine.call_request(request)
 
@@ -410,7 +426,11 @@ class EngineTestInterface:
                 200, json=self.response_dropping_usage(self.mock_response_json()), request=request
             ),
         ):
-            request = engine.build_request(self.make_prepared_argument(kwargs={"max_tokens": 16}))
+            request = engine.build_request(
+                self.make_prepared_argument(
+                    kwargs={"max_tokens": 16, **self.default_forward_kwargs}
+                )
+            )
             with pytest.raises(ValidationError):
                 engine.call_request(request)
 
@@ -422,8 +442,16 @@ class EngineTestInterface:
             lambda request: httpx.Response(200, json=self.mock_response_json(), request=request),
         ):
             with MetadataTracker() as tracker:
-                engine.forward(self.make_prepared_argument(kwargs={"max_tokens": 16}))
-                engine.forward(self.make_prepared_argument(kwargs={"max_tokens": 16}))
+                engine.forward(
+                    self.make_prepared_argument(
+                        kwargs={"max_tokens": 16, **self.default_forward_kwargs}
+                    )
+                )
+                engine.forward(
+                    self.make_prepared_argument(
+                        kwargs={"max_tokens": 16, **self.default_forward_kwargs}
+                    )
+                )
             usage = tracker.usage
 
         details = usage[(self.engine_cls.__name__, self.default_model)]
@@ -563,13 +591,77 @@ class EngineTestInterface:
             engine,
             lambda request: httpx.Response(200, json=self.mock_tool_call_json(), request=request),
         ):
-            _output, metadata = engine.forward(self.make_prepared_argument())
+            _output, metadata = engine.forward(
+                self.make_prepared_argument(kwargs=dict(self.default_forward_kwargs))
+            )
 
         function_call = metadata.get("function_call")
         assert function_call is not None
         assert function_call["name"] == "get_weather"
         assert isinstance(function_call["arguments"], dict)
         assert "location" in function_call["arguments"]
+
+    def test_forward_invokes_except_remedy_on_transport_error(self):
+        # Legacy contract: except_remedy(self, error, callback, argument) wraps the API
+        # call; its return value flows into parse_response.
+        engine = self.make_engine(client_max_retries=0)
+        seen = {}
+
+        def remedy(engine_self, error, callback, argument):
+            seen["engine"] = engine_self
+            seen["error"] = error
+            seen["callback"] = callback
+            seen["argument"] = argument
+            return self.response_cls.model_validate(self.mock_response_json())
+
+        argument = self.make_prepared_argument(
+            kwargs={"except_remedy": remedy, **self.default_forward_kwargs}
+        )
+        with MockAPI(
+            engine,
+            lambda request: httpx.Response(500, json={"error": "boom"}, request=request),
+        ):
+            output, metadata = engine.forward(argument)
+
+        assert seen["engine"] is engine
+        assert isinstance(seen["error"], Exception)
+        assert callable(seen["callback"])
+        assert seen["argument"] is argument
+        assert isinstance(output[0], str)
+        assert isinstance(metadata["raw_output"], self.response_cls)
+
+    def test_forward_except_remedy_callback_retries_wire_request(self):
+        engine = self.make_engine(client_max_retries=0)
+        calls = []
+
+        def handler(request):
+            calls.append(request)
+            if len(calls) == 1:
+                return httpx.Response(500, json={"error": "boom"}, request=request)
+            return httpx.Response(200, json=self.mock_response_json(), request=request)
+
+        def remedy(_engine, _error, callback, _argument):
+            return callback()
+
+        argument = self.make_prepared_argument(
+            kwargs={"except_remedy": remedy, **self.default_forward_kwargs}
+        )
+        with MockAPI(engine, handler):
+            engine.forward(argument)
+
+        assert len(calls) == 2
+
+    def test_forward_without_except_remedy_raises_transport_error(self):
+        engine = self.make_engine(client_max_retries=0)
+
+        with (
+            MockAPI(
+                engine,
+                lambda request: httpx.Response(500, json={"error": "boom"}, request=request),
+            ),
+            pytest.raises(EngineAPIError),
+        ):
+            engine.forward(self.make_prepared_argument(kwargs=dict(self.default_forward_kwargs)))
 
     @pytest.mark.engine_live
     def test_live_tool_smoke(self, engine_api_mode):
@@ -769,7 +861,7 @@ class NeurosymbolicEngineTestInterface(EngineTestInterface):
 
         with MockAPI(
             engine,
-            lambda request: httpx.Response(200, json=response_json, request=request),
+            lambda request: self.mock_forward_response(request, response_json),
         ) as api:
             repository = EngineRepository()
             previous_engine = repository._engines.get("neurosymbolic")

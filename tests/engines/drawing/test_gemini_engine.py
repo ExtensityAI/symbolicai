@@ -83,6 +83,51 @@ class TestGeminiImageEngine(DrawingEngineTestInterface):
             with pytest.raises(ValidationError):
                 engine.forward(argument)
 
+    def test_empty_candidates_fails_typed_parsing(self):
+        # candidates is min_length=1 by contract: a successful generateContent
+        # response always carries at least one candidate; empty must fail.
+        with pytest.raises(ValidationError):
+            GeminiImageGenerateResponse.model_validate({"candidates": []})
+
+    def test_config_dict_merges_into_generation_config(self):
+        """kwargs['config'] (legacy GenerateContentConfig pass-through) is now a plain
+        dict of wire-format generationConfig fields, merged over the defaults."""
+        engine = self.make_engine()
+        argument = self.make_argument(
+            kwargs={
+                "operation": "create",
+                "config": {"imageConfig": {"aspectRatio": "16:9"}, "temperature": 0.2},
+            }
+        )
+        engine.prepare(argument)
+
+        request = engine.build_request(argument)
+
+        assert request.body()["generationConfig"] == {
+            "responseModalities": ["IMAGE"],
+            "imageConfig": {"aspectRatio": "16:9"},
+            "temperature": 0.2,
+        }
+
+    def test_config_dict_overrides_response_modalities(self):
+        engine = self.make_engine()
+        argument = self.make_argument(
+            kwargs={"operation": "create", "config": {"responseModalities": ["TEXT", "IMAGE"]}}
+        )
+        engine.prepare(argument)
+
+        request = engine.build_request(argument)
+
+        assert request.body()["generationConfig"]["responseModalities"] == ["TEXT", "IMAGE"]
+
+    def test_config_non_dict_raises(self):
+        engine = self.make_engine()
+        argument = self.make_argument(kwargs={"operation": "create", "config": object()})
+        engine.prepare(argument)
+
+        with pytest.raises(TypeError, match="config must be a dict"):
+            engine.build_request(argument)
+
     @pytest.mark.engine_live
     @pytest.mark.parametrize("model", ["gemini-2.5-flash-image", "gemini-3-pro-image-preview"])
     def test_live_image_create_models(self, engine_api_mode, model):

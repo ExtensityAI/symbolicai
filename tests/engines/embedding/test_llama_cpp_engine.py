@@ -114,6 +114,110 @@ def test_new_dim_raises_not_implemented(engine):
         engine.forward(argument)
 
 
+@pytest.fixture
+def fast_retry_engine(engine):
+    # Same patched config as `engine`, but with zero-delay retries so failure-path
+    # tests stay fast. Unknown keys are rejected; partial overrides merge over defaults.
+    engine.retry_params = {"tries": 5, "delay": 0, "max_delay": 0, "backoff": 1, "jitter": (0, 0)}
+    return engine
+
+
+def mock_wire_factory(monkeypatch, handler):
+    """Route the engine's per-call httpx.Client through handler; record requests."""
+    requests = []
+    real_client = httpx.Client
+
+    def factory(*_args, **kwargs):
+        def spy(request):
+            requests.append(request)
+            return handler(request)
+
+        return real_client(transport=httpx.MockTransport(spy), timeout=kwargs.get("timeout"))
+
+    monkeypatch.setattr(httpx, "Client", factory)
+    return requests
+
+
+def test_retries_transport_errors_then_succeeds(fast_retry_engine, monkeypatch):
+    # Regression: the folder-ized engine called httpx bare (single attempt); the old
+    # engine wrapped calls in tries=5/delay=2/backoff=2 retries. A flaky local server
+    # (connection refused while reloading) must be retried.
+    state = {"failures": 0}
+
+    def handler(request):
+        if state["failures"] < 2:
+            state["failures"] += 1
+            msg = "connection refused"
+            raise httpx.ConnectError(msg, request=request)
+        return httpx.Response(200, json=[{"embedding": v} for v in MOCK_VECTORS], request=request)
+
+    requests = mock_wire_factory(monkeypatch, handler)
+    argument = make_argument()
+    fast_retry_engine.prepare(argument)
+
+    output, _metadata = fast_retry_engine.forward(argument)
+
+    assert len(requests) == 3  # 2 failures + 1 success
+    assert len(output[0]) == len(ENTRIES)
+
+
+def test_retries_5xx_then_succeeds(fast_retry_engine, monkeypatch):
+    state = {"calls": 0}
+
+    def handler(request):
+        state["calls"] += 1
+        if state["calls"] == 1:
+            return httpx.Response(500, json={"error": "model loading"}, request=request)
+        return httpx.Response(200, json=[{"embedding": v} for v in MOCK_VECTORS], request=request)
+
+    requests = mock_wire_factory(monkeypatch, handler)
+    argument = make_argument()
+    fast_retry_engine.prepare(argument)
+
+    output, _metadata = fast_retry_engine.forward(argument)
+
+    assert len(requests) == 2
+    assert len(output[0]) == len(ENTRIES)
+
+
+def test_retry_exhaustion_raises_value_error(fast_retry_engine, monkeypatch):
+    def handler(request):
+        msg = "connection refused"
+        raise httpx.ConnectError(msg, request=request)
+
+    requests = mock_wire_factory(monkeypatch, handler)
+    argument = make_argument()
+    fast_retry_engine.prepare(argument)
+
+    with pytest.raises(ValueError, match="Request failed with error"):
+        fast_retry_engine.forward(argument)
+
+    assert len(requests) == fast_retry_engine.retry_params["tries"]
+
+
+def test_4xx_is_not_retried(fast_retry_engine, monkeypatch):
+    # Deliberate divergence from the old engine (which retried everything): a local
+    # server's 4xx is deterministic and retrying cannot heal it.
+    requests = mock_wire_factory(
+        monkeypatch,
+        lambda request: httpx.Response(401, json={"error": "unauthorized"}, request=request),
+    )
+    argument = make_argument()
+    fast_retry_engine.prepare(argument)
+
+    with pytest.raises(ValueError, match="status code: 401"):
+        fast_retry_engine.forward(argument)
+
+    assert len(requests) == 1
+
+
+def test_retry_params_validation(engine):
+    with pytest.raises(ValueError, match="Unknown retry_params keys"):
+        type(engine)(retry_params={"bogus": 1})
+    with pytest.raises(ValueError, match="must be a dictionary"):
+        type(engine)(retry_params=["tries"])
+
+
 def test_malformed_response_fails_typed_parsing(engine, monkeypatch):
     real_client = httpx.Client
 

@@ -77,11 +77,24 @@ class VLLMEngine(Engine):
     def api_max_context_tokens(self) -> int:
         return vllm_model_spec_for(self.model).context_tokens
 
+    def _server_headers(self) -> dict[str, str]:
+        # NOTE: symserver runs without auth by default but supports --api-key; send the
+        # Bearer token on every server request (discovery, tokenize, chat) so keyed
+        # deployments don't 401 on the helper calls.
+        headers = {"Content-Type": "application/json"}
+        if self.api_key:
+            headers["Authorization"] = f"Bearer {self.api_key}"
+        return headers
+
     def _server_get(self, path: str) -> dict:
         if self.transport_client is not None:
-            return self.transport_client.get(f"{self.server_endpoint}{path}").json()
+            return self.transport_client.get(
+                f"{self.server_endpoint}{path}", headers=self._server_headers()
+            ).json()
 
-        return httpx.get(f"{self.server_endpoint}{path}", timeout=10.0).json()
+        return httpx.get(
+            f"{self.server_endpoint}{path}", headers=self._server_headers(), timeout=10.0
+        ).json()
 
     def _server_model_id(self) -> str | None:
         try:
@@ -123,7 +136,7 @@ class VLLMEngine(Engine):
             payload=VLLMTokenizePayload(model=self.server_model or "", prompt=text),
             method="POST",
             url=f"{self.server_endpoint}/tokenize",
-            headers={"Content-Type": "application/json"},
+            headers=self._server_headers(),
         )
         response = execute_engine_api_request(request, client=self.transport_client)
         return VLLMTokenizeResponse.model_validate(response.json()).count
@@ -164,9 +177,7 @@ class VLLMEngine(Engine):
         options = VLLMOptions.model_validate(option_kwargs)
         request_options = options.model_dump(exclude_none=True)
 
-        headers = {"Content-Type": "application/json"}
-        if self.api_key:
-            headers["Authorization"] = f"Bearer {self.api_key}"
+        headers = self._server_headers()
         headers.update(request_options.get("extra_headers", {}))
 
         return VLLMRequest(
@@ -191,7 +202,17 @@ class VLLMEngine(Engine):
             raise ValueError(msg)
 
         request = self.build_request(argument)
-        response = self.call_request(request)
+        except_remedy = argument.kwargs.get("except_remedy")
+        try:
+            response = self.call_request(request)
+        except Exception as e:
+            if except_remedy is None:
+                raise
+            # NOTE: the legacy engine passed the SDK callable as `callback`; the
+            # raw-REST engine retries the wire request through this closure instead.
+            response = except_remedy(
+                self, e, lambda *_args, **_kwargs: self.call_request(request), argument
+            )
         return self.parse_response(response)
 
     def call_request(self, request: VLLMRequest):

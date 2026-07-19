@@ -6,8 +6,6 @@ import mimetypes
 import tempfile
 from pathlib import Path
 
-import httpx
-
 from symai.backend.base import Engine
 from symai.backend.engines.drawing.openai.models import (
     OPENAI_IMAGES_EDITS_URL,
@@ -20,7 +18,11 @@ from symai.backend.engines.drawing.openai.models import (
 )
 from symai.backend.request import EngineAPIRequest
 from symai.backend.settings import SYMAI_CONFIG
-from symai.backend.transport import DEFAULT_RETRIES, execute_engine_api_request
+from symai.backend.transport import (
+    DEFAULT_RETRIES,
+    default_engine_api_client,
+    execute_engine_api_request,
+)
 from symai.symbol import Result
 from symai.utils import silence_noisy_loggers
 
@@ -28,6 +30,10 @@ from symai.utils import silence_noisy_loggers
 silence_noisy_loggers("openai")
 
 logger = logging.getLogger(__name__)
+
+# Fallback timeout (seconds) for image URL downloads when the engine has no
+# explicit client_timeout configured (dall-e URLs expire after 60 minutes).
+DOWNLOAD_TIMEOUT_SECONDS = 60.0
 
 
 class GPTImageResult(Result):
@@ -37,23 +43,9 @@ class GPTImageResult(Result):
     image file paths (URLs downloaded, b64_json decoded to temp files).
     """
 
-    def __init__(self, value, **kwargs):
+    def __init__(self, value, image_paths, **kwargs):
         super().__init__(value, **kwargs)
-        imgs = []
-        for item in value.data:
-            with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as tmp_file:
-                path = tmp_file.name
-            if item.url is not None:
-                request = httpx.get(item.url, follow_redirects=True, timeout=None)
-                request.raise_for_status()
-                with Path(path).open("wb") as f:
-                    f.write(request.content)
-            elif item.b64_json is not None:
-                raw = base64.b64decode(item.b64_json)
-                with Path(path).open("wb") as f:
-                    f.write(raw)
-            imgs.append(path)
-        self._value = imgs
+        self._value = image_paths
 
 
 class GPTImageEngine(Engine):
@@ -151,7 +143,27 @@ class GPTImageEngine(Engine):
         return OpenAIImagesResponse.model_validate(response.json())
 
     def parse_response(self, response: OpenAIImagesResponse):
-        return [GPTImageResult(response)], {"raw_output": response}
+        paths = []
+        for item in response.data:
+            with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as tmp_file:
+                path = tmp_file.name
+            if item.url is not None:
+                self._download_image(item.url, path)
+            elif item.b64_json is not None:
+                Path(path).write_bytes(base64.b64decode(item.b64_json))
+            paths.append(path)
+        return [GPTImageResult(response, paths)], {"raw_output": response}
+
+    def _download_image(self, url: str, path: str) -> None:
+        # NOTE: the download rides the engine's transport client (mockable in tests);
+        # dall-e URLs expire after 60 minutes, so an unbounded timeout is never right.
+        client = self.transport_client or default_engine_api_client()
+        timeout = (
+            self.client_timeout if self.client_timeout is not None else DOWNLOAD_TIMEOUT_SECONDS
+        )
+        response = client.get(url, follow_redirects=True, timeout=timeout)
+        response.raise_for_status()
+        Path(path).write_bytes(response.content)
 
     def _headers(self, content_type: str | None = None) -> dict[str, str]:
         headers = {"Authorization": f"Bearer {self.api_key}"}
@@ -220,9 +232,12 @@ class GPTImageEngine(Engine):
         img_paths = kwargs["image_path"]
         if not isinstance(img_paths, (list, tuple)):
             img_paths = [img_paths]
-        # NOTE: repeated `image` parts for multi-image edits (gpt-image-1); bytes are
-        # read eagerly so transport retries never hit an exhausted file handle.
-        files = [("image", self._file_part(p)) for p in img_paths]
+        # NOTE: the wire field mirrors the SDK's brackets array format (openai-python
+        # extract_files, array_format="brackets"): one source image rides as `image`,
+        # multiple source images as repeated `image[]` parts. Bytes are read eagerly
+        # so transport retries never hit an exhausted file handle.
+        image_field = "image" if len(img_paths) == 1 else "image[]"
+        files = [(image_field, self._file_part(p)) for p in img_paths]
 
         mask_path = kwargs.get("mask_path")
         if mask_path is not None:

@@ -3,6 +3,7 @@ import json
 from pathlib import Path
 
 import httpx
+import pytest
 
 from symai.backend.engines.neurosymbolic.google.engine import GOOGLE_API_BASE, GoogleEngine
 from symai.backend.engines.neurosymbolic.google.models import (
@@ -286,6 +287,16 @@ class TestGoogleEngine(NeurosymbolicEngineTestInterface):
         config = request.body()["generationConfig"]
 
         assert config["thinkingConfig"] == {"includeThoughts": True, "thinkingBudget": 2048}
+
+    def test_build_request_rejects_non_vision_media_markers(self):
+        # NOTE: video/audio/document upload used Gemini's Files API via the SDK, which
+        # the raw-REST engine does not implement — it must refuse loudly, never strip.
+        engine = self.make_engine()
+
+        for marker in ("video", "audio", "document"):
+            marked = [{"role": "user", "content": f"describe <<{marker}:/tmp/sample.bin:>> please"}]
+            with pytest.raises(NotImplementedError, match=marker):
+                engine.build_request(self.make_prepared_argument(messages=marked))
 
     def test_compute_required_tokens_uses_count_tokens_endpoint(self):
         engine = self.make_engine(client_max_retries=0)

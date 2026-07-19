@@ -1,6 +1,7 @@
 import re
 from urllib.parse import urlparse
 
+import httpx
 import pytest
 
 from symai.backend.engines.search.parallel import ParallelEngine
@@ -11,7 +12,10 @@ from symai.backend.engines.search.parallel.models import (
     PARALLEL_SEARCH_PATH,
     ParallelExtractResponse,
     ParallelSearchResponse,
+    ParallelUsageItem,
 )
+from symai.components import MetadataTracker
+from tests.engines.mock_api import MockAPI
 from tests.engines.search.interface import DUMMY_KEY, MOCK_QUERY, SearchEngineTestInterface
 
 pytestmark = pytest.mark.searchengine
@@ -114,7 +118,9 @@ class TestParallelEngine(SearchEngineTestInterface):
                 },
             ],
             "warnings": None,
-            "usage": None,
+            # Realistic GA wire shape: a list of billed SKU items (typed as
+            # ParallelUsageItem so MetadataTracker SKU accounting stays live).
+            "usage": [{"name": "sku_search", "count": 1}],
         }
 
     def response_dropping_required(self, payload):
@@ -144,6 +150,7 @@ class TestParallelEngine(SearchEngineTestInterface):
             ],
             "errors": [],
             "warnings": [],
+            "usage": [{"name": "sku_extract_excerpts", "count": 3}],
         }
 
     @pytest.mark.parametrize("mode", ["basic", "advanced", "turbo"])
@@ -186,6 +193,109 @@ class TestParallelEngine(SearchEngineTestInterface):
         assert "Spain" in output[0].value
         assert isinstance(metadata["raw_output"], ParallelExtractResponse)
         assert metadata["final_url"] == self.scrape_url()
+
+    def test_usage_items_are_typed(self):
+        # Regression: usage typed as JsonValue left items as plain dicts, silently
+        # breaking MetadataTracker SKU accounting (it reads item.name / item.count).
+        _api, _output, metadata = self.forward_through_mock()
+
+        usage = metadata["raw_output"].usage
+        assert all(isinstance(item, ParallelUsageItem) for item in usage)
+        assert usage[0].name == "sku_search"
+        assert usage[0].count == 1
+
+    def test_usage_tracker_accumulates_sku_counts(self):
+        # Regression pin: components.py MetadataTracker's ParallelEngine branch must
+        # accumulate SKU counts from raw_output.usage items across calls.
+        engine = self.make_engine()
+
+        with MockAPI(
+            engine,
+            lambda request: httpx.Response(200, json=self.mock_response_json(), request=request),
+        ):
+            with MetadataTracker() as tracker:
+                argument = self.make_argument()
+                engine.prepare(argument)
+                engine.forward(argument)
+                engine.forward(argument)
+            usage = tracker.usage
+
+        details = usage[("ParallelEngine", None)]
+        assert details["usage"]["total_calls"] == 2
+        assert details["extras"]["sku_search"] == 2
+
+    def test_build_request_forwards_session_id_and_client_model(self):
+        # Regression: the old SDK-based engine forwarded session_id / client_model;
+        # both are real GA v1 wire fields and must reach the body.
+        engine = self.make_engine()
+        argument = self.make_argument(
+            kwargs={"session_id": "sess_abc123", "client_model": "gpt-5.5"}
+        )
+        engine.prepare(argument)
+
+        body = engine.build_request(argument).body()
+
+        assert body["session_id"] == "sess_abc123"
+        assert body["client_model"] == "gpt-5.5"
+
+    def test_extract_request_forwards_session_id_and_client_model(self):
+        engine = self.make_engine()
+        argument = self.make_argument(
+            url=self.scrape_url(),
+            kwargs={"session_id": "sess_abc123", "client_model": "gpt-5.5"},
+        )
+        engine.prepare(argument)
+
+        body = engine.build_request(argument).body()
+
+        assert body["session_id"] == "sess_abc123"
+        assert body["client_model"] == "gpt-5.5"
+
+    def test_task_route_forwards_location_as_advanced_settings(self):
+        # Regression: the old engine mapped `location` onto the task create request's
+        # advanced_settings (a real GA v1 wire field: TaskAdvancedSettings.location).
+        engine = self.make_engine()
+        argument = self.make_argument(kwargs={"processor": "lite", "location": "ro"})
+        engine.prepare(argument)
+
+        body = engine.build_request(argument).body()
+
+        assert body["advanced_settings"] == {"location": "ro"}
+
+    @pytest.mark.parametrize("alias", ["task_output_schema", "task_output", "output"])
+    def test_task_route_accepts_output_schema_aliases(self, alias):
+        # Regression: the old engine fell back through these aliases to output_schema.
+        engine = self.make_engine()
+        argument = self.make_argument(
+            kwargs={"processor": "lite", alias: "Summarize in one sentence."}
+        )
+        engine.prepare(argument)
+
+        body = engine.build_request(argument).body()
+
+        assert body["task_spec"]["output_schema"]["type"] == "text"
+        assert body["task_spec"]["output_schema"]["description"] == ("Summarize in one sentence.")
+
+    def test_task_route_accepts_timeout_aliases(self):
+        # Regression: the old engine accepted bare `timeout` / `api_timeout` as
+        # aliases for the task-poll knobs; the explicit task_* names win.
+        engine = self.make_engine()
+        argument = self.make_argument(
+            kwargs={"processor": "lite", "timeout": 120, "api_timeout": 30}
+        )
+        engine.prepare(argument)
+
+        options = engine.build_request(argument).call_options
+
+        assert options.task_timeout == 120
+        assert options.task_api_timeout == 30
+
+        argument = self.make_argument(
+            kwargs={"processor": "lite", "timeout": 120, "task_timeout": 60}
+        )
+        engine.prepare(argument)
+
+        assert engine.build_request(argument).call_options.task_timeout == 60
 
     @pytest.mark.engine_live
     @pytest.mark.parametrize("mode", ["basic", "advanced", "turbo"])
