@@ -67,7 +67,7 @@ class TestWolframAlphaMock:
 
     def test_wire_shape(self):
         engine = WolframAlphaEngine(api_key="dummy-appid")
-        with MockAPI(engine, lambda request: httpx.Response(200, json=CAPITAL_RESPONSE)) as mock:
+        with MockAPI(engine, lambda _request: httpx.Response(200, json=CAPITAL_RESPONSE)) as mock:
             run_query(engine, "What is the capital of France?")
         request = mock.last_request
         assert request.method == "GET"
@@ -80,7 +80,7 @@ class TestWolframAlphaMock:
 
     def test_parse_extracts_primary_first(self):
         engine = WolframAlphaEngine(api_key="dummy-appid")
-        with MockAPI(engine, lambda request: httpx.Response(200, json=CAPITAL_RESPONSE)):
+        with MockAPI(engine, lambda _request: httpx.Response(200, json=CAPITAL_RESPONSE)):
             result, metadata = run_query(engine, "What is the capital of France?")
         assert isinstance(result, WolframResult)
         # the primary "Result" pod leads even though it is second in the payload
@@ -91,7 +91,7 @@ class TestWolframAlphaMock:
     def test_error_response_raises(self):
         engine = WolframAlphaEngine(api_key="dummy-appid")
         with (
-            MockAPI(engine, lambda request: httpx.Response(200, json=ERROR_RESPONSE)),
+            MockAPI(engine, lambda _request: httpx.Response(200, json=ERROR_RESPONSE)),
             pytest.raises(ValueError, match="Invalid appid"),
         ):
             run_query(engine, "anything")
@@ -99,7 +99,7 @@ class TestWolframAlphaMock:
     def test_malformed_response_fails_typed_parsing(self):
         engine = WolframAlphaEngine(api_key="dummy-appid")
         with (
-            MockAPI(engine, lambda request: httpx.Response(200, json={"queryresult": {}})),
+            MockAPI(engine, lambda _request: httpx.Response(200, json={"queryresult": {}})),
             pytest.raises(Exception, match="success"),
         ):
             run_query(engine, "anything")
