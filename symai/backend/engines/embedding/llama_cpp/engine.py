@@ -1,4 +1,3 @@
-import logging
 import random
 import time
 from typing import ClassVar
@@ -12,8 +11,6 @@ from symai.backend.settings import SYMAI_CONFIG, SYMSERVER_CONFIG
 from symai.utils import silence_noisy_loggers
 
 silence_noisy_loggers()
-
-logger = logging.getLogger(__name__)
 
 
 class LlamaCppEmbeddingEngine(Engine):

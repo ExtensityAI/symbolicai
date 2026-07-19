@@ -25,6 +25,7 @@ def test_json_format():
             or NEUROSYMBOLIC.startswith("gemini")
             or NEUROSYMBOLIC.startswith("groq")
             or NEUROSYMBOLIC.startswith("cerebras")
+            or NEUROSYMBOLIC.startswith("deepseek")
             or IS_OPENAI_API
         )
         else "developer"

@@ -1,4 +1,3 @@
-import logging
 from copy import deepcopy
 
 import numpy as np
@@ -12,8 +11,6 @@ from symai.backend.base import Engine
 from symai.backend.settings import SYMAI_CONFIG
 from symai.symbol import Symbol
 from symai.utils import Extra, missing_dependency
-
-logger = logging.getLogger(__name__)
 
 
 class LocalEmbeddingEngine(Engine):

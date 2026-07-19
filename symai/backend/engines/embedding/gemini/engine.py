@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import base64
-import logging
 from copy import deepcopy
 
 import filetype
@@ -21,8 +20,6 @@ from symai.backend.engines.embedding.gemini.models import (
 from symai.backend.request import EngineAPIRequest
 from symai.backend.settings import SYMAI_CONFIG
 from symai.backend.transport import DEFAULT_RETRIES, execute_engine_api_request
-
-logger = logging.getLogger(__name__)
 
 
 class GeminiEmbeddingEngine(Engine):
