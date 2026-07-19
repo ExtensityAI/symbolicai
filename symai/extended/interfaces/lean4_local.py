@@ -1,5 +1,5 @@
 from symai import core
-from symai.backend.engines.formal.engine_lean4_local import LeanResult
+from symai.backend.engines.formal.lean4 import LeanResult
 from symai.symbol import Expression
 
 

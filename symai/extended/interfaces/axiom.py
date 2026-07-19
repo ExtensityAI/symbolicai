@@ -1,5 +1,5 @@
 from symai import core
-from symai.backend.engines.formal.engine_axiom import AxiomResult
+from symai.backend.engines.formal.axiom import AxiomResult
 from symai.symbol import Expression
 
 
