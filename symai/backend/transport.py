@@ -80,7 +80,9 @@ def build_request_options(request: EngineAPIRequest) -> dict[str, Any]:
             for key, value in request.body().items()
         }
         options["files"] = request.files
-    else:
+    elif request.method.upper() != "GET":
+        # NOTE: GET APIs (Wolfram, BFL poll) carry their payload in `params`; a JSON
+        # body on GET is at best ignored and at worst rejected.
         options["json"] = request.body()
     if request.timeout is not None:
         options["timeout"] = request.timeout

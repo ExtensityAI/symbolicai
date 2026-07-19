@@ -1,5 +1,5 @@
 from symai import core
-from symai.backend.engines.symbolic.engine_wolframalpha import WolframResult
+from symai.backend.engines.symbolic.wolframalpha import WolframResult
 from symai.symbol import Expression
 
 

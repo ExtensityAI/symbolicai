@@ -71,7 +71,6 @@ scrape = [
 # NOTE: vllm is a bring-your-own dependency (same pattern as llama.cpp's --cpp-server-path).
 #       Users clone + build vLLM in its own venv and pass --vllm-python-path to symserver.
 #       See docs/source/ENGINES/local_engine.md.
-wolframalpha = ["wolframalpha>=5.0.0"]
 lean = ["docker>=7.0.0", "axiom-axle>=1.0.0"]
 whisper = ["torch<2.10.0", "openai-whisper>=20240930", "numba>=0.62.1", "llvmlite>=0.45.1"]
 video = ["opencv-python>=4.8.1.78"]
@@ -82,7 +81,6 @@ qdrant = ["qdrant-client", "chonkie>=0.4.1", "tokenizers"]
 cluster = ["scikit-learn>=1.7.0"]
 all = [
     "symbolicai[hf]",
-    "symbolicai[wolframalpha]",
     "symbolicai[whisper]",
     "symbolicai[video]",
     "symbolicai[scrape]",

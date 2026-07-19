@@ -119,6 +119,16 @@ def normalize_embedding(embedding, target_size=1536):
     return query_vector
 
 
+def probe_embedding_dims(engine) -> int:
+    """Live-probe the configured embedding engine's output dimension.
+
+    Collections searched with real embeddings must be created at this size:
+    unlike the upsert path, the query path does not resize vectors, so a
+    dimension mismatch makes Qdrant reject the search with a 400.
+    """
+    return len(engine._normalize_vector(Symbol("embedding dimension probe").embed().value))
+
+
 @pytest.mark.skipif(not QDrant_AVAILABLE, reason="Qdrant server not available")
 class TestQdrantEngineBasic:
     """Test basic engine functionality."""
@@ -922,7 +932,7 @@ class TestQdrantLocalSearch:
     @pytest.mark.asyncio
     async def test_local_search_text_citations(self, engine, test_collection_name):
         """Local search over chunked text with citation formatting."""
-        await engine.create_collection(test_collection_name, vector_size=1536)
+        await engine.create_collection(test_collection_name, vector_size=probe_embedding_dims(engine))
 
         text = "Local search citation-friendly content."
         await engine.chunk_and_upsert(
@@ -954,7 +964,7 @@ class TestQdrantLocalSearch:
     async def test_local_search_pdf_citations(self, engine, test_collection_name):
         """Local search over chunked PDF with citation formatting."""
         pdf_path = AVAILABLE_PDFS[0]
-        await engine.create_collection(test_collection_name, vector_size=1536)
+        await engine.create_collection(test_collection_name, vector_size=probe_embedding_dims(engine))
 
         await engine.chunk_and_upsert(
             collection_name=test_collection_name,
@@ -1123,7 +1133,7 @@ class TestRagEmbedBatching:
         """
 
         document = self.SAMPLE_PATH.read_text(encoding="utf-8")[:120_000]
-        await engine.create_collection(test_collection_name, vector_size=1536)
+        await engine.create_collection(test_collection_name, vector_size=probe_embedding_dims(engine))
         await engine.chunk_and_upsert(
             collection_name=test_collection_name,
             text=document,

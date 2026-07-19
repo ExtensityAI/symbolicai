@@ -33,7 +33,6 @@ pip install "symbolicai[services]"
 pip install "symbolicai[solver]"
 pip install "symbolicai[video]"
 pip install "symbolicai[whisper]"
-pip install "symbolicai[wolframalpha]"
 ```
 
 Or, install all optional dependencies at once:

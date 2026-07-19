@@ -275,15 +275,6 @@ wheels = [
 ]
 
 [[package]]
-name = "backports-tarfile"
-version = "1.2.0"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/86/72/cd9b395f25e290e633655a100af28cb253e4393396264a98bd5f5951d50f/backports_tarfile-1.2.0.tar.gz", hash = "sha256:d75e02c268746e1b8144c278978b6e98e85de6ad16f8e4b0844a154557eca991", size = 86406, upload-time = "2024-05-28T17:01:54.731Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/b9/fa/123043af240e49752f1c4bd24da5053b6bd00cad78c2be53c0d1e8b975bc/backports.tarfile-1.2.0-py3-none-any.whl", hash = "sha256:77e284d754527b01fb1e6fa8a1afe577858ebe4e9dad8919e34c862cb399bc34", size = 30181, upload-time = "2024-05-28T17:01:53.112Z" },
-]
-
-[[package]]
 name = "beartype"
 version = "0.22.9"
 source = { registry = "https://pypi.org/simple" }
@@ -1215,18 +1206,6 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/72/34/14ca021ce8e5dfedc35312d08ba8bf51fdd999c576889fc2c24cb97f4f10/iniconfig-2.3.0.tar.gz", hash = "sha256:c76315c77db068650d49c5b56314774a7804df16fee4402c1f19d6d15d8c4730", size = 20503, upload-time = "2025-10-18T21:55:43.219Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/cb/b1/3846dd7f199d53cb17f49cba7e651e9ce294d8497c8c150530ed11865bb8/iniconfig-2.3.0-py3-none-any.whl", hash = "sha256:f631c04d2c48c52b84d0d0549c99ff3859c98df65b3101406327ecc7d53fbf12", size = 7484, upload-time = "2025-10-18T21:55:41.639Z" },
-]
-
-[[package]]
-name = "jaraco-context"
-version = "6.1.2"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "backports-tarfile", marker = "python_full_version < '3.12'" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/af/50/4763cd07e722bb6285316d390a164bc7e479db9d90daa769f22578f698b4/jaraco_context-6.1.2.tar.gz", hash = "sha256:f1a6c9d391e661cc5b8d39861ff077a7dc24dc23833ccee564b234b81c82dfe3", size = 16801, upload-time = "2026-03-20T22:13:33.922Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/f2/58/bc8954bda5fcda97bd7c19be11b85f91973d67a706ed4a3aec33e7de22db/jaraco_context-6.1.2-py3-none-any.whl", hash = "sha256:bf8150b79a2d5d91ae48629d8b427a8f7ba0e1097dd6202a9059f29a36379535", size = 7871, upload-time = "2026-03-20T22:13:32.808Z" },
 ]
 
 [[package]]
@@ -3454,7 +3433,6 @@ all = [
     { name = "transformers" },
     { name = "trl" },
     { name = "uvicorn" },
-    { name = "wolframalpha" },
     { name = "z3-solver" },
 ]
 bitsandbytes = [
@@ -3515,9 +3493,6 @@ whisper = [
     { name = "torch", version = "2.9.1", source = { registry = "https://download.pytorch.org/whl/cpu" }, marker = "sys_platform == 'darwin'" },
     { name = "torch", version = "2.9.1+cpu", source = { registry = "https://download.pytorch.org/whl/cpu" }, marker = "sys_platform != 'darwin'" },
 ]
-wolframalpha = [
-    { name = "wolframalpha" },
-]
 
 [package.dev-dependencies]
 dev = [
@@ -3572,7 +3547,6 @@ requires-dist = [
     { name = "symbolicai", extras = ["solver"], marker = "extra == 'all'" },
     { name = "symbolicai", extras = ["video"], marker = "extra == 'all'" },
     { name = "symbolicai", extras = ["whisper"], marker = "extra == 'all'" },
-    { name = "symbolicai", extras = ["wolframalpha"], marker = "extra == 'all'" },
     { name = "tiktoken", specifier = ">=0.8.0" },
     { name = "tldextract", marker = "extra == 'search'", specifier = ">=5.1.0" },
     { name = "tokenizers", marker = "extra == 'qdrant'" },
@@ -3583,10 +3557,9 @@ requires-dist = [
     { name = "transformers", marker = "extra == 'hf'", specifier = ">=4.45.2" },
     { name = "trl", marker = "extra == 'hf'", specifier = ">=0.11.3" },
     { name = "uvicorn", marker = "extra == 'services'", specifier = ">=0.27.1" },
-    { name = "wolframalpha", marker = "extra == 'wolframalpha'", specifier = ">=5.0.0" },
     { name = "z3-solver", marker = "extra == 'solver'", specifier = ">=4.12.6.0" },
 ]
-provides-extras = ["bitsandbytes", "hf", "scrape", "wolframalpha", "lean", "whisper", "video", "search", "services", "solver", "qdrant", "cluster", "all", "dev"]
+provides-extras = ["bitsandbytes", "hf", "scrape", "lean", "whisper", "video", "search", "services", "solver", "qdrant", "cluster", "all", "dev"]
 
 [package.metadata.requires-dev]
 dev = [
@@ -3994,22 +3967,6 @@ wheels = [
 ]
 
 [[package]]
-name = "wolframalpha"
-version = "5.1.3"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "httpx" },
-    { name = "jaraco-context" },
-    { name = "more-itertools" },
-    { name = "multidict" },
-    { name = "xmltodict" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/99/04/bdb9fd0da3d142c6b8a6d3ebdab0b919cc212ba68ff4686f6c22060ca26f/wolframalpha-5.1.3.tar.gz", hash = "sha256:56226efeca0f55acec5e17dd2f6537a178d0bf4feec4df0615165e2968bb49b8", size = 13257, upload-time = "2024-06-01T20:19:57.914Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/8c/95/c89a74e5839a249c1ea66830afe39b92ffb04b91fafec449abb921eb97b6/wolframalpha-5.1.3-py3-none-any.whl", hash = "sha256:549b44e64595c5845be4c94f2b306a84832157bef422b20937cbca44b48ee117", size = 6280, upload-time = "2024-06-01T20:19:56.361Z" },
-]
-
-[[package]]
 name = "xlrd"
 version = "2.0.2"
 source = { registry = "https://pypi.org/simple" }
@@ -4025,15 +3982,6 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/46/2c/c06ef49dc36e7954e55b802a8b231770d286a9758b3d936bd1e04ce5ba88/xlsxwriter-3.2.9.tar.gz", hash = "sha256:254b1c37a368c444eac6e2f867405cc9e461b0ed97a3233b2ac1e574efb4140c", size = 215940, upload-time = "2025-09-16T00:16:21.63Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/3a/0c/3662f4a66880196a590b202f0db82d919dd2f89e99a27fadef91c4a33d41/xlsxwriter-3.2.9-py3-none-any.whl", hash = "sha256:9a5db42bc5dff014806c58a20b9eae7322a134abb6fce3c92c181bfb275ec5b3", size = 175315, upload-time = "2025-09-16T00:16:20.108Z" },
-]
-
-[[package]]
-name = "xmltodict"
-version = "1.0.4"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/19/70/80f3b7c10d2630aa66414bf23d210386700aa390547278c789afa994fd7e/xmltodict-1.0.4.tar.gz", hash = "sha256:6d94c9f834dd9e44514162799d344d815a3a4faec913717a9ecbfa5be1bb8e61", size = 26124, upload-time = "2026-02-22T02:21:22.074Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/38/34/98a2f52245f4d47be93b580dae5f9861ef58977d73a79eb47c58f1ad1f3a/xmltodict-1.0.4-py3-none-any.whl", hash = "sha256:a4a00d300b0e1c59fc2bfccb53d7b2e88c32f200df138a0dd2229f842497026a", size = 13580, upload-time = "2026-02-22T02:21:21.039Z" },
 ]
 
 [[package]]
