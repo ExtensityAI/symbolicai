@@ -7,7 +7,6 @@ from contextlib import nullcontext
 from typing import Any, ClassVar
 
 import numpy as np
-from anthropic import transform_schema
 from beartype import beartype
 from pydantic import ValidationError
 
@@ -17,6 +16,121 @@ from symai.context import CURRENT_ENGINE_VAR
 from symai.models import LLMDataModel, build_dynamic_llm_datamodel
 
 logger = logging.getLogger(__name__)
+
+
+SUPPORTED_STRING_FORMATS = {
+    "date-time",
+    "time",
+    "date",
+    "duration",
+    "email",
+    "hostname",
+    "uri",
+    "ipv4",
+    "ipv6",
+    "uuid",
+}
+
+
+def transform_schema(json_schema: type | dict[str, Any]) -> dict[str, Any]:
+    """Transform a pydantic model or JSON schema into the Anthropic API's strict subset.
+
+    #NOTE: vendored from anthropic-sdk-python (Apache-2.0), anthropic/lib/_parse/_transform.py,
+    so the SDK can leave the dependency tree. Unsupported constraints are folded into the
+    description so the model might still honor them.
+    """
+    if inspect.isclass(json_schema):
+        json_schema = json_schema.model_json_schema()
+
+    strict_schema: dict[str, Any] = {}
+    json_schema = {**json_schema}
+
+    # $defs must be processed before the $ref early-return below, so that a root-level
+    # {"$ref": "#/$defs/X", "$defs": {...}} (pydantic RootModel shape) keeps its definitions.
+    defs = json_schema.pop("$defs", None)
+    if defs is not None:
+        strict_defs: dict[str, Any] = {}
+        strict_schema["$defs"] = strict_defs
+        for name, schema in defs.items():
+            strict_defs[name] = transform_schema(schema)
+
+    ref = json_schema.pop("$ref", None)
+    if ref is not None:
+        strict_schema["$ref"] = ref
+        return strict_schema
+
+    type_ = json_schema.pop("type", None)
+    any_of = json_schema.pop("anyOf", None)
+    one_of = json_schema.pop("oneOf", None)
+    all_of = json_schema.pop("allOf", None)
+
+    if isinstance(any_of, list):
+        strict_schema["anyOf"] = [transform_schema(variant) for variant in any_of]
+    elif isinstance(one_of, list):
+        strict_schema["anyOf"] = [transform_schema(variant) for variant in one_of]
+    elif isinstance(all_of, list):
+        strict_schema["allOf"] = [transform_schema(variant) for variant in all_of]
+    else:
+        if type_ is None:
+            msg = "Schema must have a 'type', 'anyOf', 'oneOf', or 'allOf' field."
+            raise ValueError(msg)
+        strict_schema["type"] = type_
+
+    enum = json_schema.pop("enum", None)
+    if isinstance(enum, list):
+        strict_schema["enum"] = enum
+
+    description = json_schema.pop("description", None)
+    if description is not None:
+        strict_schema["description"] = description
+
+    title = json_schema.pop("title", None)
+    if title is not None:
+        strict_schema["title"] = title
+
+    if type_ == "object":
+        strict_schema["properties"] = {
+            key: transform_schema(prop_schema)
+            for key, prop_schema in json_schema.pop("properties", {}).items()
+        }
+        json_schema.pop("additionalProperties", None)
+        strict_schema["additionalProperties"] = False
+
+        required = json_schema.pop("required", None)
+        if required is not None:
+            strict_schema["required"] = required
+
+    elif type_ == "string":
+        format_ = json_schema.pop("format", None)
+        if format_ and format_ in SUPPORTED_STRING_FORMATS:
+            strict_schema["format"] = format_
+        elif format_:
+            # add it back so it's treated as an extra property and appended to the description
+            json_schema["format"] = format_
+    elif type_ == "array":
+        items = json_schema.pop("items", None)
+        if items is not None:
+            strict_schema["items"] = transform_schema(items)
+
+        min_items = json_schema.pop("minItems", None)
+        if min_items is not None and min_items == 0 or min_items == 1:
+            strict_schema["minItems"] = min_items
+        elif min_items is not None:
+            # add it back so it's treated as an extra property and appended to the description
+            json_schema["minItems"] = min_items
+
+    # any leftover properties aren't supported, so we add them to the description
+    # so that the model *might* follow them.
+    if json_schema:
+        description = strict_schema.get("description")
+        strict_schema["description"] = (
+            (description + "\n\n" if description is not None else "")
+            + "{"
+            + ", ".join(f"{key}: {value}" for key, value in json_schema.items())
+            + "}"
+        )
+
+    return strict_schema
 
 
 class ValidationFunction(Function):

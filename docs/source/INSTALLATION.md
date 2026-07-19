@@ -22,7 +22,6 @@ Running `symconfig` will now use this Python environment.
 SymbolicAI uses multiple engines to process text, speech and images. We also include search engine access to retrieve information from the web. To use all of them, you will need to also install the following dependencies and assign the API keys to the respective engines. E.g.:
 
 ```bash
-pip install "symbolicai[bitsandbytes]"
 pip install "symbolicai[cluster]"
 pip install "symbolicai[hf]"
 pip install "symbolicai[lean]"
@@ -30,7 +29,6 @@ pip install "symbolicai[qdrant]"
 pip install "symbolicai[scrape]"
 pip install "symbolicai[search]"
 pip install "symbolicai[services]"
-pip install "symbolicai[solver]"
 pip install "symbolicai[video]"
 pip install "symbolicai[whisper]"
 ```
