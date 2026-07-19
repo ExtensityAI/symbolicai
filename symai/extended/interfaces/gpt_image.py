@@ -1,5 +1,5 @@
 from symai import core
-from symai.backend.engines.drawing.engine_gpt_image import GPTImageResult
+from symai.backend.engines.drawing.openai import GPTImageResult
 from symai.symbol import Expression
 
 

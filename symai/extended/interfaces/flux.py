@@ -1,5 +1,5 @@
 from symai import core
-from symai.backend.engines.drawing.engine_bfl import FluxResult
+from symai.backend.engines.drawing.bfl import FluxResult
 from symai.symbol import Expression
 
 

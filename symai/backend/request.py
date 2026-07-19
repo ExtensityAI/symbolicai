@@ -35,6 +35,10 @@ class EngineAPIRequest(Generic[Payload, CallOptions]):
     params: dict[str, JsonValue] | None = None
     timeout: float | None = None
     extra_body: dict[str, JsonValue] | None = None
+    # NOTE: when set, the request rides as multipart/form-data instead of JSON: the
+    # scalar payload fields become form data and `files` carries the binary parts as
+    # (field_name, (filename, bytes, content_type)) tuples (repeated names allowed).
+    files: list[tuple[str, tuple[str, bytes, str]]] | None = None
 
     def body(self) -> dict[str, JsonValue]:
         body = {} if self.extra_body is None else dict(self.extra_body)

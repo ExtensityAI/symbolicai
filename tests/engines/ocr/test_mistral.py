@@ -1,106 +1,69 @@
-import base64
-from pathlib import Path
-
 import pytest
 
-from symai.backend.settings import SYMAI_CONFIG
-from symai.components import MetadataTracker
-from symai.components import Interface
-from symai.utils import RuntimeInfo
-
-API_KEY = SYMAI_CONFIG.get("OCR_ENGINE_API_KEY")
-MODEL_MISTRAL = SYMAI_CONFIG.get("OCR_ENGINE_MODEL", "").lower().startswith("mistral")
-
-pytestmark = [
-    pytest.mark.ocrengine,
-    pytest.mark.skipif(not API_KEY, reason="OCR_ENGINE_API_KEY not set; live test skipped"),
-    pytest.mark.skipif(not MODEL_MISTRAL, reason="OCR_ENGINE_MODEL does not start with 'mistral'."),
-]
-
-ARXIV_PDF_URL = "https://arxiv.org/pdf/2507.11768"
-SAMPLE_PDF = Path(__file__).resolve().parents[2] / "data" / "sample.pdf"
-
-
-def _iface():
-    try:
-        return Interface("ocr")
-    except Exception as e:
-        pytest.skip(f"OCR interface initialization failed: {e}")
-
-
-def test_mistral_ocr_full_markdown():
-    """OCR a PDF and return assembled markdown (default)."""
-    ocr = _iface()
-    res = ocr(document_url=ARXIV_PDF_URL)
-
-    assert res is not None
-    assert isinstance(res._value, str)
-    assert len(res._value) > 0
-
-
-def test_mistral_ocr_per_page():
-    """OCR a PDF with per_page=True returns list[str]."""
-    ocr = _iface()
-    res = ocr(document_url=ARXIV_PDF_URL, include_image_base64=True, per_page=True)
-
-    assert res is not None
-    assert isinstance(res._value, list)
-    assert len(res._value) > 0
-    assert all(isinstance(page, str) for page in res._value)
-
-
-@pytest.mark.parametrize(
-    "input_kind",
-    ["local_path", "https_url", "base64_data_uri"],
-    ids=["local", "https", "base64"],
+from symai.backend.engines.ocr.mistral import MistralOCREngine
+from symai.backend.engines.ocr.mistral.models import (
+    API_PINNED,
+    MISTRAL_OCR_URL,
+    MistralOCRResponse,
 )
-def test_mistral_ocr_input_types(input_kind):
-    """OCR works with local path, HTTPS URL, and base64 data URI."""
-    ocr = _iface()
+from tests.engines.ocr.interface import MOCK_DOCUMENT_URL, OCREngineTestInterface
 
-    if input_kind == "local_path":
-        res = ocr(document_url=str(SAMPLE_PDF), per_page=True)
-    elif input_kind == "https_url":
-        res = ocr(document_url=ARXIV_PDF_URL, per_page=True)
-    elif input_kind == "base64_data_uri":
-        b64 = base64.b64encode(SAMPLE_PDF.read_bytes()).decode()
-        res = ocr(document_url=f"data:application/pdf;base64,{b64}", per_page=True)
+pytestmark = pytest.mark.ocrengine
 
-    assert res is not None
-    assert isinstance(res._value, list)
-    assert len(res._value) > 0
+PAGE_ONE_MARKDOWN = "# Sample Document\n\nThis is the first page of the sample PDF."
+PAGE_TWO_MARKDOWN = "A table on the second page.\n\n| A | B |\n| --- | --- |\n| 1 | 2 |"
+SAMPLE_IMAGE_BASE64 = "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBD"
 
 
-def test_mistral_ocr_metadata_tracker():
-    """MetadataTracker captures page-based usage from Mistral OCR."""
-    ocr = _iface()
-    with MetadataTracker() as tracker:
-        res = ocr(document_url=ARXIV_PDF_URL)
+class TestMistralOCREngine(OCREngineTestInterface):
+    engine_cls = MistralOCREngine
+    response_cls = MistralOCRResponse
+    default_model = "mistral-ocr-latest"
+    wire_url = MISTRAL_OCR_URL
+    auth_header_name = "Authorization"
+    auth_header_prefix = "Bearer "
+    api_pinned = API_PINNED
+    api_pinned_module = "symai.backend.engines.ocr.mistral.models"
+    api_key_env = "MISTRAL_API_KEY"
+    # NOTE: small (~13KB) stable public PDF for the live smoke.
+    live_document_url = "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf"
 
-    assert res is not None
+    def mock_response_json(self):
+        return {
+            "pages": [
+                {
+                    "index": 0,
+                    "markdown": PAGE_ONE_MARKDOWN,
+                    "images": [
+                        {
+                            "id": "img-0.jpeg",
+                            "top_left_x": 100,
+                            "top_left_y": 200,
+                            "bottom_right_x": 300,
+                            "bottom_right_y": 400,
+                            "image_base64": SAMPLE_IMAGE_BASE64,
+                        }
+                    ],
+                    "dimensions": {"dpi": 200, "height": 2200, "width": 1700},
+                },
+                {
+                    "index": 1,
+                    "markdown": PAGE_TWO_MARKDOWN,
+                    "images": [],
+                    "dimensions": {"dpi": 200, "height": 2200, "width": 1700},
+                },
+            ],
+            "model": "mistral-ocr-latest",
+            "usage_info": {"pages_processed": 2, "doc_size_bytes": 13268},
+            "document_annotation": None,
+        }
 
-    # verify raw metadata was captured
-    assert len(tracker.metadata) > 0
+    def response_dropping_required(self, payload):
+        del payload["pages"]
+        return payload
 
-    # verify usage accumulation
-    usage = tracker.usage
-    assert len(usage) > 0
-
-    for (engine_name, _model_name), data in usage.items():
-        assert engine_name == "MistralOCREngine"
-        assert data["usage"]["total_calls"] >= 1
-        assert "extras" in data
-        assert data["extras"]["pages_processed"] > 0
-
-    # verify RuntimeInfo round-trip
-    def _ocr_pricing(info, pricing):
-        return info.extras.get("pages_processed", 0) * pricing.get("per_page", 0)
-
-    usage_per_engine = RuntimeInfo.from_tracker(tracker, 0)
-    total = RuntimeInfo(0, 0, 0, 0, 0, 0, 0, 0)
-    for _, data in usage_per_engine.items():
-        total += RuntimeInfo.estimate_cost(data, _ocr_pricing, pricing={"per_page": 0.002})
-
-    assert total.total_calls >= 1
-    assert total.extras.get("pages_processed", 0) > 0
-    assert total.cost_estimate > 0
+    def expected_request_body_subset(self):
+        return {
+            "model": self.default_model,
+            "document": {"type": "document_url", "document_url": MOCK_DOCUMENT_URL},
+        }

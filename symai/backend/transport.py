@@ -71,8 +71,17 @@ def build_request_options(request: EngineAPIRequest) -> dict[str, Any]:
     options = {
         "headers": request.headers,
         "params": request.params,
-        "json": request.body(),
     }
+    if request.files is not None:
+        # NOTE: multipart form — scalar payload fields ride as form data, binaries in
+        # `files`; httpx sets the multipart Content-Type (with boundary) itself.
+        options["data"] = {
+            key: value if isinstance(value, str) else str(value)
+            for key, value in request.body().items()
+        }
+        options["files"] = request.files
+    else:
+        options["json"] = request.body()
     if request.timeout is not None:
         options["timeout"] = request.timeout
     return options

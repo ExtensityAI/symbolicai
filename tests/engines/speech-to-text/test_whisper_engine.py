@@ -2,7 +2,7 @@ from pathlib import Path
 
 import pytest
 
-from symai.backend.engines.speech_to_text.engine_local_whisper import WhisperResult
+from symai.backend.engines.speech_to_text.local.engine import WhisperResult
 from symai.backend.settings import SYMAI_CONFIG
 from symai.components import Interface
 from symai.utils import semassert

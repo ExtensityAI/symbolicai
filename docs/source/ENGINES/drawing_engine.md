@@ -3,7 +3,7 @@
 We now expose three distinct high-level drawing interfaces:
 
 1. **`gpt_image`** – a unified wrapper around OpenAI’s Images API (DALL·E 2/3 and `gpt-image-*`).
-2. **`flux`** – Black Forest Labs’ Flux text-to-image models via api.us1.bfl.ai.
+2. **`flux`** – Black Forest Labs’ Flux text-to-image models via api.bfl.ai.
 3. **`nanobanana`** – Google Gemini image generation models via `google-genai`.
 
 Both return a list of local PNG file paths.
@@ -108,7 +108,7 @@ paths = gpt_image(
 
 ## 2. Black Forest Labs “flux” Interface
 
-Use `Interface('flux')` to call Flux via https://api.us1.bfl.ai.
+Use `Interface('flux')` to call Flux via https://api.bfl.ai.
 Supported models: any `flux-*`, e.g. configured in `SYMAI_CONFIG["DRAWING_ENGINE_MODEL"]`.
 
 ```python
@@ -150,8 +150,8 @@ print(paths)  # → ['/tmp/tmp1234.png']
 
 Under the hood Flux uses:
 
-- POST `https://api.us1.bfl.ai/v1/{model}`
-- GET  `https://api.us1.bfl.ai/v1/get_result?id={request_id}`
+- POST `https://api.bfl.ai/v1/{model}`
+- GET  `https://api.bfl.ai/v1/get_result?id={request_id}`
 
 and writes out local PNG file(s).
 

@@ -1,5 +1,5 @@
 from symai import core
-from symai.backend.engines.drawing.engine_gemini_image import GeminiImageResult
+from symai.backend.engines.drawing.gemini import GeminiImageResult
 from symai.symbol import Expression
 
 

@@ -1,5 +1,5 @@
 from symai import core
-from symai.backend.engines.speech_to_text.engine_local_whisper import WhisperResult
+from symai.backend.engines.speech_to_text.local.engine import WhisperResult
 from symai.symbol import Expression
 
 
