@@ -2,7 +2,7 @@
 
 The **neuro-symbolic** engine is our generic wrapper around large language models (LLMs) that support prompts, function/tool calls, vision tokens, token‐counting/truncation, etc.
 
-## v2 Architecture
+## Architecture
 
 Each provider lives in its own folder under `symai/backend/engines/neurosymbolic/<provider>/` with an `engine.py` (the `Engine` subclass), a `models.py` (pydantic wire models plus the model spec table), and a `stream.py` (SSE adapter). There are **no vendor SDKs**: every provider is called over raw REST through the shared `httpx` transport in `symai/backend/transport.py` (connection pooling, retries, SSE parsing). Every engine follows the same forward pipeline: `build_request` → `call_request` → `parse_response`, where the request/response payloads are validated against the pydantic wire models in `models.py` (subclasses of `EngineRequestPayload` / `EngineResponsePayload` from `symai/backend/request.py`).
 

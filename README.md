@@ -1,5 +1,5 @@
 # **SymbolicAI: A neuro-symbolic perspective on LLMs**
-<img src="https://raw.githubusercontent.com/ExtensityAI/symbolicai/refs/heads/main/artifacts/images/banner.png">
+<img src="https://raw.githubusercontent.com/ExtensityAI/symbolicai/refs/heads/dev/artifacts/images/banner.png">
 
 <div align="center">
 
@@ -7,14 +7,11 @@
 [![Arxiv](https://img.shields.io/badge/Paper-32758e?style=for-the-badge)](https://arxiv.org/abs/2402.00854)
 [![DeepWiki](https://img.shields.io/badge/DeepWiki-yellow?style=for-the-badge)](https://deepwiki.com/ExtensityAI/symbolicai)
 
-[![Twitter](https://img.shields.io/twitter/url/https/twitter.com/dinumariusc.svg?style=social&label=@DinuMariusC)](https://twitter.com/DinuMariusC) [![Twitter](https://img.shields.io/twitter/url/https/twitter.com/symbolicapi.svg?style=social&label=@ExtensityAI)](https://twitter.com/ExtensityAI)
-[![Twitter](https://img.shields.io/twitter/url/https/twitter.com/futurisold.svg?style=social&label=@futurisold)](https://x.com/futurisold)
-
 </div>
 
 ---
 
-<img src="https://raw.githubusercontent.com/ExtensityAI/symbolicai/main/artifacts/images/preview.gif">
+<img src="https://raw.githubusercontent.com/ExtensityAI/symbolicai/refs/heads/dev/artifacts/images/preview.gif">
 
 ## What is SymbolicAI?
 
