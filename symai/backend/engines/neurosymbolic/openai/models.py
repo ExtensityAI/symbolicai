@@ -206,6 +206,11 @@ def build_cache_breakpoint_blocks(text: str) -> list[dict[str, JsonValue]]:
     return blocks
 
 
+class OpenAIPromptCacheOptions(EngineRequestPayload):
+    mode: Literal["implicit", "explicit"] | None = None
+    ttl: Literal["30m"] | None = None
+
+
 class OpenAIPayload(EngineRequestPayload):
     background: bool | None = None
     context_management: list[dict[str, JsonValue]] | None = None
@@ -221,6 +226,7 @@ class OpenAIPayload(EngineRequestPayload):
     parallel_tool_calls: bool | None = None
     previous_response_id: str | None = None
     prompt_cache_key: str | None = None
+    prompt_cache_options: OpenAIPromptCacheOptions | None = None
     prompt_cache_retention: Literal["in_memory", "24h"] | None = None
     reasoning: dict[str, JsonValue] | None = None
     safety_identifier: str | None = None

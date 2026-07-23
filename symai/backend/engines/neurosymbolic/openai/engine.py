@@ -28,7 +28,7 @@ from symai.backend.transport import (
     execute_engine_api_stream_events,
 )
 from symai.backend.usage import EngineUsageRecord
-from symai.prompts import CACHE_BREAKPOINT
+from symai.prompts import CACHE_BREAKPOINT, strip_cache_breakpoints_from_messages
 from symai.utils import encode_media_frames
 
 logger = logging.getLogger(__name__)
@@ -58,8 +58,10 @@ class OpenAIEngine(Engine):
         *,
         client_timeout: float | None = None,
         client_max_retries: int | None = None,
+        prompt_cache_options: dict | None = None,
     ):
         super().__init__(client_timeout=client_timeout, client_max_retries=client_max_retries)
+        self.prompt_cache_options = prompt_cache_options
         self.name = self.__class__.__name__
         self.config = deepcopy(SYMAI_CONFIG)
         if api_key is not None:
@@ -165,9 +167,20 @@ class OpenAIEngine(Engine):
         messages = argument.prop.prepared_input
         payload_kwargs["model"] = openai_strip_prefix(payload_kwargs.get("model", self.model))
         model_spec = openai_model_spec_for(payload_kwargs["model"])
-        payload_kwargs["input"] = self._apply_cache_breakpoints(
-            messages, model_spec, payload_kwargs["model"]
-        )
+        per_call_cache_options = payload_kwargs.get("prompt_cache_options")
+        if model_spec.explicit_cache:
+            if per_call_cache_options is None:
+                payload_kwargs["prompt_cache_options"] = (
+                    self.prompt_cache_options
+                    if self.prompt_cache_options is not None
+                    else {"mode": "explicit"}
+                )
+        elif per_call_cache_options is not None:
+            msg = f"Explicit OpenAI cache options are not supported by {payload_kwargs['model']}."
+            raise ValueError(msg)
+        else:
+            payload_kwargs.pop("prompt_cache_options", None)
+        payload_kwargs["input"] = self._apply_cache_breakpoints(messages, model_spec)
 
         # NOTE: the legacy chat-completions engine accepted max_tokens; alias it to the
         # Responses API max_output_tokens when the new kwarg is absent.
@@ -418,19 +431,15 @@ class OpenAIEngine(Engine):
             }
         )
 
-    def _apply_cache_breakpoints(self, messages: list[dict], model_spec, model: str) -> list[dict]:
-        """Translate ``symai:cache_breakpoint`` markers into explicit cache blocks.
-
-        Markers on models without explicit caching raise (a misplaced marker signals a
-        wrong model choice, not a no-op). Unmarked messages pass through unchanged."""
+    def _apply_cache_breakpoints(self, messages: list[dict], model_spec) -> list[dict]:
+        """Translate supported cache markers and strip them for other OpenAI models."""
         marker_count = sum(
             str(message.get("content", "")).count(CACHE_BREAKPOINT) for message in messages
         )
         if marker_count == 0:
             return messages
         if not model_spec.explicit_cache:
-            msg = f"Explicit cache breakpoints are not supported by {model}; use a GPT-5.6 model."
-            raise ValueError(msg)
+            return strip_cache_breakpoints_from_messages(messages)
 
         prepared = []
         for message in messages:

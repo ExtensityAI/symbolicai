@@ -516,6 +516,7 @@ class DynamicEngine(Expression):
         *,
         client_timeout: float | None = None,
         client_max_retries: int | None = None,
+        prompt_cache_options: dict | None = None,
         **_kwargs,
     ):
         super().__init__()
@@ -526,6 +527,7 @@ class DynamicEngine(Expression):
         # neurosymbolic engine so per-component calls get real hang protection.
         self.client_timeout = client_timeout
         self.client_max_retries = client_max_retries
+        self.prompt_cache_options = prompt_cache_options
         self._entered = False
         self._lock = Lock()
         self.engine_instance = None
@@ -599,6 +601,8 @@ class DynamicEngine(Expression):
                 client_kwargs["client_timeout"] = self.client_timeout
             if self.client_max_retries is not None:
                 client_kwargs["client_max_retries"] = self.client_max_retries
+            if self.prompt_cache_options is not None and self.model.startswith("openai:"):
+                client_kwargs["prompt_cache_options"] = self.prompt_cache_options
             return engine_class(api_key=self.api_key, model=self.model, **client_kwargs)
         except Exception as e:
             msg = f"Failed to create engine for model '{self.model}': {e!s}"

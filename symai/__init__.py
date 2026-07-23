@@ -520,10 +520,17 @@ from symai.core import few_shot, zero_shot  # noqa
 from symai.functional import EngineRepository  # noqa
 from symai.post_processors import PostProcessor  # noqa
 from symai.pre_processors import PreProcessor  # noqa
-from symai.prompts import Prompt, PromptRegistry  # noqa
+from symai.prompts import (  # noqa
+    CACHE_BREAKPOINT,
+    Prompt,
+    PromptRegistry,
+    split_cache_breakpoints,
+    strip_cache_breakpoints,
+)
 from symai.symbol import Call, Expression, GlobalSymbolPrimitive, Metadata, Symbol  # noqa
 
 __all__ = [
+    "CACHE_BREAKPOINT",
     "SYMAI_VERSION",
     "Call",
     "Engine",
@@ -545,5 +552,7 @@ __all__ = [
     "few_shot",
     "run_server",
     "setup_wizard",
+    "split_cache_breakpoints",
+    "strip_cache_breakpoints",
     "zero_shot",
 ]
