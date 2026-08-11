@@ -6,7 +6,7 @@ The **neuro-symbolic** engine is our generic wrapper around large language model
 
 Each provider lives in its own folder under `symai/backend/engines/neurosymbolic/<provider>/` with an `engine.py` (the `Engine` subclass), a `models.py` (pydantic wire models plus the model spec table), and a `stream.py` (SSE adapter). There are **no vendor SDKs**: every provider is called over raw REST through the shared `httpx` transport in `symai/backend/transport.py` (connection pooling, retries, SSE parsing). Every engine follows the same forward pipeline: `build_request` → `call_request` → `parse_response`, where the request/response payloads are validated against the pydantic wire models in `models.py` (subclasses of `EngineRequestPayload` / `EngineResponsePayload` from `symai/backend/request.py`).
 
-The neuro-symbolic engines are `OpenAIEngine`, `AnthropicEngine`, `GoogleEngine`, `DeepseekEngine`, `CerebrasEngine`, `GroqEngine`, and `OpenRouterEngine`, plus the local `LlamaCppEngine` and `VLLMEngine`. Engine selection is driven by the `NEUROSYMBOLIC_ENGINE_MODEL` config key: canonical model IDs are **provider-prefixed** (`openai:gpt-5.4`, `anthropic:claude-sonnet-4-6`, `gemini:gemini-2.5-pro`, `deepseek:deepseek-v4-pro`, `cerebras:gpt-oss-120b`, `groq:openai/gpt-oss-120b`, `openrouter:moonshotai/kimi-k2.5`). The prefix is required—it selects the provider; shared names like `gpt-oss-120b` exist on both Cerebras and Groq.
+The neuro-symbolic engines are `OpenAIEngine`, `AnthropicEngine`, `GoogleEngine`, `DeepseekEngine`, `CerebrasEngine`, `GroqEngine`, `OpenRouterEngine`, and `OrcaRouterEngine`, plus the local `LlamaCppEngine` and `VLLMEngine`. Engine selection is driven by the `NEUROSYMBOLIC_ENGINE_MODEL` config key: canonical model IDs are **provider-prefixed** (`openai:gpt-5.4`, `anthropic:claude-sonnet-4-6`, `gemini:gemini-2.5-pro`, `deepseek:deepseek-v4-pro`, `cerebras:gpt-oss-120b`, `groq:openai/gpt-oss-120b`, `openrouter:moonshotai/kimi-k2.5`, `orcarouter:orcarouter/auto`). The prefix is required—it selects the provider; shared names like `gpt-oss-120b` exist on both Cerebras and Groq.
 
 Depending on which backend you configure (OpenAI/GPT, Claude, Gemini, Deepseek, Groq, Cerebras, …), a few things must be handled differently:
 
@@ -103,9 +103,9 @@ assert blocks[0].name == "get_stock_price"
 
 ---
 
-## Thinking Trace (Claude, Gemini, Deepseek, Groq, Cerebras, OpenAI, OpenRouter)
+## Thinking Trace (Claude, Gemini, Deepseek, Groq, Cerebras, OpenAI, OpenRouter, OrcaRouter)
 
-Some engines (Anthropic's Claude, Google's Gemini, Deepseek, Groq, Cerebras, OpenAI reasoning models, OpenRouter) can return an internal **thinking trace** that shows how they arrived at an answer. To get it, you must:
+Some engines (Anthropic's Claude, Google's Gemini, Deepseek, Groq, Cerebras, OpenAI reasoning models, OpenRouter, OrcaRouter) can return an internal **thinking trace** that shows how they arrived at an answer. To get it, you must:
 
 1. Pass `return_metadata=True`.
 2. Pass a `thinking=` configuration if required.
@@ -295,6 +295,23 @@ print(metadata.get("thinking", "No thinking trace available"))
 ```
 
 OpenRouter backends provide access to multiple model providers through a unified API gateway. The engine automatically handles model routing and supports provider-specific features when available. Token counting is not implemented for OpenRouter models, similar to Groq and Cerebras engines.
+
+### OrcaRouter
+
+```python
+from symai import Symbol
+
+# orcarouter:orcarouter/auto
+res, metadata = Symbol("Topic: Disneyland") \
+    .query(
+      "Write a dystopic take on the topic.",
+      return_metadata=True
+    )
+print(res)
+print(metadata.get("thinking", "No thinking trace available"))
+```
+
+[OrcaRouter](https://www.orcarouter.ai) is an OpenAI-compatible model routing gateway that exposes 150+ models from OpenAI, Anthropic, Google, DeepSeek, Qwen, MiniMax, xAI, and others behind a single endpoint and API key. The `orcarouter:orcarouter/auto` model is the gateway's default router — it selects the best underlying model for each request. Since billing and the effective context window follow the routed model, the spec table lists conservative token defaults for pre-flight accounting and no fixed per-token pricing. Token counting is not implemented for OrcaRouter models, similar to the OpenRouter, Groq, and Cerebras engines.
 
 ---
 
