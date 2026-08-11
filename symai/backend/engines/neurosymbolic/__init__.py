@@ -32,6 +32,13 @@ from symai.backend.engines.neurosymbolic.openrouter import (
     SUPPORTED_REASONING_MODELS as OPENROUTER_REASONING_MODELS,
 )
 from symai.backend.engines.neurosymbolic.openrouter import OpenRouterEngine
+from symai.backend.engines.neurosymbolic.orcarouter import (
+    SUPPORTED_CHAT_MODELS as ORCAROUTER_CHAT_MODELS,
+)
+from symai.backend.engines.neurosymbolic.orcarouter import (
+    SUPPORTED_REASONING_MODELS as ORCAROUTER_REASONING_MODELS,
+)
+from symai.backend.engines.neurosymbolic.orcarouter import OrcaRouterEngine
 
 # create the mapping
 ENGINE_MAPPING = {
@@ -46,6 +53,8 @@ ENGINE_MAPPING = {
     **dict.fromkeys(GROQ_REASONING_MODELS, GroqEngine),
     **dict.fromkeys(OPENROUTER_CHAT_MODELS, OpenRouterEngine),
     **dict.fromkeys(OPENROUTER_REASONING_MODELS, OpenRouterEngine),
+    **dict.fromkeys(ORCAROUTER_CHAT_MODELS, OrcaRouterEngine),
+    **dict.fromkeys(ORCAROUTER_REASONING_MODELS, OrcaRouterEngine),
 }
 
 __all__ = [
@@ -61,10 +70,13 @@ __all__ = [
     "OPENAI_MODELS",
     "OPENROUTER_CHAT_MODELS",
     "OPENROUTER_REASONING_MODELS",
+    "ORCAROUTER_CHAT_MODELS",
+    "ORCAROUTER_REASONING_MODELS",
     "AnthropicEngine",
     "DeepseekEngine",
     "GoogleEngine",
     "GroqEngine",
     "OpenAIEngine",
     "OpenRouterEngine",
+    "OrcaRouterEngine",
 ]
