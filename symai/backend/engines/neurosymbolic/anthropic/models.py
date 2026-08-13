@@ -52,6 +52,20 @@ ANTHROPIC_MODEL_SPECS = {
         sampling=False,
         pricing=ModelPricing(input=10.00, output=50.00, cached_input=1.00),
     ),
+    "claude-opus-5": AnthropicModelSpec(
+        context_tokens=LONG_CONTEXT_1M_TOKENS,
+        response_tokens=128_000,
+        reasoning=True,
+        vision=True,
+        # NOTE: thinking is on by default (an omitted `thinking` runs adaptive);
+        # `disabled` is only accepted at effort high or lower. Sampling kwargs
+        # are rejected as deprecated.
+        adaptive_thinking=True,
+        long_context_1m=True,
+        default_long_context_1m=True,
+        sampling=False,
+        pricing=ModelPricing(input=5.00, output=25.00, cached_input=0.50),
+    ),
     "claude-sonnet-5": AnthropicModelSpec(
         context_tokens=LONG_CONTEXT_1M_TOKENS,
         response_tokens=128_000,

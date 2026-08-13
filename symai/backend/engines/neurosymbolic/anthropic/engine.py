@@ -392,9 +392,24 @@ class AnthropicEngine(Engine):
 
         thinking_type = thinking_arg.get("type")
         if thinking_type == "disabled":
+            if model == "claude-fable-5":
+                # Fable rejects an explicit {"type": "disabled"} (thinking is
+                # always on); omitting the parameter is the closest valid form.
+                logger.warning(
+                    "Thinking cannot be disabled on claude-fable-5; omitting the thinking parameter."
+                )
+                return None, None
             return {"type": "disabled"}, None
 
-        if model in {"claude-opus-4-8", "claude-opus-4-7"}:
+        # Models where manual thinking (budget_tokens) is removed entirely — any
+        # thinking request is coerced to adaptive (budget_tokens returns 400 there).
+        if model in {
+            "claude-fable-5",
+            "claude-opus-5",
+            "claude-sonnet-5",
+            "claude-opus-4-8",
+            "claude-opus-4-7",
+        }:
             return {"type": "adaptive"}, thinking_arg.get("effort")
 
         if thinking_type == "adaptive":
