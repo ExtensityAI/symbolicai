@@ -21,7 +21,6 @@ ANTHROPIC_VERSION = "2023-06-01"
 
 CACHE_CONTROL_1H = {"type": "ephemeral", "ttl": "1h"}
 LONG_CONTEXT_1M_TOKENS = 1_000_000
-LONG_CONTEXT_1M_BETA_HEADER = "context-1m-2025-08-07"
 MAX_CACHE_BREAKPOINTS = 4
 
 
@@ -32,8 +31,6 @@ class AnthropicModelSpec:
     reasoning: bool
     vision: bool
     adaptive_thinking: bool
-    long_context_1m: bool
-    default_long_context_1m: bool
     sampling: bool
     pricing: ModelPricing | None
 
@@ -47,8 +44,6 @@ ANTHROPIC_MODEL_SPECS = {
         # NOTE: adaptive thinking is always on for Fable; temperature/top_p/top_k are
         # rejected as deprecated (verified 400 at API_PINNED).
         adaptive_thinking=True,
-        long_context_1m=True,
-        default_long_context_1m=True,
         sampling=False,
         pricing=ModelPricing(input=10.00, output=50.00, cached_input=1.00),
     ),
@@ -61,8 +56,6 @@ ANTHROPIC_MODEL_SPECS = {
         # `disabled` is only accepted at effort high or lower. Sampling kwargs
         # are rejected as deprecated.
         adaptive_thinking=True,
-        long_context_1m=True,
-        default_long_context_1m=True,
         sampling=False,
         pricing=ModelPricing(input=5.00, output=25.00, cached_input=0.50),
     ),
@@ -74,8 +67,6 @@ ANTHROPIC_MODEL_SPECS = {
         # NOTE: adaptive-thinking era; sampling kwargs are rejected as deprecated
         # (verified 400 at API_PINNED).
         adaptive_thinking=True,
-        long_context_1m=True,
-        default_long_context_1m=True,
         sampling=False,
         # NOTE: introductory pricing through 2026-08-31, then $3.00/$15.00.
         pricing=ModelPricing(input=2.00, output=10.00, cached_input=0.20),
@@ -86,8 +77,6 @@ ANTHROPIC_MODEL_SPECS = {
         reasoning=True,
         vision=True,
         adaptive_thinking=True,
-        long_context_1m=True,
-        default_long_context_1m=True,
         sampling=False,
         pricing=ModelPricing(input=5.00, output=25.00, cached_input=0.50),
     ),
@@ -97,8 +86,6 @@ ANTHROPIC_MODEL_SPECS = {
         reasoning=True,
         vision=True,
         adaptive_thinking=True,
-        long_context_1m=True,
-        default_long_context_1m=True,
         sampling=False,
         pricing=ModelPricing(input=5.00, output=25.00, cached_input=0.50),
     ),
@@ -108,8 +95,6 @@ ANTHROPIC_MODEL_SPECS = {
         reasoning=True,
         vision=True,
         adaptive_thinking=True,
-        long_context_1m=True,
-        default_long_context_1m=False,
         sampling=True,
         pricing=ModelPricing(input=5.00, output=25.00, cached_input=0.50),
     ),
@@ -119,8 +104,6 @@ ANTHROPIC_MODEL_SPECS = {
         reasoning=True,
         vision=True,
         adaptive_thinking=True,
-        long_context_1m=True,
-        default_long_context_1m=False,
         sampling=True,
         pricing=ModelPricing(input=3.00, output=15.00, cached_input=0.30),
     ),
@@ -130,8 +113,6 @@ ANTHROPIC_MODEL_SPECS = {
         reasoning=True,
         vision=True,
         adaptive_thinking=False,
-        long_context_1m=False,
-        default_long_context_1m=False,
         sampling=True,
         pricing=ModelPricing(input=5.00, output=25.00, cached_input=0.50),
     ),
@@ -141,8 +122,6 @@ ANTHROPIC_MODEL_SPECS = {
         reasoning=True,
         vision=True,
         adaptive_thinking=False,
-        long_context_1m=False,
-        default_long_context_1m=False,
         sampling=True,
         pricing=ModelPricing(input=15.00, output=75.00, cached_input=1.50),
     ),
@@ -152,8 +131,6 @@ ANTHROPIC_MODEL_SPECS = {
         reasoning=True,
         vision=True,
         adaptive_thinking=False,
-        long_context_1m=False,
-        default_long_context_1m=False,
         sampling=True,
         pricing=ModelPricing(input=1.00, output=5.00, cached_input=0.10),
     ),
@@ -163,8 +140,6 @@ ANTHROPIC_MODEL_SPECS = {
         reasoning=True,
         vision=True,
         adaptive_thinking=False,
-        long_context_1m=True,
-        default_long_context_1m=False,
         sampling=True,
         pricing=ModelPricing(input=3.00, output=15.00, cached_input=0.30),
     ),
@@ -244,7 +219,6 @@ class AnthropicPayload(EngineRequestPayload):
     metadata: dict[str, JsonValue] | None = None
     tools: list[dict[str, JsonValue]] | None = None
     tool_choice: Literal["none", "auto", "any", "tool"] | dict[str, JsonValue] | None = None
-    long_context_1m: bool | None = None
     cache_control: dict[str, JsonValue] | bool | None = None
 
 
@@ -291,6 +265,15 @@ class AnthropicContentBlock(EngineResponsePayload):
     name: str | None = None
     input: dict[str, JsonValue] | None = None
     cache_control: dict[str, JsonValue] | None = None
+    #: `redacted_thinking` carries its opaque encrypted payload in `data`; it must be
+    #: echoed back unchanged when the block re-enters the conversation.
+    data: str | None = None
+    #: Server tool result blocks (web_search/web_fetch/code_execution/MCP results)
+    #: must echo tool_use_id and content back into the conversation unchanged.
+    tool_use_id: str | None = None
+    content: list[dict[str, JsonValue]] | str | None = None
+    #: MCP tool blocks additionally identify the server by name.
+    server_name: str | None = None
 
 
 class AnthropicResponse(EngineResponsePayload):

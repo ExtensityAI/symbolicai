@@ -2,9 +2,11 @@
 
 Anthropic streams named events (message_start, content_block_start/delta/stop,
 message_delta, message_stop, ping). Usage arrives split: input tokens on
-message_start, output tokens on message_delta — the engine merges both. Tool use
-arrives as tool_use blocks whose JSON input streams via input_json_delta events;
-the adapter is stateful and accumulates them.
+message_start, output tokens on message_delta — the engine merges both.
+
+Each content block is accumulated in emit order, including thinking signatures
+(signature_delta) and tool_use JSON (input_json_delta). The collector must be
+able to send those blocks back on the next turn.
 """
 
 from __future__ import annotations
@@ -20,8 +22,13 @@ if TYPE_CHECKING:
 
 class AnthropicStreamAdapter:
     def __init__(self):
+        self.blocks = {}
         self.tool_calls = []
-        self._active_tool_calls = {}
+        self._tool_json = {}
+
+    def content(self) -> list[dict]:
+        """Completed content blocks in Anthropic index order."""
+        return [self.blocks[index] for index in sorted(self.blocks)]
 
     def process_event(self, event: SSEEvent) -> EngineStreamDelta:
         if event.data == "[DONE]":
@@ -38,34 +45,11 @@ class AnthropicStreamAdapter:
             usage = chunk.get("message", {}).get("usage")
             return EngineStreamDelta(usage=usage, raw=chunk)
         if event.event == "content_block_start":
-            block = chunk.get("content_block", {})
-            if block.get("type") == "tool_use":
-                self._active_tool_calls[chunk["index"]] = {
-                    "id": block.get("id"),
-                    "name": block.get("name"),
-                    "json": "",
-                }
-            return EngineStreamDelta(raw=chunk)
+            return self._start_block(chunk)
         if event.event == "content_block_delta":
-            delta = chunk.get("delta", {})
-            delta_type = delta.get("type")
-            if delta_type == "text_delta":
-                return EngineStreamDelta(text=delta.get("text") or "", raw=chunk)
-            if delta_type == "thinking_delta":
-                return EngineStreamDelta(thinking=delta.get("thinking") or "", raw=chunk)
-            if delta_type == "input_json_delta" and chunk.get("index") in self._active_tool_calls:
-                self._active_tool_calls[chunk["index"]]["json"] += delta.get("partial_json") or ""
-            return EngineStreamDelta(raw=chunk)
+            return self._delta_block(chunk)
         if event.event == "content_block_stop":
-            index = chunk.get("index")
-            if index in self._active_tool_calls:
-                info = self._active_tool_calls.pop(index)
-                try:
-                    arguments = json.loads(info["json"]) if info["json"] else {}
-                except json.JSONDecodeError:
-                    arguments = {}
-                self.tool_calls.append({"id": info["id"], "name": info["name"], "input": arguments})
-            return EngineStreamDelta(raw=chunk)
+            return self._stop_block(chunk)
         if event.event == "message_delta":
             delta = chunk.get("delta") or {}
             return EngineStreamDelta(
@@ -76,4 +60,60 @@ class AnthropicStreamAdapter:
         if event.event == "message_stop":
             return EngineStreamDelta(done=True, raw=chunk)
 
+        return EngineStreamDelta(raw=chunk)
+
+    def _start_block(self, chunk: dict) -> EngineStreamDelta:
+        index = chunk["index"]
+        block = dict(chunk.get("content_block") or {})
+        self.blocks[index] = block
+        if block.get("type") in {"tool_use", "server_tool_use"}:
+            self._tool_json[index] = ""
+        if block.get("type") == "text":
+            return EngineStreamDelta(text=block.get("text") or "", raw=chunk)
+        if block.get("type") == "thinking":
+            return EngineStreamDelta(thinking=block.get("thinking") or "", raw=chunk)
+        return EngineStreamDelta(raw=chunk)
+
+    def _delta_block(self, chunk: dict) -> EngineStreamDelta:
+        index = chunk.get("index")
+        delta = chunk.get("delta") or {}
+        delta_type = delta.get("type")
+        block = self.blocks.get(index)
+        if block is None:
+            return EngineStreamDelta(raw=chunk)
+        if delta_type == "text_delta":
+            text = delta.get("text") or ""
+            block["text"] = (block.get("text") or "") + text
+            return EngineStreamDelta(text=text, raw=chunk)
+        if delta_type == "thinking_delta":
+            thinking = delta.get("thinking") or ""
+            block["thinking"] = (block.get("thinking") or "") + thinking
+            return EngineStreamDelta(thinking=thinking, raw=chunk)
+        if delta_type == "signature_delta":
+            # NOTE: the stamp Anthropic requires when the thinking block is echoed
+            # back on the next turn. One or more deltas concatenate to the signature.
+            block["signature"] = (block.get("signature") or "") + (delta.get("signature") or "")
+            return EngineStreamDelta(raw=chunk)
+        if delta_type == "input_json_delta" and index in self._tool_json:
+            self._tool_json[index] += delta.get("partial_json") or ""
+        return EngineStreamDelta(raw=chunk)
+
+    def _stop_block(self, chunk: dict) -> EngineStreamDelta:
+        index = chunk.get("index")
+        if index in self._tool_json:
+            raw_json = self._tool_json.pop(index)
+            block = self.blocks[index]
+            if raw_json:
+                try:
+                    block["input"] = json.loads(raw_json)
+                except json.JSONDecodeError:
+                    block["input"] = {}
+            elif "input" not in block:
+                block["input"] = {}
+            if block.get("type") == "tool_use":
+                # NOTE: server_tool_use streams input the same way, but the server
+                # already executed it — keep it out of the client-side call surface.
+                self.tool_calls.append(
+                    {"id": block.get("id"), "name": block.get("name"), "input": block.get("input")}
+                )
         return EngineStreamDelta(raw=chunk)

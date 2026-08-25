@@ -3,6 +3,7 @@ import json
 from pathlib import Path
 from typing import ClassVar
 
+import pytest
 import httpx
 
 from symai.backend.engines.neurosymbolic.anthropic.engine import (
@@ -18,6 +19,8 @@ from symai.backend.engines.neurosymbolic.anthropic.models import (
     AnthropicResponse,
     anthropic_strip_prefix,
 )
+from symai.backend.engines.neurosymbolic.anthropic.stream import AnthropicStreamAdapter
+from symai.backend.transport import SSEEvent
 from symai.components import MetadataTracker
 from symai.prompts import CACHE_BREAKPOINT
 from tests.engines.mock_api import MockAPI
@@ -412,3 +415,451 @@ class TestAnthropicEngine(NeurosymbolicEngineTestInterface):
         assert "count_tokens" in str(api.last_request.url)
         assert api.last_request.headers["x-api-key"] == "sk-test-not-a-real-key"
         assert api.last_request.headers["anthropic-version"] == ANTHROPIC_VERSION
+
+    def test_build_request_preserves_system_content_blocks(self):
+        system_blocks = [
+            {"type": "text", "text": "brief"},
+            {"type": "text", "text": "rules", "cache_control": {"type": "ephemeral"}},
+        ]
+        argument = self.make_prepared_argument(
+            messages=[
+                {"role": "system", "content": system_blocks},
+                {"role": "user", "content": "go"},
+            ]
+        )
+
+        body = self.make_engine().build_request(argument).body()
+
+        assert body["system"] == system_blocks
+        assert body["messages"] == [{"role": "user", "content": "go"}]
+
+    def test_complete_posts_payload_without_rewriting(self):
+        engine = self.make_engine(model="anthropic:claude-opus-5")
+        system = [
+            {"type": "text", "text": "brief"},
+            {"type": "text", "text": "rules", "cache_control": {"type": "ephemeral"}},
+        ]
+        messages = [
+            {"role": "user", "content": "go"},
+            {
+                "role": "assistant",
+                "content": [
+                    {"type": "thinking", "thinking": "plan", "signature": "sig"},
+                    {"type": "tool_use", "id": "toolu_1", "name": "list_assets", "input": {}},
+                ],
+            },
+            {
+                "role": "user",
+                "content": [
+                    {
+                        "type": "tool_result",
+                        "tool_use_id": "toolu_1",
+                        "content": "ok",
+                        "cache_control": {"type": "ephemeral"},
+                    }
+                ],
+            },
+        ]
+        payload = {
+            "model": "claude-opus-5",
+            "max_tokens": 256,
+            "system": system,
+            "tools": [self.weather_tool_spec()],
+            "thinking": {"type": "adaptive"},
+            "output_config": {"effort": "low"},
+            "messages": messages,
+            "stream": False,
+            "cache_control": {"type": "ephemeral", "ttl": "1h"},
+        }
+
+        with MockAPI(
+            engine,
+            lambda request: httpx.Response(200, json=self.mock_response_json(), request=request),
+        ) as api:
+            response = engine.complete(payload)
+
+        body = api.last_body
+        assert body["system"] == system
+        assert body["messages"] == messages
+        assert body["thinking"] == {"type": "adaptive"}
+        assert body["output_config"] == {"effort": "low"}
+        assert body["cache_control"] == {"type": "ephemeral", "ttl": "1h"}
+        assert isinstance(response, AnthropicResponse)
+        assert response.content[0].type == "thinking"
+
+    def test_complete_stream_keeps_signature_and_parallel_tools(self):
+        engine = self.make_engine()
+
+        with MockAPI(
+            engine,
+            lambda request: httpx.Response(
+                200,
+                content=_roundtrip_sse_body(),
+                headers={"content-type": "text/event-stream"},
+                request=request,
+            ),
+        ):
+            response = engine.complete(
+                {
+                    "messages": [{"role": "user", "content": "read the assets"}],
+                    "max_tokens": 64,
+                    "stream": True,
+                }
+            )
+
+        types = [block.type for block in response.content]
+        assert types == ["thinking", "text", "tool_use", "tool_use"]
+        assert response.content[0].thinking == "Need both files."
+        assert response.content[0].signature == "sig-abc"
+        assert response.content[1].text == "calling tools"
+        assert response.content[2].name == "list_assets"
+        assert response.content[2].input == {}
+        assert response.content[3].name == "read_asset"
+        assert response.content[3].input == {"asset_id": "a1"}
+        assert response.stop_reason == "tool_use"
+
+    def test_complete_forwards_unknown_messages_fields(self):
+        # New API params between payload pins must not be eaten by the strict model.
+        engine = self.make_engine()
+
+        with MockAPI(
+            engine,
+            lambda request: httpx.Response(200, json=self.mock_response_json(), request=request),
+        ) as api:
+            engine.complete(
+                {
+                    "messages": [{"role": "user", "content": "hi"}],
+                    "max_tokens": 16,
+                    "stream": False,
+                    "container": {"id": "ctx_123"},
+                    "service_tier": "standard",
+                }
+            )
+
+        body = api.last_body
+        assert body["container"] == {"id": "ctx_123"}
+        assert body["service_tier"] == "standard"
+
+    @pytest.mark.engine_live
+    def test_live_complete_roundtrip_opus_5(self, engine_api_mode):
+        api_key = self.require_live(engine_api_mode)
+        engine = self.make_live_engine("anthropic:claude-opus-5", api_key)
+        system = [
+            {"type": "text", "text": "Answer briefly."},
+            {
+                "type": "text",
+                "text": "Use only the requested words.",
+                "cache_control": {"type": "ephemeral"},
+            },
+        ]
+        user = {"role": "user", "content": "What is 37 times 41? Reply with only the number."}
+        first = engine.complete(
+            {
+                "model": "claude-opus-5",
+                "max_tokens": 4096,
+                "system": system,
+                "thinking": {"type": "adaptive"},
+                "output_config": {"effort": "high"},
+                "messages": [user],
+            },
+            timeout=120.0,
+        )
+        thinking = [block for block in first.content if block.type == "thinking"]
+        text = [block for block in first.content if block.type == "text"]
+        assert thinking, f"expected thinking; types={[b.type for b in first.content]}"
+        assert thinking[0].signature, "streamed thinking must keep its signature"
+        assert text and "1517" in (text[0].text or "")
+
+        second = engine.complete(
+            {
+                "model": "claude-opus-5",
+                "max_tokens": 4096,
+                "system": system,
+                "thinking": {"type": "adaptive"},
+                "output_config": {"effort": "high"},
+                "messages": [
+                    user,
+                    {
+                        "role": "assistant",
+                        "content": [
+                            block.model_dump(exclude_none=True) for block in first.content
+                        ],
+                    },
+                    {"role": "user", "content": "Reply with exactly: confirmed"},
+                ],
+            },
+            timeout=120.0,
+        )
+
+        assert second.stop_reason == "end_turn"
+        assert second.usage.input_tokens > 0
+        confirmed = "".join(block.text or "" for block in second.content if block.type == "text")
+        assert "confirmed" in confirmed.lower()
+
+    @pytest.mark.engine_live
+    def test_live_complete_tool_roundtrip_opus_5(self, engine_api_mode):
+        api_key = self.require_live(engine_api_mode)
+        engine = self.make_live_engine("anthropic:claude-opus-5", api_key)
+        tools = [self.weather_tool_spec()]
+        user = {
+            "role": "user",
+            "content": "What is the weather in Paris? Call get_weather. Do not guess.",
+        }
+        first = engine.complete(
+            {
+                "model": "claude-opus-5",
+                "max_tokens": 4096,
+                "tools": tools,
+                "tool_choice": {"type": "any"},
+                "thinking": {"type": "adaptive"},
+                "output_config": {"effort": "high"},
+                "messages": [user],
+            },
+            timeout=120.0,
+        )
+        tool_uses = [block for block in first.content if block.type == "tool_use"]
+        thinking = [block for block in first.content if block.type == "thinking"]
+        assert tool_uses, f"expected tool_use; types={[b.type for b in first.content]}"
+        assert tool_uses[0].name == "get_weather"
+        assert tool_uses[0].id
+        if thinking:
+            assert thinking[0].signature, "thinking next to a tool call must keep its signature"
+
+        results = [
+            {
+                "type": "tool_result",
+                "tool_use_id": block.id,
+                "content": "18C, clear",
+            }
+            for block in tool_uses
+        ]
+        second = engine.complete(
+            {
+                "model": "claude-opus-5",
+                "max_tokens": 4096,
+                "tools": tools,
+                "thinking": {"type": "adaptive"},
+                "output_config": {"effort": "high"},
+                "messages": [
+                    user,
+                    {
+                        "role": "assistant",
+                        "content": [
+                            block.model_dump(exclude_none=True) for block in first.content
+                        ],
+                    },
+                    {"role": "user", "content": results},
+                ],
+            },
+            timeout=120.0,
+        )
+
+        assert second.stop_reason in {"end_turn", "tool_use"}
+        assert second.usage.input_tokens > 0
+        if second.stop_reason == "end_turn":
+            answer = "".join(block.text or "" for block in second.content if block.type == "text")
+            assert "18" in answer
+
+
+def _sse_event(event, data):
+    return SSEEvent(event=event, data=json.dumps(data))
+
+
+def _roundtrip_sse_body():
+    chunks = [
+        (
+            "message_start",
+            {"message": {"role": "assistant", "usage": {"input_tokens": 10, "output_tokens": 1}}},
+        ),
+        (
+            "content_block_start",
+            {"index": 0, "content_block": {"type": "thinking", "thinking": ""}},
+        ),
+        (
+            "content_block_delta",
+            {"index": 0, "delta": {"type": "thinking_delta", "thinking": "Need both files."}},
+        ),
+        (
+            "content_block_delta",
+            {"index": 0, "delta": {"type": "signature_delta", "signature": "sig-abc"}},
+        ),
+        ("content_block_stop", {"index": 0}),
+        ("content_block_start", {"index": 1, "content_block": {"type": "text", "text": ""}}),
+        (
+            "content_block_delta",
+            {"index": 1, "delta": {"type": "text_delta", "text": "calling tools"}},
+        ),
+        ("content_block_stop", {"index": 1}),
+        (
+            "content_block_start",
+            {
+                "index": 2,
+                "content_block": {"type": "tool_use", "id": "toolu_1", "name": "list_assets"},
+            },
+        ),
+        (
+            "content_block_delta",
+            {"index": 2, "delta": {"type": "input_json_delta", "partial_json": "{}"}},
+        ),
+        ("content_block_stop", {"index": 2}),
+        (
+            "content_block_start",
+            {
+                "index": 3,
+                "content_block": {"type": "tool_use", "id": "toolu_2", "name": "read_asset"},
+            },
+        ),
+        (
+            "content_block_delta",
+            {
+                "index": 3,
+                "delta": {"type": "input_json_delta", "partial_json": '{"asset_id":'},
+            },
+        ),
+        (
+            "content_block_delta",
+            {"index": 3, "delta": {"type": "input_json_delta", "partial_json": ' "a1"}'}},
+        ),
+        ("content_block_stop", {"index": 3}),
+        (
+            "message_delta",
+            {"delta": {"stop_reason": "tool_use"}, "usage": {"output_tokens": 20}},
+        ),
+        ("message_stop", {}),
+    ]
+    lines = []
+    for event, data in chunks:
+        lines.append(f"event: {event}")
+        lines.append(f"data: {json.dumps(data)}")
+        lines.append("")
+    return "\n".join(lines).encode("utf-8")
+
+
+class TestAnthropicStreamAdapter:
+    def test_keeps_signature_and_parallel_tool_blocks(self):
+        adapter = AnthropicStreamAdapter()
+        for event, data in [
+            (
+                "message_start",
+                {"message": {"usage": {"input_tokens": 3, "output_tokens": 1}}},
+            ),
+            (
+                "content_block_start",
+                {"index": 0, "content_block": {"type": "thinking", "thinking": ""}},
+            ),
+            (
+                "content_block_delta",
+                {"index": 0, "delta": {"type": "thinking_delta", "thinking": "x"}},
+            ),
+            (
+                "content_block_delta",
+                {"index": 0, "delta": {"type": "signature_delta", "signature": "s1"}},
+            ),
+            ("content_block_stop", {"index": 0}),
+            (
+                "content_block_start",
+                {
+                    "index": 1,
+                    "content_block": {"type": "tool_use", "id": "t1", "name": "list_assets"},
+                },
+            ),
+            (
+                "content_block_delta",
+                {"index": 1, "delta": {"type": "input_json_delta", "partial_json": "{}"}},
+            ),
+            ("content_block_stop", {"index": 1}),
+            (
+                "content_block_start",
+                {
+                    "index": 2,
+                    "content_block": {"type": "tool_use", "id": "t2", "name": "read_asset"},
+                },
+            ),
+            (
+                "content_block_delta",
+                {"index": 2, "delta": {"type": "input_json_delta", "partial_json": '{"id":1}'}},
+            ),
+            ("content_block_stop", {"index": 2}),
+            ("message_delta", {"delta": {"stop_reason": "tool_use"}, "usage": {"output_tokens": 4}}),
+            ("message_stop", {}),
+        ]:
+            adapter.process_event(_sse_event(event, data))
+
+        content = adapter.content()
+        assert [block["type"] for block in content] == ["thinking", "tool_use", "tool_use"]
+        assert content[0]["signature"] == "s1"
+        assert content[1]["name"] == "list_assets"
+        assert content[2]["input"] == {"id": 1}
+        assert [call["name"] for call in adapter.tool_calls] == ["list_assets", "read_asset"]
+
+    def test_keeps_redacted_thinking_data(self):
+        adapter = AnthropicStreamAdapter()
+        for event, data in [
+            ("message_start", {"message": {"usage": {"input_tokens": 3, "output_tokens": 1}}}),
+            (
+                "content_block_start",
+                {
+                    "index": 0,
+                    "content_block": {"type": "redacted_thinking", "data": "encrypted-payload"},
+                },
+            ),
+            ("content_block_stop", {"index": 0}),
+            ("content_block_start", {"index": 1, "content_block": {"type": "text", "text": ""}}),
+            ("content_block_delta", {"index": 1, "delta": {"type": "text_delta", "text": "ok"}}),
+            ("content_block_stop", {"index": 1}),
+            (
+                "message_delta",
+                {"delta": {"stop_reason": "end_turn"}, "usage": {"output_tokens": 2}},
+            ),
+            ("message_stop", {}),
+        ]:
+            adapter.process_event(_sse_event(event, data))
+
+        content = adapter.content()
+        assert content[0]["type"] == "redacted_thinking"
+        assert content[0]["data"] == "encrypted-payload"
+
+    def test_accumulates_server_tool_use_input_but_keeps_it_off_tool_calls(self):
+        adapter = AnthropicStreamAdapter()
+        for event, data in [
+            ("message_start", {"message": {"usage": {"input_tokens": 3, "output_tokens": 1}}}),
+            (
+                "content_block_start",
+                {
+                    "index": 0,
+                    "content_block": {
+                        "type": "server_tool_use",
+                        "id": "srvtoolu_1",
+                        "name": "web_search",
+                        "input": {},
+                    },
+                },
+            ),
+            (
+                "content_block_delta",
+                {"index": 0, "delta": {"type": "input_json_delta", "partial_json": '{"query":"x"}'}},
+            ),
+            ("content_block_stop", {"index": 0}),
+            ("message_delta", {"delta": {"stop_reason": "pause_turn"}, "usage": {"output_tokens": 2}}),
+            ("message_stop", {}),
+        ]:
+            adapter.process_event(_sse_event(event, data))
+
+        content = adapter.content()
+        assert content[0]["input"] == {"query": "x"}
+        assert adapter.tool_calls == []
+
+    def test_server_tool_result_block_keeps_tool_use_id_and_content(self):
+        from symai.backend.engines.neurosymbolic.anthropic.models import AnthropicContentBlock
+
+        block = AnthropicContentBlock.model_validate(
+            {
+                "type": "web_search_tool_result",
+                "tool_use_id": "srvtoolu_1",
+                "content": [{"type": "web_search_result", "url": "https://example.com"}],
+            }
+        )
+
+        dumped = block.model_dump(exclude_none=True)
+        assert dumped["tool_use_id"] == "srvtoolu_1"
+        assert dumped["content"] == [{"type": "web_search_result", "url": "https://example.com"}]

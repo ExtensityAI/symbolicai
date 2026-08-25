@@ -159,30 +159,6 @@ warning through the `symai` logger and falls back to manual thinking
 (`{"type":"enabled","budget_tokens":...}`). This is runtime behavior and not a
 `symai.config.json` key.
 
-### Claude 1M Context (Runtime Opt-In)
-
-The newer Claude reasoning models (`claude-fable-5`, `claude-sonnet-5`, `claude-opus-4-8`, `claude-opus-4-7`) default to a 1M token context window. For the following models you can opt into 1M context per request using `long_context_1m=True` (this sends the Anthropic beta header):
-
-- `claude-opus-4-6`
-- `claude-sonnet-4-6`
-- `claude-sonnet-4-5`
-
-This is runtime-only and is not configured via `symai.config.json`.
-
-```python
-from symai import Symbol
-
-res = Symbol("Analyze this very long corpus...").query(
-    "Extract a structured timeline of key events.",
-    model="anthropic:claude-opus-4-6",
-    long_context_1m=True,
-)
-print(res)
-```
-
-If `long_context_1m=True` is used with a model that does not support it, SymbolicAI logs a warning
-through the `symai` logger and falls back to the standard 200K context behavior.
-
 ### Gemini (Google)
 
 Two ways to enable thinking — a **token budget** (exact cap) or a **preset level** (`"low"`, `"medium"`, `"high"`):

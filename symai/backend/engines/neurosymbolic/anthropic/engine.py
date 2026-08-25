@@ -9,7 +9,6 @@ from symai.backend.base import Engine
 from symai.backend.engines.neurosymbolic._prompts import render_chat_system_prompt
 from symai.backend.engines.neurosymbolic.anthropic.models import (
     ANTHROPIC_VERSION,
-    LONG_CONTEXT_1M_BETA_HEADER,
     SUPPORTED_ANTHROPIC_MODELS,
     AnthropicCountTokensPayload,
     AnthropicCountTokensRequest,
@@ -154,18 +153,6 @@ class AnthropicEngine(Engine):
         cache_control = resolve_cache_control(payload_kwargs.pop("cache_control", None))
         messages, cache_control = self._apply_cache_breakpoints(messages, cache_control)
 
-        long_context_1m = payload_kwargs.pop("long_context_1m", False)
-        extra_beta_headers = {}
-        if long_context_1m:
-            if spec.long_context_1m and not spec.default_long_context_1m:
-                extra_beta_headers = {"anthropic-beta": LONG_CONTEXT_1M_BETA_HEADER}
-            elif not spec.long_context_1m:
-                logger.warning(
-                    "long_context_1m is not supported by %s; falling back to %s token context.",
-                    model,
-                    spec.context_tokens,
-                )
-
         thinking, adaptive_effort = self._build_thinking_config(
             payload_kwargs.pop("thinking", None), model, spec
         )
@@ -202,7 +189,6 @@ class AnthropicEngine(Engine):
         request_options = options.model_dump(exclude_none=True)
 
         headers = self._auth_headers()
-        headers.update(extra_beta_headers)
         headers.update(request_options.get("extra_headers", {}))
 
         extra_body = request_options.get("extra_body")
@@ -246,6 +232,66 @@ class AnthropicEngine(Engine):
             max_retries=max_retries,
         )
         return AnthropicResponse.model_validate(response.json())
+
+    def complete(
+        self,
+        payload: dict,
+        *,
+        extra_headers: dict | None = None,
+        timeout: float | None = None,
+    ):
+        """Post a Messages request as the caller wrote it.
+
+        No prompt rendering, no system stringify, no injected cache_control.
+        Streamed replies keep Anthropic's content blocks (thinking signatures included)
+        so the next turn can send them back.
+        """
+        if self.id() != "neurosymbolic":
+            msg = (
+                "Anthropic engine is not configured. Please set a supported "
+                "NEUROSYMBOLIC_ENGINE_MODEL and NEUROSYMBOLIC_ENGINE_API_KEY."
+            )
+            raise ValueError(msg)
+
+        body = dict(payload)
+        model = anthropic_strip_prefix(body.get("model", self.model))
+        spec = anthropic_model_spec_for(model)
+        body["model"] = model
+        body.setdefault("max_tokens", spec.response_tokens)
+        body.setdefault("stream", True)
+        # NOTE: cache_control is a real Messages field and is posted as-is.
+        # False is only the Function-path "do not cache" sentinel.
+        if body.get("cache_control") is False:
+            body.pop("cache_control")
+        # NOTE: AnthropicPayload is strict (extra="forbid"). Messages fields the model
+        # does not know yet (new API params between pins) ride through extra_body
+        # instead of failing validation — the proxy must not eat a legal request.
+        extra_body = {
+            key: value for key, value in body.items() if key not in AnthropicPayload.model_fields
+        }
+        body = {key: value for key, value in body.items() if key in AnthropicPayload.model_fields}
+
+        headers = self._auth_headers()
+        if extra_headers:
+            headers.update(extra_headers)
+        option_kwargs = {}
+        if extra_headers:
+            option_kwargs["extra_headers"] = extra_headers
+        if timeout is not None:
+            option_kwargs["timeout"] = timeout
+
+        request = AnthropicRequest(
+            provider="anthropic",
+            operation="messages.create",
+            payload=AnthropicPayload.model_validate(body),
+            call_options=AnthropicOptions.model_validate(option_kwargs),
+            method="POST",
+            url=ANTHROPIC_MESSAGES_URL,
+            headers=headers,
+            timeout=timeout if timeout is not None else self.client_timeout,
+            extra_body=extra_body or None,
+        )
+        return self.call_request(request)
 
     def parse_response(self, response: AnthropicResponse, argument=None):
         metadata: dict = {"raw_output": response}
@@ -324,7 +370,9 @@ class AnthropicEngine(Engine):
             role = message.get("role")
             content = message.get("content")
             if role == "system":
-                system = content if isinstance(content, str) else json.dumps(content)
+                # NOTE: keep system text and content-block lists (with cache_control)
+                # intact. Only stringify leftover shapes the Messages API would reject.
+                system = content if isinstance(content, str | list) else json.dumps(content)
                 continue
             messages.append(self._build_message_payload(role, content))
         return system, messages
@@ -474,19 +522,9 @@ class AnthropicEngine(Engine):
             if accumulator.done:
                 break
 
-        content = []
-        if accumulator.thinking:
-            content.append({"type": "thinking", "thinking": accumulator.thinking})
-        content.append({"type": "text", "text": accumulator.text})
-        for tool_call in adapter.tool_calls:
-            content.append(
-                {
-                    "type": "tool_use",
-                    "id": tool_call["id"],
-                    "name": tool_call["name"],
-                    "input": tool_call["input"],
-                }
-            )
+        content = adapter.content()
+        if not content:
+            content = [{"type": "text", "text": accumulator.text}]
 
         return AnthropicResponse.model_validate(
             {
