@@ -2,6 +2,7 @@
 
 Locked against https://developers.openai.com/api/docs/models + /responses endpoint
 Pricing: https://developers.openai.com/api/docs/pricing (short-context standard tier)
+gpt-6-astra: https://developers.openai.com/api/docs/models/gpt-6-astra (read 2026-09-07)
 """
 
 from __future__ import annotations
@@ -28,11 +29,29 @@ class OpenAIModelSpec:
     tokenizer: str
     pricing: ModelPricing | None
     # NOTE: explicit prompt cache breakpoints (prompt_cache_breakpoint mode=explicit)
-    # exist only on GPT-5.6 models at API_PINNED.
+    # exist on GPT-5.6 and later models (gpt-6-astra confirmed 2026-09-07).
     explicit_cache: bool = False
+    # NOTE: the reasoning.effort values the model page lists; validated locally in
+    # build_request. None leaves validation to the API (o3 / gpt-5.x).
+    reasoning_efforts: tuple[str, ...] | None = None
 
 
 OPENAI_MODEL_SPECS = {
+    "gpt-6-astra": OpenAIModelSpec(
+        context_tokens=1_050_000,
+        response_tokens=128_000,
+        reasoning=True,
+        vision=True,
+        pro=False,
+        tokenizer="o200k_base",
+        # NOTE: GPT-5.6-and-later cache rule: writes bill at 1.25x input, reads at
+        # 0.1x. The long-context tier (input above 272K: 20 / 25 / 2 / 75) is not
+        # modelled. Reasoning tokens are output tokens (already in output_tokens).
+        pricing=ModelPricing(input=10.00, output=50.00, cached_input=1.00, cache_write=12.50),
+        explicit_cache=True,
+        # NOTE: `none` is rejected by the API (HTTP 400); `minimal` is not listed.
+        reasoning_efforts=("low", "medium", "high", "xhigh", "max"),
+    ),
     "gpt-5.6-sol": OpenAIModelSpec(
         context_tokens=1_050_000,
         response_tokens=128_000,

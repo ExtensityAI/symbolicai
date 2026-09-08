@@ -297,6 +297,8 @@ class EngineTestInterface:
                 assert spec.pricing.output >= 0
                 if spec.pricing.cached_input is not None:
                     assert spec.pricing.cached_input <= spec.pricing.input
+                if spec.pricing.cache_write is not None:
+                    assert spec.pricing.cache_write >= spec.pricing.input
 
     def test_build_request_wire_shape(self):
         engine = self.make_engine(client_timeout=7.0)

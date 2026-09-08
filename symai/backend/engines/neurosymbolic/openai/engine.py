@@ -203,6 +203,9 @@ class OpenAIEngine(Engine):
                 payload_kwargs["reasoning"] = {"effort": "high"}
             else:
                 payload_kwargs["reasoning"] = payload_kwargs.get("reasoning", {"effort": "medium"})
+            self._validate_reasoning_effort(
+                payload_kwargs["model"], payload_kwargs["reasoning"], model_spec
+            )
 
         tools = payload_kwargs.get("tools")
         if tools:
@@ -461,6 +464,20 @@ class OpenAIEngine(Engine):
                     blocks.append(block)
             prepared.append({**message, "content": blocks})
         return prepared
+
+    @staticmethod
+    def _validate_reasoning_effort(model: str, reasoning, model_spec) -> None:
+        # NOTE: mirrors the Cerebras engine — fail locally on an effort the model page
+        # does not list instead of round-tripping a 400 (gpt-6-astra rejects `none`).
+        if model_spec.reasoning_efforts is None or not isinstance(reasoning, dict):
+            return
+        effort = reasoning.get("effort")
+        if effort is not None and effort not in model_spec.reasoning_efforts:
+            msg = (
+                f"Unsupported reasoning effort {effort!r} for OpenAI model {model}. "
+                f"Supported values: {list(model_spec.reasoning_efforts)}"
+            )
+            raise ValueError(msg)
 
     @staticmethod
     def _normalize_response_format(response_format):
