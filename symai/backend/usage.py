@@ -10,6 +10,10 @@ class ModelPricing:
     input: float
     output: float
     cached_input: float | None = None
+    # NOTE: the cache-WRITE rate where the provider bills writes above the plain
+    # input rate (OpenAI GPT-5.6 and later: 1.25x input); None when a written
+    # token costs the input rate.
+    cache_write: float | None = None
 
 
 @dataclass(frozen=True)

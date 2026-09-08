@@ -241,19 +241,19 @@ OpenAI reasoning models are picked by name — there is a single `OpenAIEngine` 
 ```python
 from symai import Symbol
 
-# openai:o3, openai:o3-pro, openai:gpt-5.4, openai:gpt-5.5, openai:gpt-5.6-sol, ...
+# openai:o3, openai:o3-pro, openai:gpt-5.4, openai:gpt-5.5, openai:gpt-5.6-sol, openai:gpt-6-astra, ...
 res, metadata = Symbol("Topic: Disneyland") \
     .query(
       "Write a dystopic take on the topic.",
       model="openai:o3",
       return_metadata=True,
-      reasoning={"effort": "medium"}  # optional: low, medium, or high
+      reasoning={"effort": "medium"}  # optional: low, medium, high (gpt-6-astra also xhigh, max)
     )
 print(res)
 print(metadata["thinking"])
 ```
 
-For reasoning models (`o3`, `o3-pro`, `gpt-5.4*`, `gpt-5.5*`, `gpt-5.6-*`), the thinking trace is extracted from the reasoning summary items in the response output. Sampling parameters (`temperature`, `top_p`) are dropped for these models; the `pro` models (`o3-pro`, `gpt-5.4-pro`, `gpt-5.5-pro`) default to `{"effort": "high"}`, all other reasoning models to `{"effort": "medium"}`.
+For reasoning models (`o3`, `o3-pro`, `gpt-5.4*`, `gpt-5.5*`, `gpt-5.6-*`, `gpt-6-astra`), the thinking trace is extracted from the reasoning summary items in the response output. Sampling parameters (`temperature`, `top_p`) are dropped for these models; the `pro` models (`o3-pro`, `gpt-5.4-pro`, `gpt-5.5-pro`) default to `{"effort": "high"}`, all other reasoning models to `{"effort": "medium"}`. `gpt-6-astra` accepts `low`, `medium`, `high`, `xhigh` and `max` and rejects anything else locally (`none` is an HTTP 400 at the API). Explicit prompt-cache breakpoints (`prompt_cache_options` mode `explicit`, at most four writes per request) are available on the GPT-5.6 models and `gpt-6-astra`; its cache writes bill at 1.25x the input rate and reads at 0.1x.
 
 ### OpenRouter
 

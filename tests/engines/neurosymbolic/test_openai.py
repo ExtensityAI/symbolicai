@@ -6,6 +6,7 @@ import httpx
 import pytest
 from pydantic import ValidationError
 
+from symai.backend.engines.neurosymbolic import ENGINE_MAPPING
 from symai.backend.engines.neurosymbolic.openai.engine import (
     OPENAI_RESPONSES_URL,
     OpenAIEngine,
@@ -14,12 +15,19 @@ from symai.backend.engines.neurosymbolic.openai.models import (
     API_PINNED,
     OPENAI_MODEL_SPECS,
     SUPPORTED_OPENAI_MODELS,
+    SUPPORTED_REASONING_MODELS,
     OpenAIResponse,
+    openai_model_spec_for,
     openai_strip_prefix,
 )
+from symai.backend.usage import ModelPricing
 from symai.components import MetadataTracker
+from symai.prompts import CACHE_BREAKPOINT
 from tests.engines.mock_api import MockAPI
-from tests.engines.neurosymbolic.interface import NeurosymbolicEngineTestInterface
+from tests.engines.neurosymbolic.interface import (
+    LIVE_PROMPT,
+    NeurosymbolicEngineTestInterface,
+)
 
 
 class TestOpenAIEngine(NeurosymbolicEngineTestInterface):
@@ -370,3 +378,106 @@ class TestOpenAIEngine(NeurosymbolicEngineTestInterface):
         assert details["prompt_breakdown"]["cached_tokens"] == 4
         assert details["completion_breakdown"]["reasoning_tokens"] == 3
         assert details["extras"]["cache_write_tokens"] == 2
+
+    # --- gpt-6-astra (registry locked against the model page, 2026-09-07) ---
+    astra_model = "openai:gpt-6-astra"
+
+    def test_gpt6_astra_registered_as_reasoning_model_with_pricing(self):
+        assert self.astra_model in SUPPORTED_OPENAI_MODELS
+        assert "gpt-6-astra" in SUPPORTED_REASONING_MODELS
+        assert ENGINE_MAPPING[self.astra_model] is OpenAIEngine
+        assert self.make_engine(model=self.astra_model).id() == "neurosymbolic"
+
+        spec = openai_model_spec_for(self.astra_model)
+        assert spec.context_tokens == 1_050_000
+        assert spec.response_tokens == 128_000
+        assert spec.reasoning is True
+        assert spec.vision is True
+        assert spec.pro is False
+        assert spec.explicit_cache is True
+        assert spec.reasoning_efforts == ("low", "medium", "high", "xhigh", "max")
+        assert spec.pricing == ModelPricing(
+            input=10.00, output=50.00, cached_input=1.00, cache_write=12.50
+        )
+        # NOTE: the GPT-5.6-and-later cache rule — writes at 1.25x, reads at 0.1x input.
+        assert spec.pricing.cache_write == pytest.approx(1.25 * spec.pricing.input)
+        assert spec.pricing.cached_input == pytest.approx(0.1 * spec.pricing.input)
+
+    def test_gpt6_astra_request_carries_effort_and_explicit_cache_on_responses_api(self):
+        engine = self.make_engine(model=self.astra_model)
+        marked = [{"role": "user", "content": f"stable prefix {CACHE_BREAKPOINT} question"}]
+
+        request = engine.build_request(
+            self.make_prepared_argument(
+                kwargs={"reasoning": {"effort": "xhigh"}, "temperature": 0.3},
+                messages=marked,
+            )
+        )
+        body = request.body()
+
+        assert request.url == OPENAI_RESPONSES_URL
+        assert body["model"] == "gpt-6-astra"
+        assert body["reasoning"] == {"effort": "xhigh"}
+        assert "temperature" not in body
+        assert body["prompt_cache_options"] == {"mode": "explicit"}
+        self.assert_cache_breakpoint_body(body, ["stable prefix ", " question"])
+
+    def test_gpt6_astra_prepare_uses_developer_role(self):
+        engine = self.make_engine(model=self.astra_model)
+        argument = self.make_query_argument("What is 1+1?")
+
+        engine.prepare(argument)
+
+        assert argument.prop.prepared_input[0]["role"] == "developer"
+
+    def test_gpt6_astra_rejects_effort_the_model_page_does_not_list(self):
+        engine = self.make_engine(model=self.astra_model)
+
+        with pytest.raises(ValueError, match="reasoning effort 'none'"):
+            engine.build_request(
+                self.make_prepared_argument(kwargs={"reasoning": {"effort": "none"}})
+            )
+        # NOTE: models without a listed effort set keep the API as the validator.
+        body = (
+            self.make_reasoning_engine()
+            .build_request(self.make_prepared_argument(kwargs={"reasoning": {"effort": "none"}}))
+            .body()
+        )
+        assert body["reasoning"] == {"effort": "none"}
+
+    def test_gpt6_astra_usage_record_splits_cache_write_and_reasoning_tokens(self):
+        engine = self.make_engine(model=self.astra_model, client_max_retries=0)
+
+        with MockAPI(
+            engine,
+            lambda request: httpx.Response(200, json=self.mock_response_json(), request=request),
+        ) as api:
+            with MetadataTracker() as tracker:
+                engine.forward(self.make_prepared_argument())
+            details = tracker.usage[(OpenAIEngine.__name__, self.astra_model)]
+
+        assert api.last_body["model"] == "gpt-6-astra"
+        assert api.last_body["reasoning"] == {"effort": "medium"}
+        assert api.last_body["prompt_cache_options"] == {"mode": "explicit"}
+        assert details["prompt_breakdown"]["cached_tokens"] == 4
+        assert details["extras"]["cache_write_tokens"] == 2
+        assert details["completion_breakdown"]["reasoning_tokens"] == 3
+
+    @pytest.mark.engine_live
+    def test_live_gpt6_astra_smoke(self, engine_api_mode):
+        api_key = self.require_live(engine_api_mode)
+
+        engine = self.make_live_engine(self.astra_model, api_key)
+        # NOTE: low effort + a 256-token budget keeps one call around a cent at
+        # $10 / $50 per 1M tokens while leaving room for visible output.
+        argument = self.make_query_argument(
+            LIVE_PROMPT, max_output_tokens=256, reasoning={"effort": "low"}
+        )
+
+        engine.prepare(argument)
+        output, metadata = engine.forward(argument)
+
+        assert output[0].strip()
+        usage = self.usage_dump(metadata["raw_output"])
+        assert usage["output_tokens"] > 0
+        assert 0 < self.expected_cost_usd(self.astra_model, usage) < 0.05
