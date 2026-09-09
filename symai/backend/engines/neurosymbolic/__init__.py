@@ -5,6 +5,10 @@ from symai.backend.engines.neurosymbolic.anthropic import (
     SUPPORTED_REASONING_MODELS as ANTHROPIC_REASONING_MODELS,
 )
 from symai.backend.engines.neurosymbolic.anthropic import AnthropicEngine
+from symai.backend.engines.neurosymbolic.atlas import (
+    SUPPORTED_ATLAS_MODELS as ATLAS_MODELS,
+)
+from symai.backend.engines.neurosymbolic.atlas import AtlasEngine
 from symai.backend.engines.neurosymbolic.cerebras import (
     SUPPORTED_CHAT_MODELS as CEREBRAS_CHAT_MODELS,
 )
@@ -44,6 +48,7 @@ from symai.backend.engines.neurosymbolic.orcarouter import OrcaRouterEngine
 ENGINE_MAPPING = {
     **dict.fromkeys(ANTHROPIC_CHAT_MODELS, AnthropicEngine),
     **dict.fromkeys(ANTHROPIC_REASONING_MODELS, AnthropicEngine),
+    **dict.fromkeys(ATLAS_MODELS, AtlasEngine),
     **dict.fromkeys(CEREBRAS_CHAT_MODELS, CerebrasEngine),
     **dict.fromkeys(CEREBRAS_REASONING_MODELS, CerebrasEngine),
     **dict.fromkeys(DEEPSEEK_MODELS, DeepseekEngine),
@@ -60,6 +65,7 @@ ENGINE_MAPPING = {
 __all__ = [
     "ANTHROPIC_CHAT_MODELS",
     "ANTHROPIC_REASONING_MODELS",
+    "ATLAS_MODELS",
     "CEREBRAS_CHAT_MODELS",
     "CEREBRAS_REASONING_MODELS",
     "DEEPSEEK_MODELS",
@@ -73,6 +79,7 @@ __all__ = [
     "ORCAROUTER_CHAT_MODELS",
     "ORCAROUTER_REASONING_MODELS",
     "AnthropicEngine",
+    "AtlasEngine",
     "DeepseekEngine",
     "GoogleEngine",
     "GroqEngine",

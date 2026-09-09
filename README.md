@@ -282,9 +282,19 @@ Example of a configuration file with all engines enabled:
 }
 ```
 
+Atlas Cloud is available as an optional OpenAI-compatible provider. Use an
+Atlas Cloud catalog model ID with the `atlas:` prefix and its API key:
+
+```json
+{
+    "NEUROSYMBOLIC_ENGINE_API_KEY": "<ATLASCLOUD_API_KEY>",
+    "NEUROSYMBOLIC_ENGINE_MODEL": "atlas:deepseek-ai/deepseek-v4-flash"
+}
+```
+
 With these steps completed, you should be ready to start using SymbolicAI in your projects.
 
-> ❗️**NOTE**❗️Model names are provider-prefixed (`openai:gpt-5.4`, `anthropic:claude-sonnet-4-6`, `gemini:gemini-3.5-flash`)—the prefix selects the provider. All engines talk raw REST through a shared `httpx` transport—no provider SDKs required.
+> ❗️**NOTE**❗️Model names are provider-prefixed (`openai:gpt-5.4`, `anthropic:claude-sonnet-4-6`, `gemini:gemini-3.5-flash`, `atlas:deepseek-ai/deepseek-v4-flash`)—the prefix selects the provider. All engines talk raw REST through a shared `httpx` transport—no provider SDKs required.
 
 > ❗️**NOTE**❗️SymbolicAI logs through the standard `logging` module under the `symai` logger and is silent by default. To see its logs, configure logging in your application, e.g. `logging.basicConfig(level=logging.INFO)` or, scoped, `logging.getLogger("symai").setLevel(logging.INFO)`.
 
