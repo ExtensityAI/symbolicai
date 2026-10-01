@@ -163,14 +163,14 @@ warning through the `symai` logger and falls back to manual thinking
 (`{"type":"enabled","budget_tokens":...}`). This is runtime behavior and not a
 `symai.config.json` key.
 
-`thinking={"type": "disabled"}` is translated per model. On `claude-fable-5`, `claude-fable-5-1`
+`thinking={"type": "disabled"}` (or `{"type": "between_tools"}`) is translated per model. On `claude-fable-5`, `claude-fable-5-1`
 and `claude-opus-5-5` thinking is always on, so the parameter is omitted (with a warning) and the
 requested `effort` is still sent. On `claude-sonnet-5-5` it becomes `{"type": "between_tools"}`,
 which the API accepts only at effort `high` or lower; at `xhigh`/`max` the parameter is omitted
 with a warning. `claude-opus-5-5` defaults to effort `medium` (the others to `high`), so pass the
-effort you want explicitly. These three models also reject forced `tool_choice` (`any`/`tool`);
-the engine raises `ValueError` locally — use `tool_choice` `auto` with strict tools, or
-`response_format` `json_schema` (sent as `output_config.format`) for structured output.
+effort you want explicitly. These three models also reject forced `tool_choice` (`any`/`tool`)
+with an HTTP 400 — use `tool_choice` `auto` with strict tools, or `response_format`
+`json_schema` (sent as `output_config.format`) for structured output.
 
 ### Gemini (Google)
 

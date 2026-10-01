@@ -39,9 +39,6 @@ class AnthropicModelSpec:
     # an explicit disabled is a 400); "between_tools" sends {"type": "between_tools"},
     # which the API accepts only at effort high or lower.
     thinking_off: Literal["disabled", "omit", "between_tools"] = "disabled"
-    # NOTE: False where tool_choice {"type": "any"} / {"type": "tool"} is a 400; use
-    # "auto" with strict tools, or response_format json_schema (output_config.format).
-    forced_tool_choice: bool = True
 
 
 ANTHROPIC_MODEL_SPECS = {
@@ -58,7 +55,6 @@ ANTHROPIC_MODEL_SPECS = {
         # the engine's default cache_control, bills 2x input.
         pricing=ModelPricing(input=10.00, output=50.00, cached_input=0.25, cache_write=12.50),
         thinking_off="omit",
-        forced_tool_choice=False,
     ),
     "claude-opus-5-5": AnthropicModelSpec(
         context_tokens=LONG_CONTEXT_1M_TOKENS,
@@ -72,7 +68,6 @@ ANTHROPIC_MODEL_SPECS = {
         sampling=False,
         pricing=ModelPricing(input=4.00, output=20.00, cached_input=0.20, cache_write=5.00),
         thinking_off="omit",
-        forced_tool_choice=False,
     ),
     "claude-sonnet-5-5": AnthropicModelSpec(
         context_tokens=LONG_CONTEXT_1M_TOKENS,
@@ -86,7 +81,6 @@ ANTHROPIC_MODEL_SPECS = {
         sampling=False,
         pricing=ModelPricing(input=2.00, output=10.00, cached_input=0.20, cache_write=2.50),
         thinking_off="between_tools",
-        forced_tool_choice=False,
     ),
     "claude-fable-5": AnthropicModelSpec(
         context_tokens=LONG_CONTEXT_1M_TOKENS,

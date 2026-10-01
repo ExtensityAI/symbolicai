@@ -166,7 +166,6 @@ class AnthropicEngine(Engine):
         if isinstance(caller_output_config, dict):
             output_config = {**caller_output_config, **(output_config or {})}
         output_config = self._merge_output_config_effort(output_config, adaptive_effort)
-        self._check_tool_choice(payload_kwargs.get("tool_choice"), model, spec)
 
         stop = payload_kwargs.pop("stop", None)
         if not stop:
@@ -448,7 +447,9 @@ class AnthropicEngine(Engine):
             return None, None
 
         thinking_type = thinking_arg.get("type")
-        if thinking_type == "disabled":
+        # NOTE: between_tools is the API's own spelling of thinking off (Sonnet 5.5);
+        # both spellings take the per-model route, never the adaptive coercion below.
+        if thinking_type in {"disabled", "between_tools"}:
             return self._build_thinking_off(
                 model, spec, thinking_arg.get("effort"), requested_effort
             )
@@ -510,21 +511,6 @@ class AnthropicEngine(Engine):
             # NOTE: between_tools takes no other field (display, budget_tokens: 400).
             return {"type": "between_tools"}, thinking_effort
         return {"type": "disabled"}, None
-
-    @staticmethod
-    def _check_tool_choice(tool_choice, model, spec) -> None:
-        # NOTE: fail locally instead of round-tripping a 400. symai never forces a tool
-        # itself; structured output goes through output_config.format.
-        if spec.forced_tool_choice or tool_choice is None:
-            return
-        choice_type = tool_choice.get("type") if isinstance(tool_choice, dict) else tool_choice
-        if choice_type in {"any", "tool"}:
-            msg = (
-                f"Forced tool_choice {choice_type!r} is not supported by Anthropic model "
-                f"{model}. Use tool_choice 'auto' with strict tools, or response_format "
-                "json_schema for structured output."
-            )
-            raise ValueError(msg)
 
     def _build_output_config(self, response_format):
         if not isinstance(response_format, dict):

@@ -710,7 +710,6 @@ class TestAnthropicEngine(NeurosymbolicEngineTestInterface):
         assert spec.reasoning is True
         assert spec.adaptive_thinking is True
         assert spec.sampling is False
-        assert spec.forced_tool_choice is False
         assert spec.thinking_off == thinking_off
         assert spec.pricing == pricing
         # NOTE: cache_write is the 5-minute TTL write (1.25x input).
@@ -794,6 +793,29 @@ class TestAnthropicEngine(NeurosymbolicEngineTestInterface):
 
         assert body["thinking"] == {"type": "disabled"}
 
+    @pytest.mark.parametrize(
+        ("model", "effort", "expected"),
+        [
+            ("claude-sonnet-5-5", "low", {"type": "between_tools"}),
+            ("claude-sonnet-5-5", "max", None),
+            ("claude-opus-5-5", "low", None),
+            ("claude-opus-5", "low", {"type": "disabled"}),
+        ],
+    )
+    def test_between_tools_is_a_thinking_off_request(self, model, effort, expected):
+        # NOTE: the API's own spelling must never fall into the adaptive coercion.
+        body = (
+            self.make_engine(model=f"anthropic:{model}")
+            .build_request(
+                self.make_prepared_argument(
+                    kwargs={"thinking": {"type": "between_tools", "effort": effort}}
+                )
+            )
+            .body()
+        )
+
+        assert body.get("thinking") == expected
+
     @pytest.mark.parametrize("model", ["claude-opus-5-5", "claude-sonnet-5-5", "claude-fable-5-1"])
     def test_new_models_strip_sampling_kwargs(self, model):
         body = (
@@ -805,40 +827,6 @@ class TestAnthropicEngine(NeurosymbolicEngineTestInterface):
         )
 
         assert not {"temperature", "top_p", "top_k"} & set(body)
-
-    @pytest.mark.parametrize("model", ["claude-opus-5-5", "claude-sonnet-5-5", "claude-fable-5-1"])
-    @pytest.mark.parametrize(
-        "tool_choice", [{"type": "any"}, {"type": "tool", "name": "get_weather"}, "any"]
-    )
-    def test_new_models_reject_forced_tool_choice(self, model, tool_choice):
-        engine = self.make_engine(model=f"anthropic:{model}")
-        kwargs = {"tools": [self.weather_tool_spec()], "tool_choice": tool_choice}
-
-        with pytest.raises(ValueError, match="Forced tool_choice"):
-            engine.build_request(self.make_prepared_argument(kwargs=kwargs))
-
-    def test_auto_tool_choice_passes_and_older_models_keep_forced_choice(self):
-        auto = (
-            self.make_engine(model="anthropic:claude-opus-5-5")
-            .build_request(
-                self.make_prepared_argument(
-                    kwargs={"tools": [self.weather_tool_spec()], "tool_choice": {"type": "auto"}}
-                )
-            )
-            .body()
-        )
-        forced = (
-            self.make_engine(model="anthropic:claude-opus-5")
-            .build_request(
-                self.make_prepared_argument(
-                    kwargs={"tools": [self.weather_tool_spec()], "tool_choice": {"type": "any"}}
-                )
-            )
-            .body()
-        )
-
-        assert auto["tool_choice"] == {"type": "auto"}
-        assert forced["tool_choice"] == {"type": "any"}
 
     @pytest.mark.parametrize("model", ["claude-opus-5-5", "claude-sonnet-5-5"])
     def test_structured_output_uses_output_config_format_with_effort(self, model):
