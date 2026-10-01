@@ -5,17 +5,23 @@ from pathlib import Path
 import httpx
 import pytest
 
+from symai.backend.engines.neurosymbolic import ENGINE_MAPPING
 from symai.backend.engines.neurosymbolic.google.engine import GOOGLE_API_BASE, GoogleEngine
 from symai.backend.engines.neurosymbolic.google.models import (
     API_PINNED,
     GOOGLE_MODEL_SPECS,
     SUPPORTED_GOOGLE_MODELS,
     GoogleResponse,
+    google_model_spec_for,
     google_strip_prefix,
 )
+from symai.backend.usage import ModelPricing
 from symai.components import MetadataTracker
 from tests.engines.mock_api import MockAPI
-from tests.engines.neurosymbolic.interface import NeurosymbolicEngineTestInterface
+from tests.engines.neurosymbolic.interface import (
+    LIVE_PROMPT,
+    NeurosymbolicEngineTestInterface,
+)
 
 
 class TestGoogleEngine(NeurosymbolicEngineTestInterface):
@@ -310,3 +316,86 @@ class TestGoogleEngine(NeurosymbolicEngineTestInterface):
         assert tokens == 42
         assert api.last_request.url.path.endswith(":countTokens")
         assert api.last_request.headers["x-goog-api-key"] == "sk-test-not-a-real-key"
+
+    # --- gemini-3.5-flash-lite / gemini-3.8-flash (model pages + thinking guide, 2026-10-01) ---
+    @pytest.mark.parametrize(
+        ("model", "pricing", "levels"),
+        [
+            (
+                "gemini-3.5-flash-lite",
+                ModelPricing(input=0.30, output=2.50, cached_input=0.03),
+                ("minimal", "low", "medium", "high"),
+            ),
+            (
+                # NOTE: launch pricing through 2026-12-31 (then 1.50 / 7.50 / 0.15).
+                "gemini-3.8-flash",
+                ModelPricing(input=0.75, output=3.75, cached_input=0.075),
+                ("low", "medium", "high"),
+            ),
+        ],
+    )
+    def test_new_models_registered_with_pricing_and_levels(self, model, pricing, levels):
+        assert f"gemini:{model}" in SUPPORTED_GOOGLE_MODELS
+        assert ENGINE_MAPPING[f"gemini:{model}"] is GoogleEngine
+
+        spec = google_model_spec_for(model)
+        assert spec.context_tokens == 1_048_576
+        assert spec.response_tokens == 65_536
+        assert spec.reasoning is True
+        assert spec.vision is True
+        assert spec.thinking_levels == levels
+        assert spec.pricing == pricing
+
+    def test_new_models_validate_thinking_level(self):
+        flash = self.make_engine(model="gemini:gemini-3.8-flash")
+        lite = self.make_engine(model="gemini:gemini-3.5-flash-lite")
+
+        with pytest.raises(ValueError, match="thinking_level 'minimal'"):
+            flash.build_request(
+                self.make_prepared_argument(kwargs={"thinking": {"thinking_level": "minimal"}})
+            )
+        low = flash.build_request(
+            self.make_prepared_argument(kwargs={"thinking": {"thinking_level": "low"}})
+        ).body()
+        minimal = lite.build_request(
+            self.make_prepared_argument(kwargs={"thinking": {"thinking_level": "minimal"}})
+        ).body()
+        # NOTE: models without a listed level set keep the API as the validator.
+        legacy = (
+            self.make_engine(model="gemini:gemini-3.5-flash")
+            .build_request(
+                self.make_prepared_argument(kwargs={"thinking": {"thinking_level": "minimal"}})
+            )
+            .body()
+        )
+
+        assert low["generationConfig"]["thinkingConfig"] == {
+            "includeThoughts": True,
+            "thinkingLevel": "low",
+        }
+        assert minimal["generationConfig"]["thinkingConfig"]["thinkingLevel"] == "minimal"
+        assert legacy["generationConfig"]["thinkingConfig"]["thinkingLevel"] == "minimal"
+
+    @pytest.mark.engine_live
+    @pytest.mark.parametrize(
+        ("model", "thinking"),
+        [
+            ("gemini:gemini-3.5-flash-lite", None),
+            ("gemini:gemini-3.8-flash", {"thinking_level": "low"}),
+        ],
+    )
+    def test_live_new_models_smoke(self, engine_api_mode, model, thinking):
+        api_key = self.require_live(engine_api_mode)
+
+        engine = self.make_live_engine(model, api_key)
+        kwargs = {"max_tokens": 512}
+        if thinking is not None:
+            kwargs["thinking"] = thinking
+        argument = self.make_query_argument(LIVE_PROMPT, **kwargs)
+
+        engine.prepare(argument)
+        output, metadata = engine.forward(argument)
+
+        assert output[0].strip()
+        usage = self.usage_dump(metadata["raw_output"])
+        assert 0 < self.expected_cost_usd(model, usage) < 0.05

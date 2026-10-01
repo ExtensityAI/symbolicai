@@ -2,6 +2,8 @@
 
 Locked against https://ai.google.dev/gemini-api/docs (REST v1beta, camelCase)
 Pricing: https://ai.google.dev/gemini-api/docs/pricing (standard paid tier, <=200K)
+gemini-3.5-flash-lite, gemini-3.8-flash: model pages, pricing, thinking guide and
+GET /v1beta/models (read 2026-10-01)
 """
 
 from __future__ import annotations
@@ -24,9 +26,32 @@ class GoogleModelSpec:
     reasoning: bool
     vision: bool
     pricing: ModelPricing | None
+    # NOTE: the thinking_level values the thinking guide lists; validated locally in
+    # build_request. None leaves validation to the API.
+    thinking_levels: tuple[str, ...] | None = None
 
 
 GOOGLE_MODEL_SPECS = {
+    "gemini-3.8-flash": GoogleModelSpec(
+        context_tokens=1_048_576,
+        response_tokens=65_536,
+        reasoning=True,
+        vision=True,
+        # NOTE: launch pricing through 2026-12-31; from 2027-01-01 the rates double to
+        # $1.50 / $7.50, cached $0.15.
+        pricing=ModelPricing(input=0.75, output=3.75, cached_input=0.075),
+        # NOTE: default medium; `minimal` returns an error.
+        thinking_levels=("low", "medium", "high"),
+    ),
+    "gemini-3.5-flash-lite": GoogleModelSpec(
+        context_tokens=1_048_576,
+        response_tokens=65_536,
+        reasoning=True,
+        vision=True,
+        pricing=ModelPricing(input=0.30, output=2.50, cached_input=0.03),
+        # NOTE: thinking is on with default level minimal.
+        thinking_levels=("minimal", "low", "medium", "high"),
+    ),
     "gemini-3.1-flash-lite": GoogleModelSpec(
         context_tokens=1_048_576,
         response_tokens=65_536,

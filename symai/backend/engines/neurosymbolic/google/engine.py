@@ -148,7 +148,7 @@ class GoogleEngine(Engine):
         }
 
         model = google_strip_prefix(payload_kwargs.get("model", self.model))
-        google_model_spec_for(model)
+        spec = google_model_spec_for(model)
         system, contents = self._build_wire_contents(
             strip_cache_breakpoints_from_messages(argument.prop.prepared_input)
         )
@@ -176,6 +176,7 @@ class GoogleEngine(Engine):
         if isinstance(thinking, dict) and self.is_reasoning_model():
             thinking_config = {"includeThoughts": True}
             if "thinking_level" in thinking:
+                self._validate_thinking_level(model, thinking["thinking_level"], spec)
                 thinking_config["thinkingLevel"] = thinking["thinking_level"]
             else:
                 thinking_config["thinkingBudget"] = thinking.get("thinking_budget", 1024)
@@ -412,6 +413,18 @@ class GoogleEngine(Engine):
             )
             raise NotImplementedError(msg)
         return re.sub(r"<<vision:(.*?):>>", "", text)
+
+    @staticmethod
+    def _validate_thinking_level(model: str, level, spec) -> None:
+        # NOTE: mirrors the OpenAI effort check — fail locally on a level the thinking
+        # guide does not list (gemini-3.8-flash rejects `minimal`).
+        if spec.thinking_levels is None or level in spec.thinking_levels:
+            return
+        msg = (
+            f"Unsupported thinking_level {level!r} for Google model {model}. "
+            f"Supported values: {list(spec.thinking_levels)}"
+        )
+        raise ValueError(msg)
 
     def _convert_tools(self, tools) -> list[GoogleTool]:
         # NOTE: only dict function declarations are supported over the wire; local

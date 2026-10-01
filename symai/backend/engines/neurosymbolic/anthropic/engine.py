@@ -153,10 +153,18 @@ class AnthropicEngine(Engine):
         cache_control = resolve_cache_control(payload_kwargs.pop("cache_control", None))
         messages, cache_control = self._apply_cache_breakpoints(messages, cache_control)
 
+        # NOTE: an output_config passed as a kwarg is the base; response_format and the
+        # thinking effort merge into it instead of replacing it.
+        caller_output_config = payload_kwargs.pop("output_config", None)
+        requested_effort = (
+            caller_output_config.get("effort") if isinstance(caller_output_config, dict) else None
+        )
         thinking, adaptive_effort = self._build_thinking_config(
-            payload_kwargs.pop("thinking", None), model, spec
+            payload_kwargs.pop("thinking", None), model, spec, requested_effort
         )
         output_config = self._build_output_config(payload_kwargs.pop("response_format", None))
+        if isinstance(caller_output_config, dict):
+            output_config = {**caller_output_config, **(output_config or {})}
         output_config = self._merge_output_config_effort(output_config, adaptive_effort)
 
         stop = payload_kwargs.pop("stop", None)
@@ -434,26 +442,26 @@ class AnthropicEngine(Engine):
             return images, "".join(texts)
         return [], None
 
-    def _build_thinking_config(self, thinking_arg, model, spec):
+    def _build_thinking_config(self, thinking_arg, model, spec, requested_effort=None):
         if not thinking_arg or not isinstance(thinking_arg, dict):
             return None, None
 
         thinking_type = thinking_arg.get("type")
-        if thinking_type == "disabled":
-            if model == "claude-fable-5":
-                # Fable rejects an explicit {"type": "disabled"} (thinking is
-                # always on); omitting the parameter is the closest valid form.
-                logger.warning(
-                    "Thinking cannot be disabled on claude-fable-5; omitting the thinking parameter."
-                )
-                return None, None
-            return {"type": "disabled"}, None
+        # NOTE: between_tools is the API's own spelling of thinking off (Sonnet 5.5);
+        # both spellings take the per-model route, never the adaptive coercion below.
+        if thinking_type in {"disabled", "between_tools"}:
+            return self._build_thinking_off(
+                model, spec, thinking_arg.get("effort"), requested_effort
+            )
 
         # Models where manual thinking (budget_tokens) is removed entirely — any
         # thinking request is coerced to adaptive (budget_tokens returns 400 there).
         if model in {
+            "claude-fable-5-1",
             "claude-fable-5",
+            "claude-opus-5-5",
             "claude-opus-5",
+            "claude-sonnet-5-5",
             "claude-sonnet-5",
             "claude-opus-4-8",
             "claude-opus-4-7",
@@ -479,6 +487,30 @@ class AnthropicEngine(Engine):
             }, None
 
         return None, None
+
+    @staticmethod
+    def _build_thinking_off(model, spec, thinking_effort, requested_effort):
+        if spec.thinking_off == "omit":
+            # NOTE: thinking is always on; an explicit {"type": "disabled"} is a 400.
+            # Omitting the parameter is the closest valid form; the requested effort
+            # still goes out, since it is now the only depth control.
+            logger.warning(
+                "Thinking cannot be disabled on %s; omitting the thinking parameter.", model
+            )
+            return None, thinking_effort
+        if spec.thinking_off == "between_tools":
+            effort = thinking_effort or requested_effort
+            if effort in {"xhigh", "max"}:
+                logger.warning(
+                    "Thinking can only be turned off on %s at effort high or lower; "
+                    "omitting the thinking parameter (adaptive at effort %s).",
+                    model,
+                    effort,
+                )
+                return None, thinking_effort
+            # NOTE: between_tools takes no other field (display, budget_tokens: 400).
+            return {"type": "between_tools"}, thinking_effort
+        return {"type": "disabled"}, None
 
     def _build_output_config(self, response_format):
         if not isinstance(response_format, dict):

@@ -3,6 +3,7 @@
 Locked against https://platform.claude.com/docs/en/api/messages
 Pricing: https://platform.claude.com/docs/en/about-claude/pricing
 Version header: https://platform.claude.com/docs/en/api/versioning
+claude-opus-5-5 / claude-sonnet-5-5 / claude-fable-5-1: GET /v1/models (read 2026-10-01)
 """
 
 from __future__ import annotations
@@ -33,9 +34,54 @@ class AnthropicModelSpec:
     adaptive_thinking: bool
     sampling: bool
     pricing: ModelPricing | None
+    # NOTE: how a request to turn thinking off reaches the wire. "disabled" sends
+    # {"type": "disabled"}; "omit" drops the thinking parameter (thinking is always on,
+    # an explicit disabled is a 400); "between_tools" sends {"type": "between_tools"},
+    # which the API accepts only at effort high or lower.
+    thinking_off: Literal["disabled", "omit", "between_tools"] = "disabled"
 
 
 ANTHROPIC_MODEL_SPECS = {
+    "claude-fable-5-1": AnthropicModelSpec(
+        context_tokens=LONG_CONTEXT_1M_TOKENS,
+        response_tokens=128_000,
+        reasoning=True,
+        vision=True,
+        # NOTE: thinking is always on (disabled or budget_tokens is a 400); forced
+        # tool_choice and sampling kwargs are 400s.
+        adaptive_thinking=True,
+        sampling=False,
+        # NOTE: cache_write is the 5-minute TTL rate (1.25x input); a 1h TTL write,
+        # the engine's default cache_control, bills 2x input.
+        pricing=ModelPricing(input=10.00, output=50.00, cached_input=0.25, cache_write=12.50),
+        thinking_off="omit",
+    ),
+    "claude-opus-5-5": AnthropicModelSpec(
+        context_tokens=LONG_CONTEXT_1M_TOKENS,
+        response_tokens=128_000,
+        reasoning=True,
+        vision=True,
+        # NOTE: thinking is always on (disabled or budget_tokens is a 400 at every
+        # effort); effort defaults to MEDIUM here, not high. Forced tool_choice and
+        # sampling kwargs are 400s.
+        adaptive_thinking=True,
+        sampling=False,
+        pricing=ModelPricing(input=4.00, output=20.00, cached_input=0.20, cache_write=5.00),
+        thinking_off="omit",
+    ),
+    "claude-sonnet-5-5": AnthropicModelSpec(
+        context_tokens=LONG_CONTEXT_1M_TOKENS,
+        response_tokens=128_000,
+        reasoning=True,
+        vision=True,
+        # NOTE: disabled is a 400; thinking turns off with {"type": "between_tools"}
+        # (effort high or lower only). Effort defaults to high. Forced tool_choice and
+        # non-default sampling kwargs are 400s.
+        adaptive_thinking=True,
+        sampling=False,
+        pricing=ModelPricing(input=2.00, output=10.00, cached_input=0.20, cache_write=2.50),
+        thinking_off="between_tools",
+    ),
     "claude-fable-5": AnthropicModelSpec(
         context_tokens=LONG_CONTEXT_1M_TOKENS,
         response_tokens=128_000,
@@ -46,6 +92,7 @@ ANTHROPIC_MODEL_SPECS = {
         adaptive_thinking=True,
         sampling=False,
         pricing=ModelPricing(input=10.00, output=50.00, cached_input=1.00),
+        thinking_off="omit",
     ),
     "claude-opus-5": AnthropicModelSpec(
         context_tokens=LONG_CONTEXT_1M_TOKENS,
