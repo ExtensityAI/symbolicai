@@ -6,6 +6,7 @@ from typing import ClassVar
 import pytest
 import httpx
 
+from symai.backend.engines.neurosymbolic import ENGINE_MAPPING
 from symai.backend.engines.neurosymbolic.anthropic.engine import (
     ANTHROPIC_MESSAGES_URL,
     AnthropicEngine,
@@ -17,14 +18,19 @@ from symai.backend.engines.neurosymbolic.anthropic.models import (
     CACHE_CONTROL_1H,
     SUPPORTED_ANTHROPIC_MODELS,
     AnthropicResponse,
+    anthropic_model_spec_for,
     anthropic_strip_prefix,
 )
 from symai.backend.engines.neurosymbolic.anthropic.stream import AnthropicStreamAdapter
 from symai.backend.transport import SSEEvent
+from symai.backend.usage import ModelPricing
 from symai.components import MetadataTracker
 from symai.prompts import CACHE_BREAKPOINT
 from tests.engines.mock_api import MockAPI
-from tests.engines.neurosymbolic.interface import NeurosymbolicEngineTestInterface
+from tests.engines.neurosymbolic.interface import (
+    LIVE_PROMPT,
+    NeurosymbolicEngineTestInterface,
+)
 
 
 class TestAnthropicEngine(NeurosymbolicEngineTestInterface):
@@ -659,6 +665,268 @@ class TestAnthropicEngine(NeurosymbolicEngineTestInterface):
         if second.stop_reason == "end_turn":
             answer = "".join(block.text or "" for block in second.content if block.type == "text")
             assert "18" in answer
+
+    # --- claude-opus-5-5 / claude-sonnet-5-5 / claude-fable-5-1 (GET /v1/models, 2026-10-01) ---
+    answer_format: ClassVar[dict] = {
+        "type": "json_schema",
+        "json_schema": {
+            "name": "Answer",
+            "schema": {
+                "type": "object",
+                "properties": {"answer": {"type": "string"}},
+                "required": ["answer"],
+                "additionalProperties": False,
+            },
+        },
+    }
+
+    @pytest.mark.parametrize(
+        ("model", "pricing", "thinking_off"),
+        [
+            (
+                "claude-opus-5-5",
+                ModelPricing(input=4.00, output=20.00, cached_input=0.20, cache_write=5.00),
+                "omit",
+            ),
+            (
+                "claude-sonnet-5-5",
+                ModelPricing(input=2.00, output=10.00, cached_input=0.20, cache_write=2.50),
+                "between_tools",
+            ),
+            (
+                "claude-fable-5-1",
+                ModelPricing(input=10.00, output=50.00, cached_input=0.25, cache_write=12.50),
+                "omit",
+            ),
+        ],
+    )
+    def test_new_models_registered_with_pricing(self, model, pricing, thinking_off):
+        assert f"anthropic:{model}" in SUPPORTED_ANTHROPIC_MODELS
+        assert ENGINE_MAPPING[f"anthropic:{model}"] is AnthropicEngine
+
+        spec = anthropic_model_spec_for(model)
+        assert spec.context_tokens == 1_000_000
+        assert spec.response_tokens == 128_000
+        assert spec.reasoning is True
+        assert spec.adaptive_thinking is True
+        assert spec.sampling is False
+        assert spec.forced_tool_choice is False
+        assert spec.thinking_off == thinking_off
+        assert spec.pricing == pricing
+        # NOTE: cache_write is the 5-minute TTL write (1.25x input).
+        assert spec.pricing.cache_write == pytest.approx(1.25 * spec.pricing.input)
+
+    @pytest.mark.parametrize("model", ["claude-opus-5-5", "claude-fable-5-1", "claude-fable-5"])
+    def test_always_thinking_models_omit_disabled_and_keep_effort(self, model, caplog):
+        engine = self.make_engine(model=f"anthropic:{model}")
+
+        body = engine.build_request(
+            self.make_prepared_argument(kwargs={"thinking": {"type": "disabled", "effort": "low"}})
+        ).body()
+
+        assert "thinking" not in body
+        assert body["output_config"] == {"effort": "low"}
+        assert "cannot be disabled" in caplog.text
+
+    @pytest.mark.parametrize("model", ["claude-opus-5-5", "claude-sonnet-5-5", "claude-fable-5-1"])
+    def test_new_models_send_requested_effort_and_coerce_budget_to_adaptive(self, model):
+        engine = self.make_engine(model=f"anthropic:{model}")
+
+        adaptive = engine.build_request(
+            self.make_prepared_argument(
+                kwargs={"thinking": {"type": "adaptive", "effort": "medium"}}
+            )
+        ).body()
+        budget = engine.build_request(
+            self.make_prepared_argument(
+                kwargs={"thinking": {"type": "enabled", "budget_tokens": 2048}}
+            )
+        ).body()
+
+        # NOTE: opus-5-5 defaults to medium, the others to high — the effort asked
+        # for must reach the wire even when it equals some model's default.
+        assert adaptive["thinking"] == {"type": "adaptive"}
+        assert adaptive["output_config"] == {"effort": "medium"}
+        assert budget["thinking"] == {"type": "adaptive"}
+        assert "output_config" not in budget
+
+    @pytest.mark.parametrize("effort", [None, "low", "medium", "high"])
+    def test_sonnet_5_5_disabled_thinking_maps_to_between_tools(self, effort):
+        engine = self.make_engine(model="anthropic:claude-sonnet-5-5")
+        thinking = (
+            {"type": "disabled"} if effort is None else {"type": "disabled", "effort": effort}
+        )
+
+        body = engine.build_request(
+            self.make_prepared_argument(kwargs={"thinking": thinking})
+        ).body()
+
+        assert body["thinking"] == {"type": "between_tools"}
+        if effort is None:
+            assert "output_config" not in body
+        else:
+            assert body["output_config"] == {"effort": effort}
+
+    @pytest.mark.parametrize("effort", ["xhigh", "max"])
+    def test_sonnet_5_5_disabled_thinking_above_high_is_omitted(self, effort, caplog):
+        engine = self.make_engine(model="anthropic:claude-sonnet-5-5")
+
+        from_thinking = engine.build_request(
+            self.make_prepared_argument(kwargs={"thinking": {"type": "disabled", "effort": effort}})
+        ).body()
+        from_output_config = engine.build_request(
+            self.make_prepared_argument(
+                kwargs={"thinking": {"type": "disabled"}, "output_config": {"effort": effort}}
+            )
+        ).body()
+
+        for body in (from_thinking, from_output_config):
+            assert "thinking" not in body
+            assert body["output_config"] == {"effort": effort}
+        assert "effort high or lower" in caplog.text
+
+    def test_disabled_thinking_still_sent_on_models_that_accept_it(self):
+        body = (
+            self.make_engine(model="anthropic:claude-opus-5")
+            .build_request(self.make_prepared_argument(kwargs={"thinking": {"type": "disabled"}}))
+            .body()
+        )
+
+        assert body["thinking"] == {"type": "disabled"}
+
+    @pytest.mark.parametrize("model", ["claude-opus-5-5", "claude-sonnet-5-5", "claude-fable-5-1"])
+    def test_new_models_strip_sampling_kwargs(self, model):
+        body = (
+            self.make_engine(model=f"anthropic:{model}")
+            .build_request(
+                self.make_prepared_argument(kwargs={"temperature": 0.2, "top_p": 0.5, "top_k": 40})
+            )
+            .body()
+        )
+
+        assert not {"temperature", "top_p", "top_k"} & set(body)
+
+    @pytest.mark.parametrize("model", ["claude-opus-5-5", "claude-sonnet-5-5", "claude-fable-5-1"])
+    @pytest.mark.parametrize(
+        "tool_choice", [{"type": "any"}, {"type": "tool", "name": "get_weather"}, "any"]
+    )
+    def test_new_models_reject_forced_tool_choice(self, model, tool_choice):
+        engine = self.make_engine(model=f"anthropic:{model}")
+        kwargs = {"tools": [self.weather_tool_spec()], "tool_choice": tool_choice}
+
+        with pytest.raises(ValueError, match="Forced tool_choice"):
+            engine.build_request(self.make_prepared_argument(kwargs=kwargs))
+
+    def test_auto_tool_choice_passes_and_older_models_keep_forced_choice(self):
+        auto = (
+            self.make_engine(model="anthropic:claude-opus-5-5")
+            .build_request(
+                self.make_prepared_argument(
+                    kwargs={"tools": [self.weather_tool_spec()], "tool_choice": {"type": "auto"}}
+                )
+            )
+            .body()
+        )
+        forced = (
+            self.make_engine(model="anthropic:claude-opus-5")
+            .build_request(
+                self.make_prepared_argument(
+                    kwargs={"tools": [self.weather_tool_spec()], "tool_choice": {"type": "any"}}
+                )
+            )
+            .body()
+        )
+
+        assert auto["tool_choice"] == {"type": "auto"}
+        assert forced["tool_choice"] == {"type": "any"}
+
+    @pytest.mark.parametrize("model", ["claude-opus-5-5", "claude-sonnet-5-5"])
+    def test_structured_output_uses_output_config_format_with_effort(self, model):
+        engine = self.make_engine(model=f"anthropic:{model}")
+
+        body = engine.build_request(
+            self.make_prepared_argument(
+                kwargs={
+                    "response_format": self.answer_format,
+                    "thinking": {"type": "adaptive", "effort": "low"},
+                }
+            )
+        ).body()
+
+        assert body["output_config"] == {
+            "format": {
+                "type": "json_schema",
+                "schema": self.answer_format["json_schema"]["schema"],
+            },
+            "effort": "low",
+        }
+        assert "tool_choice" not in body
+        assert "tools" not in body
+
+    def test_output_config_kwarg_is_merged_not_replaced(self):
+        engine = self.make_engine(model="anthropic:claude-opus-5-5")
+
+        body = engine.build_request(
+            self.make_prepared_argument(
+                kwargs={
+                    "output_config": {"effort": "high"},
+                    "response_format": self.answer_format,
+                }
+            )
+        ).body()
+
+        assert body["output_config"]["effort"] == "high"
+        assert body["output_config"]["format"]["type"] == "json_schema"
+
+    def _live_structured(self, engine_api_mode, model, thinking):
+        api_key = self.require_live(engine_api_mode)
+        engine = self.make_live_engine(model, api_key)
+        argument = self.make_query_argument(
+            LIVE_PROMPT,
+            max_tokens=512,
+            thinking=thinking,
+            response_format=self.answer_format,
+            cache_control=False,
+        )
+
+        engine.prepare(argument)
+        output, metadata = engine.forward(argument)
+
+        assert json.loads(output[0])["answer"].strip()
+        usage = self.usage_dump(metadata["raw_output"])
+        assert usage["output_tokens"] > 0
+        assert 0 < self.expected_cost_usd(model, usage) < 0.05
+
+    @pytest.mark.engine_live
+    def test_live_opus_5_5_structured_output_without_thinking(self, engine_api_mode):
+        # NOTE: "disabled" must arrive as an omitted thinking param plus the effort.
+        self._live_structured(
+            engine_api_mode, "anthropic:claude-opus-5-5", {"type": "disabled", "effort": "low"}
+        )
+
+    @pytest.mark.engine_live
+    def test_live_sonnet_5_5_structured_output_between_tools(self, engine_api_mode):
+        self._live_structured(
+            engine_api_mode, "anthropic:claude-sonnet-5-5", {"type": "disabled", "effort": "low"}
+        )
+
+    @pytest.mark.engine_live
+    def test_live_fable_5_1_smoke(self, engine_api_mode):
+        api_key = self.require_live(engine_api_mode)
+        engine = self.make_live_engine("anthropic:claude-fable-5-1", api_key)
+        argument = self.make_query_argument(
+            LIVE_PROMPT,
+            max_tokens=512,
+            thinking={"type": "adaptive", "effort": "low"},
+            cache_control=False,
+        )
+
+        engine.prepare(argument)
+        output, metadata = engine.forward(argument)
+
+        assert output[0].strip()
+        usage = self.usage_dump(metadata["raw_output"])
+        assert 0 < self.expected_cost_usd("anthropic:claude-fable-5-1", usage) < 0.05
 
 
 def _sse_event(event, data):
