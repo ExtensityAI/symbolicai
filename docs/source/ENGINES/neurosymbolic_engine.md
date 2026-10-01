@@ -134,7 +134,11 @@ print(metadata["thinking"])
 
 Anthropic adaptive thinking (`thinking={"type": "adaptive", "effort": ...}`) is available at runtime for models whose spec enables it:
 
+- `claude-fable-5-1`
 - `claude-fable-5`
+- `claude-opus-5-5`
+- `claude-opus-5`
+- `claude-sonnet-5-5`
 - `claude-sonnet-5`
 - `claude-opus-4-8`
 - `claude-opus-4-7`
@@ -159,6 +163,15 @@ warning through the `symai` logger and falls back to manual thinking
 (`{"type":"enabled","budget_tokens":...}`). This is runtime behavior and not a
 `symai.config.json` key.
 
+`thinking={"type": "disabled"}` is translated per model. On `claude-fable-5`, `claude-fable-5-1`
+and `claude-opus-5-5` thinking is always on, so the parameter is omitted (with a warning) and the
+requested `effort` is still sent. On `claude-sonnet-5-5` it becomes `{"type": "between_tools"}`,
+which the API accepts only at effort `high` or lower; at `xhigh`/`max` the parameter is omitted
+with a warning. `claude-opus-5-5` defaults to effort `medium` (the others to `high`), so pass the
+effort you want explicitly. These three models also reject forced `tool_choice` (`any`/`tool`);
+the engine raises `ValueError` locally — use `tool_choice` `auto` with strict tools, or
+`response_format` `json_schema` (sent as `output_config.format`) for structured output.
+
 ### Gemini (Google)
 
 Two ways to enable thinking — a **token budget** (exact cap) or a **preset level** (`"low"`, `"medium"`, `"high"`):
@@ -173,6 +186,7 @@ thinking = {"thinking_budget": 1024}
 thinking = {"thinking_level": "high"}
 
 # gemini:gemini-2.5-pro, gemini:gemini-2.5-flash, gemini:gemini-3.5-flash,
+# gemini:gemini-3.8-flash, gemini:gemini-3.5-flash-lite,
 # gemini:gemini-3.1-pro-preview, gemini:gemini-3-flash-preview
 res, metadata = Symbol("Topic: Disneyland") \
     .query(
@@ -183,6 +197,10 @@ res, metadata = Symbol("Topic: Disneyland") \
 print(res)
 print(metadata["thinking"])
 ```
+
+`thinking_level` is validated locally where the model's levels are known: `gemini-3.8-flash`
+accepts `low`, `medium`, `high` (default `medium`; `minimal` is an API error) and
+`gemini-3.5-flash-lite` accepts `minimal`, `low`, `medium`, `high` (default `minimal`).
 
 ### Deepseek
 
@@ -241,19 +259,20 @@ OpenAI reasoning models are picked by name — there is a single `OpenAIEngine` 
 ```python
 from symai import Symbol
 
-# openai:o3, openai:o3-pro, openai:gpt-5.4, openai:gpt-5.5, openai:gpt-5.6-sol, openai:gpt-6-astra, ...
+# openai:o3, openai:o3-pro, openai:gpt-5.4, openai:gpt-5.5, openai:gpt-5.6-sol, openai:gpt-6-astra,
+# openai:gpt-6.1-sol, openai:gpt-6-luna, ...
 res, metadata = Symbol("Topic: Disneyland") \
     .query(
       "Write a dystopic take on the topic.",
       model="openai:o3",
       return_metadata=True,
-      reasoning={"effort": "medium"}  # optional: low, medium, high (gpt-6-astra also xhigh, max)
+      reasoning={"effort": "medium"}  # optional: low, medium, high (GPT-6 models also xhigh, max)
     )
 print(res)
 print(metadata["thinking"])
 ```
 
-For reasoning models (`o3`, `o3-pro`, `gpt-5.4*`, `gpt-5.5*`, `gpt-5.6-*`, `gpt-6-astra`), the thinking trace is extracted from the reasoning summary items in the response output. Sampling parameters (`temperature`, `top_p`) are dropped for these models; the `pro` models (`o3-pro`, `gpt-5.4-pro`, `gpt-5.5-pro`) default to `{"effort": "high"}`, all other reasoning models to `{"effort": "medium"}`. `gpt-6-astra` accepts `low`, `medium`, `high`, `xhigh` and `max` and rejects anything else locally (`none` is an HTTP 400 at the API). Explicit prompt-cache breakpoints (`prompt_cache_options` mode `explicit`, at most four writes per request) are available on the GPT-5.6 models and `gpt-6-astra`; its cache writes bill at 1.25x the input rate and reads at 0.1x.
+For reasoning models (`o3`, `o3-pro`, `gpt-5.4*`, `gpt-5.5*`, `gpt-5.6-*`, `gpt-6-astra`, `gpt-6.1-sol`, `gpt-6-luna`), the thinking trace is extracted from the reasoning summary items in the response output. Sampling parameters (`temperature`, `top_p`) are dropped for these models; the `pro` models (`o3-pro`, `gpt-5.4-pro`, `gpt-5.5-pro`) default to `{"effort": "high"}`, all other reasoning models to `{"effort": "medium"}`. `gpt-6-astra` and `gpt-6.1-sol` accept `low`, `medium`, `high`, `xhigh` and `max`; `gpt-6-luna` also accepts `none`. Anything else is rejected locally (it is an HTTP 400 at the API). Explicit prompt-cache breakpoints (`prompt_cache_options` mode `explicit`, at most four writes per request) are available on the GPT-5.6 and GPT-6 models; cache writes bill at 1.25x the input rate and reads at 0.1x (0.05x on `gpt-6.1-sol`).
 
 ### OpenRouter
 
