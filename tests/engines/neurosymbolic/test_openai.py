@@ -481,3 +481,93 @@ class TestOpenAIEngine(NeurosymbolicEngineTestInterface):
         usage = self.usage_dump(metadata["raw_output"])
         assert usage["output_tokens"] > 0
         assert 0 < self.expected_cost_usd(self.astra_model, usage) < 0.05
+
+    # --- gpt-6.1-sol / gpt-6-luna (model pages, read 2026-10-01) ---
+    @pytest.mark.parametrize(
+        ("model", "pricing", "efforts"),
+        [
+            (
+                "gpt-6.1-sol",
+                ModelPricing(input=2.00, output=10.00, cached_input=0.10, cache_write=2.50),
+                ("low", "medium", "high", "xhigh", "max"),
+            ),
+            (
+                "gpt-6-luna",
+                ModelPricing(input=0.10, output=0.50, cached_input=0.01, cache_write=0.125),
+                ("none", "low", "medium", "high", "xhigh", "max"),
+            ),
+        ],
+    )
+    def test_gpt6_family_registered_with_pricing_and_efforts(self, model, pricing, efforts):
+        assert f"openai:{model}" in SUPPORTED_OPENAI_MODELS
+        assert model in SUPPORTED_REASONING_MODELS
+        assert ENGINE_MAPPING[f"openai:{model}"] is OpenAIEngine
+
+        spec = openai_model_spec_for(model)
+        assert spec.context_tokens == 1_050_000
+        assert spec.response_tokens == 128_000
+        assert spec.reasoning is True
+        assert spec.pro is False
+        assert spec.explicit_cache is True
+        assert spec.reasoning_efforts == efforts
+        assert spec.pricing == pricing
+        assert spec.pricing.cache_write == pytest.approx(1.25 * spec.pricing.input)
+
+    def test_gpt6_terra_is_not_registered(self):
+        # NOTE: OpenAI's model list (2026-10-01) has no gpt-6-terra.
+        assert "openai:gpt-6-terra" not in SUPPORTED_OPENAI_MODELS
+
+    @pytest.mark.parametrize("model", ["openai:gpt-6.1-sol", "openai:gpt-6-luna"])
+    def test_gpt6_family_request_defaults_effort_and_uses_explicit_cache(self, model):
+        engine = self.make_engine(model=model)
+        marked = [{"role": "user", "content": f"stable prefix {CACHE_BREAKPOINT} question"}]
+
+        default = engine.build_request(
+            self.make_prepared_argument(kwargs={"temperature": 0.3}, messages=marked)
+        ).body()
+        explicit = engine.build_request(
+            self.make_prepared_argument(kwargs={"reasoning": {"effort": "max"}})
+        ).body()
+
+        assert default["model"] == openai_strip_prefix(model)
+        assert default["reasoning"] == {"effort": "medium"}
+        assert "temperature" not in default
+        assert default["prompt_cache_options"] == {"mode": "explicit"}
+        self.assert_cache_breakpoint_body(default, ["stable prefix ", " question"])
+        assert explicit["reasoning"] == {"effort": "max"}
+
+    def test_gpt6_family_validates_effort_per_model(self):
+        sol = self.make_engine(model="openai:gpt-6.1-sol")
+        luna = self.make_engine(model="openai:gpt-6-luna")
+
+        with pytest.raises(ValueError, match="reasoning effort 'none'"):
+            sol.build_request(self.make_prepared_argument(kwargs={"reasoning": {"effort": "none"}}))
+        for engine in (sol, luna):
+            with pytest.raises(ValueError, match="reasoning effort 'minimal'"):
+                engine.build_request(
+                    self.make_prepared_argument(kwargs={"reasoning": {"effort": "minimal"}})
+                )
+        body = luna.build_request(
+            self.make_prepared_argument(kwargs={"reasoning": {"effort": "none"}})
+        ).body()
+        assert body["reasoning"] == {"effort": "none"}
+
+    @pytest.mark.engine_live
+    @pytest.mark.parametrize(
+        ("model", "effort"), [("openai:gpt-6.1-sol", "low"), ("openai:gpt-6-luna", "none")]
+    )
+    def test_live_gpt6_family_smoke(self, engine_api_mode, model, effort):
+        api_key = self.require_live(engine_api_mode)
+
+        engine = self.make_live_engine(model, api_key)
+        argument = self.make_query_argument(
+            LIVE_PROMPT, max_output_tokens=256, reasoning={"effort": effort}
+        )
+
+        engine.prepare(argument)
+        output, metadata = engine.forward(argument)
+
+        assert output[0].strip()
+        usage = self.usage_dump(metadata["raw_output"])
+        assert usage["output_tokens"] > 0
+        assert 0 < self.expected_cost_usd(model, usage) < 0.05

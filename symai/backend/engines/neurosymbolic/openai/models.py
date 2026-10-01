@@ -3,6 +3,7 @@
 Locked against https://developers.openai.com/api/docs/models + /responses endpoint
 Pricing: https://developers.openai.com/api/docs/pricing (short-context standard tier)
 gpt-6-astra: https://developers.openai.com/api/docs/models/gpt-6-astra (read 2026-09-07)
+gpt-6.1-sol, gpt-6-luna: https://developers.openai.com/api/docs/models/<id> (read 2026-10-01)
 """
 
 from __future__ import annotations
@@ -29,7 +30,7 @@ class OpenAIModelSpec:
     tokenizer: str
     pricing: ModelPricing | None
     # NOTE: explicit prompt cache breakpoints (prompt_cache_breakpoint mode=explicit)
-    # exist on GPT-5.6 and later models (gpt-6-astra confirmed 2026-09-07).
+    # exist on GPT-5.6 and later models (prompt-caching guide, read 2026-10-01).
     explicit_cache: bool = False
     # NOTE: the reasoning.effort values the model page lists; validated locally in
     # build_request. None leaves validation to the API (o3 / gpt-5.x).
@@ -37,6 +38,35 @@ class OpenAIModelSpec:
 
 
 OPENAI_MODEL_SPECS = {
+    "gpt-6.1-sol": OpenAIModelSpec(
+        context_tokens=1_050_000,
+        response_tokens=128_000,
+        reasoning=True,
+        vision=True,
+        pro=False,
+        tokenizer="o200k_base",
+        # NOTE: cache writes bill at 1.25x input, reads at 0.05x (not the 0.1x of the
+        # other GPT-5.6-and-later models). The long-context tier (input above 272K:
+        # 2x input and cache rates, 1.5x output for the whole request) is not modelled.
+        pricing=ModelPricing(input=2.00, output=10.00, cached_input=0.10, cache_write=2.50),
+        explicit_cache=True,
+        # NOTE: `none` and `minimal` are not supported; medium is the default.
+        reasoning_efforts=("low", "medium", "high", "xhigh", "max"),
+    ),
+    "gpt-6-luna": OpenAIModelSpec(
+        context_tokens=1_050_000,
+        response_tokens=128_000,
+        reasoning=True,
+        vision=True,
+        pro=False,
+        tokenizer="o200k_base",
+        # NOTE: writes at 1.25x input, reads at 0.1x. The long-context tier (input
+        # above 272K: 2x input and cache rates, 1.5x output) is not modelled.
+        pricing=ModelPricing(input=0.10, output=0.50, cached_input=0.01, cache_write=0.125),
+        explicit_cache=True,
+        # NOTE: `none` is supported here (unlike astra / 6.1-sol); medium is the default.
+        reasoning_efforts=("none", "low", "medium", "high", "xhigh", "max"),
+    ),
     "gpt-6-astra": OpenAIModelSpec(
         context_tokens=1_050_000,
         response_tokens=128_000,
