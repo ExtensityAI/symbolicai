@@ -45,7 +45,7 @@ class TestAnthropicEngine(NeurosymbolicEngineTestInterface):
     supports_streaming = True
     api_pinned = API_PINNED
     cache_test_model = "anthropic:claude-sonnet-4-6"
-    cache_unsupported_model_raises = False
+    cache_has_unsupported_models = False
     max_tokens_required = True
     supports_token_counting = True
     # NOTE: Anthropic streams by default (legacy contract); JSON-mock tests opt out.

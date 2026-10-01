@@ -78,9 +78,9 @@ class EngineTestInterface:
     # cache-breakpoint support (deepseek/cerebras/groq auto-cache only). The cache
     # suite activates per provider by setting this (anthropic once migrated).
     cache_test_model: ClassVar[str | None] = None
-    # NOTE: whether a marker on a non-supporting model raises (OpenAI semantics).
-    # Anthropic caches on every model by default, so its test asserts stripping instead.
-    cache_unsupported_model_raises: ClassVar[bool] = True
+    # NOTE: whether the provider has models without explicit cache support (OpenAI);
+    # a marker sent to one is stripped silently. Anthropic caches on every model.
+    cache_has_unsupported_models: ClassVar[bool] = True
     # NOTE: whether the provider's API requires max_tokens on every request (Anthropic)
     # — the engine then defaults it to the model's response budget instead of omitting.
     max_tokens_required: ClassVar[bool] = False
@@ -552,17 +552,19 @@ class EngineTestInterface:
 
         self.assert_cache_breakpoint_body(body, ["cached prefix ", " fresh suffix"])
 
-    def test_cache_breakpoint_rejects_unsupported_model(self):
+    def test_cache_breakpoint_stripped_on_unsupported_model(self):
         if self.cache_test_model is None:
             pytest.skip(f"{self.engine_cls.__name__} has no explicit cache support")
-        if not self.cache_unsupported_model_raises:
-            pytest.skip(f"{self.engine_cls.__name__} strips markers instead of raising")
+        if not self.cache_has_unsupported_models:
+            pytest.skip(f"{self.engine_cls.__name__} caches on every model")
 
         engine = self.make_engine()
         marked = [{"role": "user", "content": f"prefix {CACHE_BREAKPOINT} suffix"}]
 
-        with pytest.raises(ValueError, match="cache"):
-            engine.build_request(self.make_prepared_argument(messages=marked))
+        body = engine.build_request(self.make_prepared_argument(messages=marked)).body()
+
+        assert CACHE_BREAKPOINT not in json.dumps(body)
+        assert "prompt_cache_options" not in body
 
     def test_cache_breakpoint_rejects_too_many(self):
         if self.cache_test_model is None:
