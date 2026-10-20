@@ -15,8 +15,6 @@ from dataclasses import dataclass
 from typing import Any
 from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
-import tldextract
-
 
 @dataclass
 class Citation:
@@ -75,6 +73,9 @@ def normalize_domains(
     """
     if not isinstance(domains, list):
         return []
+    # MCP does not use domain filters, so its default path needs no search extra.
+    import tldextract  # noqa: PLC0415
+
     seen = set()
     out = []
     for domain in domains:
