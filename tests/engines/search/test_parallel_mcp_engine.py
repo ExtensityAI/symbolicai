@@ -321,3 +321,54 @@ def test_explicit_provider_failure_never_falls_back(caller):
 def test_strict_request_validation_accepts_normal_search(caller):
     result = Interface("parallel").search("strict research query", strict_request_kwargs=True)
     assert_citation_contract(result)
+
+
+def test_real_dynamic_context_selects_mcp_over_saved_provider(monkeypatch, caller):
+    from symai.components import DynamicEngine
+
+    monkeypatch.delattr(EngineRepository(), "get_dynamic_engine_instance")
+    config = {"SEARCH_ENGINE_MODEL": "parallel", "SEARCH_ENGINE_API_KEY": "saved"}
+    monkeypatch.setattr("symai.backend.engines.search.parallel_mcp.engine.SYMAI_CONFIG", config)
+    monkeypatch.setattr("symai.backend.engines.search.parallel.engine.SYMAI_CONFIG", config)
+    original = EngineRepository.get("search")
+    assert isinstance(original, ParallelEngine)
+    with DynamicEngine("parallel-mcp", "") as selected:
+        assert EngineRepository.get("search") is selected
+        result = Interface("parallel").search("dynamic research query")
+        assert_citation_contract(result)
+    assert EngineRepository.get("search") is original
+    assert caller.calls[-1]["name"] == "web_search"
+
+
+def test_explicit_mcp_registration_overrides_saved_provider(monkeypatch, caller):
+    monkeypatch.setattr(
+        "symai.backend.engines.search.parallel_mcp.engine.SYMAI_CONFIG",
+        {"SEARCH_ENGINE_MODEL": "sonar", "SEARCH_ENGINE_API_KEY": "saved"},
+    )
+    engine = ParallelMCPEngine(client_timeout=12)
+    EngineRepository.register("search", engine)
+    assert_citation_contract(Interface("parallel").search("registered research query"))
+    assert EngineRepository.get("search") is engine
+    assert all(r.extensions["timeout"]["read"] == 12 for r in caller.requests)
+
+
+@pytest.mark.parametrize(
+    "config",
+    [
+        {"SEARCH_ENGINE_ENABLED": False},
+        {"SEARCH_ENGINE_MODEL": "disabled"},
+        {"SEARCH_ENGINE_MODEL": False},
+    ],
+)
+def test_explicit_registration_keeps_disable_gate(monkeypatch, caller, config):
+    monkeypatch.setattr("symai.backend.engines.search.parallel_mcp.engine.SYMAI_CONFIG", config)
+    EngineRepository.register("search", ParallelMCPEngine())
+    with pytest.raises(ValueError, match="disabled"):
+        Interface("parallel").search("disabled registered query")
+    assert not caller.requests
+
+
+def test_explicit_key_is_not_silently_discarded(caller):
+    with pytest.raises(ValueError, match="anonymous"):
+        ParallelMCPEngine(api_key="explicit-key")
+    assert not caller.requests

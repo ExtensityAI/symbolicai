@@ -35,7 +35,12 @@ logger = logging.getLogger(__name__)
 
 
 class ParallelMCPEngine(Engine):
-    def __init__(self, *, client_timeout: float = 30):
+    def __init__(self, api_key: str | None = None, *, client_timeout: float = 30):
+        # DynamicEngine passes api_key to every search engine. Accept its empty
+        # value, but never discard credentials supplied for an authenticated call.
+        if api_key:
+            msg = "Parallel MCP is anonymous; use the parallel engine for API-key access."
+            raise ValueError(msg)
         super().__init__(client_timeout=client_timeout)
         self.config = deepcopy(SYMAI_CONFIG)
         self.transport_client = None
@@ -66,8 +71,15 @@ class ParallelMCPEngine(Engine):
         argument.prop.prepared_input = argument.prop.query
 
     def build_request(self, argument) -> EngineAPIRequest:
-        if self.id() != "search":
-            msg = "Parallel MCP search is disabled or another search provider is configured."
+        # id() controls automatic registration. Explicit registration and dynamic
+        # contexts may select MCP over a saved provider, while disable stays a gate.
+        model = self.config.get("SEARCH_ENGINE_MODEL")
+        if (
+            self.config.get("SEARCH_ENGINE_ENABLED") is False
+            or model is False
+            or model == "disabled"
+        ):
+            msg = "Parallel MCP search is disabled."
             raise ValueError(msg)
         unsupported = set(argument.kwargs) & {
             "processor",
