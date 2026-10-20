@@ -1,5 +1,52 @@
 # Search Engine
 
+## Free search with Parallel Search MCP
+
+When `SEARCH_ENGINE_MODEL` and `SEARCH_ENGINE_API_KEY` are empty, search uses
+[Parallel Search MCP](https://docs.parallel.ai/integrations/mcp/search-mcp)
+over Streamable HTTP. Search runs in Fast mode with no account or API key.
+The base installation already includes the HTTP transport; no search extra is
+needed for MCP.
+
+```python
+from symai import Interface
+
+research = Interface("parallel")
+result = research.search("latest quantum error correction research")
+print(result.value)
+print(result.get_citations())
+
+# Fetch a source when the search excerpts need more detail.
+page = research.scrape(result.get_citations()[0].url)
+print(page.value)
+```
+
+Each interface instance represents one research run. Related searches and page
+fetches reuse its session identifier, including after an error or retry. Use a
+separate interface for each concurrent conversation, and call
+`research.reset_search_session()` when starting a new conversation. A direct
+`@core.search(...)` call is a standalone run; callers managing their own
+conversation can pass the same opaque `session_id` to related calls.
+
+Search accepts a string or a list of related query strings, plus an optional
+`objective`. Fetch accepts an HTTP(S) URL, an optional `objective` (up to 200
+characters), `search_queries`, and `full_content=True` for complete page markdown.
+Both return the existing Parallel result types. Search provides inline citations;
+fetch returns page text. Failed fetch URLs remain available in the raw response
+metadata. Anonymous requests have service rate limits, and errors are propagated
+without silently switching providers. Requests have a 30-second timeout by default;
+applications can register `ParallelMCPEngine(client_timeout=...)` to change it.
+
+Saved provider settings and registered engine overrides take priority. To select
+MCP explicitly, set `SEARCH_ENGINE_MODEL` to `"parallel-mcp"`; it always connects
+anonymously. To leave search disabled, set `SEARCH_ENGINE_MODEL` to `"disabled"`
+or set `SEARCH_ENGINE_ENABLED` to `false` for the MCP provider. Importing the
+library or previewing a query makes no search request.
+
+MCP supports the parameters above. API-only options such as task `processor`,
+search `mode`, result limits, and domain filters require the authenticated
+`"parallel"` engine below.
+
 ## Parallel (Parallel.ai)
 Parallel.ai provides unified search and scrape capabilities. When you invoke `.search(...)` on the Parallel interface, responses are normalized into a `SearchResult` that flattens excerpt text and appends inline citation markers. All URLs are deduplicated and cleaned of tracking parameters, and you can access structured citations via `result.get_citations()`.
 

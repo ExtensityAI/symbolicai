@@ -2,11 +2,13 @@ from symai.backend.engines.search.firecrawl import FirecrawlEngine
 from symai.backend.engines.search.gemini import GeminiSearchEngine
 from symai.backend.engines.search.openai import OpenAISearchEngine
 from symai.backend.engines.search.parallel import ParallelEngine
+from symai.backend.engines.search.parallel_mcp import ParallelMCPEngine
 from symai.backend.engines.search.perplexity import PerplexityEngine
 
 SEARCH_ENGINE_MAPPING = {
     "firecrawl": FirecrawlEngine,
     "parallel": ParallelEngine,
+    "parallel-mcp": ParallelMCPEngine,
 }
 
 __all__ = [
@@ -15,5 +17,6 @@ __all__ = [
     "GeminiSearchEngine",
     "OpenAISearchEngine",
     "ParallelEngine",
+    "ParallelMCPEngine",
     "PerplexityEngine",
 ]

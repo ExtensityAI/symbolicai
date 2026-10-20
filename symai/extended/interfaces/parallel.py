@@ -1,3 +1,5 @@
+from uuid import uuid4
+
 from symai import core
 from symai.backend.engines.search.parallel import ParallelExtractResult, ParallelSearchResult
 from symai.symbol import Expression, Symbol
@@ -7,9 +9,15 @@ class parallel(Expression):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.name = self.__class__.__name__
+        self._search_session_id = str(uuid4())
+
+    def reset_search_session(self):
+        """Start a new research run, separate from previous search/fetch calls."""
+        self._search_session_id = str(uuid4())
 
     def search(self, query: Symbol, **kwargs) -> ParallelSearchResult:
         query = self._to_symbol(query)
+        kwargs.setdefault("session_id", self._search_session_id)
 
         @core.search(query=query.value, **kwargs)
         def _func(_) -> ParallelSearchResult:
@@ -20,6 +28,7 @@ class parallel(Expression):
     def scrape(self, url: str, **kwargs) -> ParallelExtractResult:
         symbol = self._to_symbol(url)
         options = dict(kwargs)
+        options.setdefault("session_id", self._search_session_id)
         options.pop("query", None)
         options["url"] = symbol.value
 
