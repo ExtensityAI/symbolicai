@@ -12,6 +12,13 @@ from symai.backend.engines.neurosymbolic.cerebras import (
     SUPPORTED_REASONING_MODELS as CEREBRAS_REASONING_MODELS,
 )
 from symai.backend.engines.neurosymbolic.cerebras import CerebrasEngine
+from symai.backend.engines.neurosymbolic.cheaperinference import (
+    SUPPORTED_CHAT_MODELS as CHEAPERINFERENCE_CHAT_MODELS,
+)
+from symai.backend.engines.neurosymbolic.cheaperinference import (
+    SUPPORTED_REASONING_MODELS as CHEAPERINFERENCE_REASONING_MODELS,
+)
+from symai.backend.engines.neurosymbolic.cheaperinference import CheaperInferenceEngine
 from symai.backend.engines.neurosymbolic.deepseek import SUPPORTED_MODELS as DEEPSEEK_MODELS
 from symai.backend.engines.neurosymbolic.deepseek import DeepseekEngine
 from symai.backend.engines.neurosymbolic.google import SUPPORTED_CHAT_MODELS as GOOGLE_CHAT_MODELS
@@ -46,6 +53,8 @@ ENGINE_MAPPING = {
     **dict.fromkeys(ANTHROPIC_REASONING_MODELS, AnthropicEngine),
     **dict.fromkeys(CEREBRAS_CHAT_MODELS, CerebrasEngine),
     **dict.fromkeys(CEREBRAS_REASONING_MODELS, CerebrasEngine),
+    **dict.fromkeys(CHEAPERINFERENCE_CHAT_MODELS, CheaperInferenceEngine),
+    **dict.fromkeys(CHEAPERINFERENCE_REASONING_MODELS, CheaperInferenceEngine),
     **dict.fromkeys(DEEPSEEK_MODELS, DeepseekEngine),
     **dict.fromkeys(GOOGLE_CHAT_MODELS, GoogleEngine),
     **dict.fromkeys(GOOGLE_REASONING_MODELS, GoogleEngine),
@@ -62,6 +71,8 @@ __all__ = [
     "ANTHROPIC_REASONING_MODELS",
     "CEREBRAS_CHAT_MODELS",
     "CEREBRAS_REASONING_MODELS",
+    "CHEAPERINFERENCE_CHAT_MODELS",
+    "CHEAPERINFERENCE_REASONING_MODELS",
     "DEEPSEEK_MODELS",
     "ENGINE_MAPPING",
     "GOOGLE_CHAT_MODELS",
@@ -73,6 +84,7 @@ __all__ = [
     "ORCAROUTER_CHAT_MODELS",
     "ORCAROUTER_REASONING_MODELS",
     "AnthropicEngine",
+    "CheaperInferenceEngine",
     "DeepseekEngine",
     "GoogleEngine",
     "GroqEngine",
