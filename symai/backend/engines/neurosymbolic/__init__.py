@@ -39,6 +39,13 @@ from symai.backend.engines.neurosymbolic.orcarouter import (
     SUPPORTED_REASONING_MODELS as ORCAROUTER_REASONING_MODELS,
 )
 from symai.backend.engines.neurosymbolic.orcarouter import OrcaRouterEngine
+from symai.backend.engines.neurosymbolic.uberllm import (
+    SUPPORTED_CHAT_MODELS as UBERLLM_CHAT_MODELS,
+)
+from symai.backend.engines.neurosymbolic.uberllm import (
+    SUPPORTED_REASONING_MODELS as UBERLLM_REASONING_MODELS,
+)
+from symai.backend.engines.neurosymbolic.uberllm import UberLLMEngine
 
 # create the mapping
 ENGINE_MAPPING = {
@@ -55,6 +62,8 @@ ENGINE_MAPPING = {
     **dict.fromkeys(OPENROUTER_REASONING_MODELS, OpenRouterEngine),
     **dict.fromkeys(ORCAROUTER_CHAT_MODELS, OrcaRouterEngine),
     **dict.fromkeys(ORCAROUTER_REASONING_MODELS, OrcaRouterEngine),
+    **dict.fromkeys(UBERLLM_CHAT_MODELS, UberLLMEngine),
+    **dict.fromkeys(UBERLLM_REASONING_MODELS, UberLLMEngine),
 }
 
 __all__ = [
@@ -72,6 +81,8 @@ __all__ = [
     "OPENROUTER_REASONING_MODELS",
     "ORCAROUTER_CHAT_MODELS",
     "ORCAROUTER_REASONING_MODELS",
+    "UBERLLM_CHAT_MODELS",
+    "UBERLLM_REASONING_MODELS",
     "AnthropicEngine",
     "DeepseekEngine",
     "GoogleEngine",
@@ -79,4 +90,5 @@ __all__ = [
     "OpenAIEngine",
     "OpenRouterEngine",
     "OrcaRouterEngine",
+    "UberLLMEngine",
 ]
